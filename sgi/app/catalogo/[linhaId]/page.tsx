@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { NovaCategoriaInline } from "./nova-categoria-inline";
+import { ApagarLinhaBtn } from "./apagar-linha-btn";
+import { BackButton } from "@/components/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +42,7 @@ export default async function LinhaPage({
   const prods = produtos ?? [];
 
   // Unique tipos present in this line, sorted
-  const todosTipos = [
-    ...new Set(cats.map((c) => c.tipo ?? "OUTROS")),
-  ].sort();
+  const todosTipos = Array.from(new Set(cats.map((c) => c.tipo ?? "OUTROS"))).sort();
 
   // Categories to render (filtered by active tipo if any)
   const catsFiltradas = tipoAtivo
@@ -73,12 +73,7 @@ export default async function LinhaPage({
 
   return (
     <div className="px-8 py-8">
-      <Link
-        href="/catalogo"
-        className="text-sm text-ink-soft hover:text-ink hover:underline"
-      >
-        ← Catálogo
-      </Link>
+      <BackButton href="/catalogo" />
 
       {/* Cabeçalho */}
       <div className="mt-4 flex items-start justify-between">
@@ -98,12 +93,15 @@ export default async function LinhaPage({
             </p>
           )}
         </div>
-        <Link
-          href={`/catalogo/${params.linhaId}/novo-produto`}
-          className="btn-primary shrink-0"
-        >
-          Novo produto
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <ApagarLinhaBtn linhaId={params.linhaId} nomeLinha={linha.nome} />
+          <Link
+            href={`/catalogo/${params.linhaId}/novo-produto`}
+            className="btn-primary"
+          >
+            Novo produto
+          </Link>
+        </div>
       </div>
 
       {/* Tabs de tipo */}

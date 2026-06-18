@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { criarObra } from "../actions";
+import { BackButton } from "@/components/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -7,12 +8,7 @@ export default async function NovaObraPage() {
 
   return (
     <div className="px-8 py-8">
-      <Link
-        href="/obras"
-        className="text-sm text-ink-soft hover:text-ink hover:underline"
-      >
-        ← Voltar para obras
-      </Link>
+      <BackButton href="/obras" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Nova obra</h1>
       <p className="mt-1 text-sm text-ink-soft">

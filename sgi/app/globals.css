@@ -4,6 +4,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Tokens de cor ─────────────────────────────────────────── */
+:root {
+  --color-canvas:      247 248 250;
+  --color-surface:     255 255 255;
+  --color-ink:         26  35  50;
+  --color-ink-soft:    71  85  105;
+  --color-ink-faint:   148 163 184;
+  --color-line:        226 232 240;
+  --color-steel:       15  76  129;
+  --color-steel-hover: 12  62  107;
+  --color-steel-soft:  232 240 247;
+}
+
+.dark {
+  --color-canvas:      13  17  23;
+  --color-surface:     22  27  34;
+  --color-ink:         230 237 243;
+  --color-ink-soft:    139 148 158;
+  --color-ink-faint:   72  79  88;
+  --color-line:        48  54  61;
+  --color-steel:       88  166 255;
+  --color-steel-hover: 121 184 255;
+  --color-steel-soft:  28  39  51;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
 @layer base {
   body {
     @apply bg-canvas text-ink font-sans antialiased;
@@ -13,16 +39,30 @@
   }
 }
 
+/* ── Utilitários ───────────────────────────────────────────── */
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Componentes ───────────────────────────────────────────── */
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-card bg-steel px-4 py-2
            text-sm font-medium text-white transition-colors hover:bg-steel-hover
-           focus:outline-none focus:ring-2 focus:ring-steel focus:ring-offset-2;
+           focus:outline-none focus:ring-2 focus:ring-steel focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-card border border-line
            bg-surface px-4 py-2 text-sm font-medium text-ink-soft transition-colors
-           hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-steel;
+           hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-steel
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .field {
     @apply w-full rounded-card border border-line bg-surface px-3 py-2 text-sm

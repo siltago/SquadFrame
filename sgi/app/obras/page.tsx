@@ -1,16 +1,16 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { StatusBadge } from "@/components/status-badge";
 
 export const dynamic = "force-dynamic";
 
 export default async function ObrasPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: obras } = await supabase
     .from("obras")
     .select(
-      `id, codigo, nome, cidade, estado, data_prevista,
+      `id, codigo, numero, nome, cidade, estado, data_prevista,
        cliente:clientes(nome),
        status:obra_status(nome, cor)`
     )
@@ -66,11 +66,13 @@ export default async function ObrasPage() {
                   className="border-b border-line last:border-0 transition-colors hover:bg-canvas"
                 >
                   <td className="px-5 py-3">
-                    <Link
-                      href={`/obras/${o.id}`}
-                      className="font-mono text-xs font-medium text-steel hover:underline"
-                    >
-                      {o.codigo}
+                    <Link href={`/obras/${o.id}`} className="flex flex-col hover:underline">
+                      {o.numero && (
+                        <span className="font-mono text-xs font-bold text-steel">
+                          {String(o.numero).padStart(4, "0")}
+                        </span>
+                      )}
+                      <span className="font-mono text-xs text-ink-faint">{o.codigo}</span>
                     </Link>
                   </td>
                   <td className="px-5 py-3 font-medium">{o.nome}</td>

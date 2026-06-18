@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { criarProduto } from "../../actions";
+import { BackButton } from "@/components/back-button";
+import { defaultUnidade, TIPO_UNIDADE_OPCOES, specLabels } from "@/lib/tipo-unidade";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,7 @@ export default async function NovoProdutoPage({
   const [{ data: linha }, { data: categorias }] = await Promise.all([
     supabase
       .from("linhas")
-      .select("id, nome")
+      .select("id, nome, tipo")
       .eq("id", params.linhaId)
       .single(),
     supabase
@@ -27,16 +29,26 @@ export default async function NovoProdutoPage({
 
   if (!linha) notFound();
 
+  // Busca unidade padrão do tipo desta linha
+  let tipoUnidade: string | null = null;
+  if ((linha as any).tipo) {
+    const { data: tipoData, error: tipoErr } = await supabase
+      .from("tipos_linha")
+      .select("unidade")
+      .eq("slug", (linha as any).tipo)
+      .maybeSingle();
+    if (!tipoErr) tipoUnidade = tipoData?.unidade ?? null;
+  }
+
+  const unidadePadrao = defaultUnidade(tipoUnidade);
+  const labels = specLabels(tipoUnidade);
   const criarProdutoNaLinha = criarProduto.bind(null, params.linhaId);
+
+  const showSpecs = tipoUnidade && tipoUnidade !== "UN" && tipoUnidade !== "CX";
 
   return (
     <div className="px-8 py-8">
-      <Link
-        href={`/catalogo/${params.linhaId}`}
-        className="text-sm text-ink-soft hover:text-ink hover:underline"
-      >
-        ← {linha.nome}
-      </Link>
+      <BackButton href={`/catalogo/${params.linhaId}`} />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Novo produto</h1>
       <p className="mt-1 text-sm text-ink-soft">Linha: {linha.nome}</p>
@@ -58,14 +70,16 @@ export default async function NovoProdutoPage({
 
           <div>
             <label className="label">Unidade</label>
-            <select name="unidade" required className="field">
-              <option value="UN">UN — Unidade</option>
-              <option value="M">M — Metro linear</option>
-              <option value="M²">M² — Metro quadrado</option>
-              <option value="KG">KG — Quilograma</option>
-              <option value="BARRA">BARRA</option>
-              <option value="CX">CX — Caixa</option>
+            <select name="unidade" required className="field" defaultValue={unidadePadrao}>
+              {TIPO_UNIDADE_OPCOES.map(op => (
+                <option key={op.value} value={op.value}>{op.label}</option>
+              ))}
             </select>
+            {tipoUnidade && (
+              <p className="mt-1 text-xs text-ink-faint">
+                Padrão desta aba: {unidadePadrao}
+              </p>
+            )}
           </div>
 
           <div className="sm:col-span-2">
@@ -92,6 +106,55 @@ export default async function NovoProdutoPage({
               ))}
             </select>
           </div>
+
+          {showSpecs && (
+            <>
+              <div className="sm:col-span-2">
+                <hr className="border-border" />
+                <p className="mt-3 text-xs font-medium uppercase tracking-widest text-ink-faint">
+                  Especificações
+                </p>
+              </div>
+
+              {labels.tamanho && (
+                <div>
+                  <label className="label">{labels.tamanho}</label>
+                  <input
+                    name="tamanho_mm"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="field"
+                    placeholder="Ex: 6000"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="label">{labels.peso}</label>
+                <input
+                  name="peso_metro"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  className="field"
+                  placeholder="Ex: 1.23"
+                />
+              </div>
+
+              <div>
+                <label className="label">{labels.preco}</label>
+                <input
+                  name="preco_metro"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="field"
+                  placeholder="Ex: 12.50"
+                />
+              </div>
+            </>
+          )}
 
           <div className="sm:col-span-2">
             <label className="label">

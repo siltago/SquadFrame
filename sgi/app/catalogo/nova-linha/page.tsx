@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { criarLinha } from "../actions";
+import { BackButton } from "@/components/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -16,39 +17,36 @@ export default async function NovaLinhaPage({
     .order("ordem");
 
   const tiposList = tipos ?? [];
-  const slugParam = searchParams.tipo?.toUpperCase() ?? "";
-  const tipoAtual = tiposList.find((t) => t.slug === slugParam) ?? tiposList[0] ?? { nome: "Linha", slug: "PERFIL" };
-  const tipo = tipoAtual.slug;
-  const labelTipo = tipoAtual.nome;
+  // Busca case-insensitive para tolerar variação de caixa na URL
+  const slugParam = (searchParams.tipo ?? "").trim().toUpperCase();
+  const tipoPreSelecionado = tiposList.find((t) => t.slug.toUpperCase() === slugParam)?.slug ?? "";
 
   return (
     <div className="px-8 py-8">
-      <Link
-        href={`/catalogo?aba=${tipo}`}
-        className="text-sm text-ink-soft hover:text-ink hover:underline"
-      >
-        ← {labelTipo}
-      </Link>
+      <BackButton href="/catalogo" />
 
-      <h1 className="mt-4 text-2xl font-bold tracking-tight">
-        Nova linha de {labelTipo.toLowerCase()}
-      </h1>
+      <h1 className="mt-4 text-2xl font-bold tracking-tight">Nova linha</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        Linhas agrupam {labelTipo.toLowerCase()} de uma mesma série ou fabricante.
+        Linhas agrupam produtos de uma mesma série ou fabricante.
       </p>
 
       <form action={criarLinha} className="card mt-6 max-w-2xl p-6">
-        <input type="hidden" name="tipo" value={tipo} />
-
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="label">Nome da linha</label>
-            <input
-              name="nome"
-              required
-              className="field"
-              placeholder={`Ex: ${labelTipo} Premium 45`}
-            />
+          <div>
+            <label className="label">Tipo / Aba <span className="text-red-500">*</span></label>
+            <select name="tipo" required defaultValue={tipoPreSelecionado} className="field">
+              {tiposList.length === 0 ? (
+                <option value="">Crie uma aba no catálogo primeiro</option>
+              ) : (
+                <>
+                  {!tipoPreSelecionado && <option value="">— Selecione a aba —</option>}
+                  {tiposList.map((t) => (
+                    <option key={t.slug} value={t.slug}>{t.nome}</option>
+                  ))}
+                </>
+              )}
+            </select>
+            <p className="mt-1 text-xs text-ink-faint">Em qual aba do catálogo esta linha aparece?</p>
           </div>
 
           <div>
@@ -57,6 +55,16 @@ export default async function NovaLinhaPage({
               <span className="font-normal text-ink-soft">(opcional)</span>
             </label>
             <input name="fabricante" className="field" placeholder="Ex: Alumínio São Paulo" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="label">Nome da linha <span className="text-red-500">*</span></label>
+            <input
+              name="nome"
+              required
+              className="field"
+              placeholder="Ex: Série Premium 45"
+            />
           </div>
 
           <div className="sm:col-span-2">
@@ -77,7 +85,7 @@ export default async function NovaLinhaPage({
           <button type="submit" className="btn-primary">
             Criar linha
           </button>
-          <Link href={`/catalogo?aba=${tipo}`} className="btn-ghost">
+          <Link href={tipoPreSelecionado ? `/catalogo?aba=${tipoPreSelecionado}` : "/catalogo"} className="btn-ghost">
             Cancelar
           </Link>
         </div>

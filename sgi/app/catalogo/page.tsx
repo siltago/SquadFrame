@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import { AbaCoresCatalogo } from "./aba-cores-catalogo";
 import { NovaAbaInline } from "./nova-aba-inline";
+import { GerenciarAba } from "./gerenciar-aba";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +12,23 @@ export default async function CatalogoPage({
 }: {
   searchParams: { aba?: string };
 }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
+  const usuario = await getUsuarioAtual();
+  const podeCriar =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("catalogo.criar") ||
+    false;
 
   // Carrega tipos de linha do banco (abas dinâmicas)
-  const { data: tipos } = await supabase
+  const { data: tipos, error: tiposErr } = await supabase
     .from("tipos_linha")
-    .select("id, nome, slug")
+    .select("id, nome, slug, unidade")
     .order("ordem");
 
-  const tiposList = tipos ?? [];
+  // Fallback se coluna unidade ainda não existir no banco
+  const tiposList = tiposErr
+    ? ((await supabase.from("tipos_linha").select("id, nome, slug").order("ordem")).data ?? [])
+    : (tipos ?? []);
 
   // Determina aba ativa: slug de um tipo ou "cores" (sempre última)
   const slugsValidos = tiposList.map((t) => t.slug);
@@ -29,7 +39,6 @@ export default async function CatalogoPage({
 
   let linhas: any[] = [];
   let cores: any[] = [];
-  let acabamentos: any[] = [];
 
   if (aba !== "cores") {
     const { data } = await supabase
@@ -40,15 +49,11 @@ export default async function CatalogoPage({
       .order("nome");
     linhas = data ?? [];
   } else {
-    const [{ data: coresData }, { data: acabamentosData }] = await Promise.all([
-      supabase
-        .from("cores_ral")
-        .select("id, codigo_ral, nome, hex, acabamento_id")
-        .order("codigo_ral"),
-      supabase.from("acabamentos").select("id, nome").order("nome"),
-    ]);
+    const { data: coresData } = await supabase
+      .from("cores_ral")
+      .select("id, codigo_ral, nome, hex, tipos")
+      .order("codigo_ral");
     cores = coresData ?? [];
-    acabamentos = acabamentosData ?? [];
   }
 
   const tipoAtual = tiposList.find((t) => t.slug === aba);
@@ -62,11 +67,18 @@ export default async function CatalogoPage({
           <p className="text-xs font-medium uppercase tracking-widest text-ink-faint">
             Catálogo
           </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            {aba === "cores" ? "Cores RAL" : (tipoAtual?.nome ?? "Catálogo")}
-          </h1>
+          <div className="mt-1 flex items-baseline gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {aba === "cores" ? "Cores RAL" : (tipoAtual?.nome ?? "Catálogo")}
+            </h1>
+            {tipoAtual && (tipoAtual as any).unidade && (tipoAtual as any).unidade !== "UN" && (
+              <span className="rounded-full bg-steel/10 px-2.5 py-0.5 text-xs font-medium text-steel">
+                {(tipoAtual as any).unidade}
+              </span>
+            )}
+          </div>
         </div>
-        {aba !== "cores" && (
+        {aba !== "cores" && podeCriar && (
           <Link
             href={`/catalogo/nova-linha?tipo=${aba}`}
             className="btn-primary"
@@ -104,9 +116,14 @@ export default async function CatalogoPage({
           </Link>
         </div>
 
-        {/* Botão nova aba — alinhado à direita */}
-        <div className="ml-auto shrink-0 pl-4 pb-px">
-          <NovaAbaInline />
+        {/* Editar/apagar aba ativa + botão nova aba — alinhados à direita */}
+        <div className="ml-auto shrink-0 flex items-center gap-1 pb-px">
+          {aba !== "cores" && tipoAtual && (
+            <GerenciarAba aba={tipoAtual as { id: string; nome: string; slug: string; unidade?: string | null }} />
+          )}
+          <div className="pl-2">
+            <NovaAbaInline />
+          </div>
         </div>
       </div>
 
@@ -121,12 +138,14 @@ export default async function CatalogoPage({
               <p className="mt-1 max-w-sm text-sm text-ink-soft">
                 Linhas agrupam {tipoAtual?.nome.toLowerCase() ?? "itens"} por série ou fabricante.
               </p>
-              <Link
-                href={`/catalogo/nova-linha?tipo=${aba}`}
-                className="btn-primary mt-5"
-              >
-                {labelNova}
-              </Link>
+              {podeCriar && (
+                <Link
+                  href={`/catalogo/nova-linha?tipo=${aba}`}
+                  className="btn-primary mt-5"
+                >
+                  {labelNova}
+                </Link>
+              )}
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -159,7 +178,7 @@ export default async function CatalogoPage({
       )}
 
       {/* ── Cores RAL ──────────────────────────────────────────── */}
-      {aba === "cores" && <AbaCoresCatalogo cores={cores} acabamentos={acabamentos} />}
+      {aba === "cores" && <AbaCoresCatalogo cores={cores} tiposLinha={tiposList as any} />}
     </div>
   );
 }

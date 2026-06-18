@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { StatusBadge } from "@/components/status-badge";
 import { AbaProducao } from "./aba-producao";
+import { BackButton } from "@/components/back-button";
+import { STATUS_PED_COR, STATUS_PED_LABEL } from "@/types/compras";
 
 /*
   SQL — rodar no Supabase para ativar a aba Produção:
@@ -41,7 +43,7 @@ export default async function ObraDetalhePage({
   const { data: obra } = await supabase
     .from("obras")
     .select(
-      `*, cliente:clientes(nome, documento),
+      `*, numero, cliente:clientes(nome, documento),
        status:obra_status(nome, cor)`
     )
     .eq("id", params.id)
@@ -52,6 +54,7 @@ export default async function ObraDetalhePage({
 
   let historico: Array<{ acao: string; motivo: string | null; criado_em: string }> | null = null;
   let tipologias: Array<{ id: string; nome: string; quantidade: number }> | null = null;
+  let pedidos: any[] | null = null;
 
   if (abaAtiva === "resumo") {
     const { data } = await supabase
@@ -72,19 +75,29 @@ export default async function ObraDetalhePage({
     tipologias = data;
   }
 
+  if (abaAtiva === "pedidos") {
+    const { data } = await supabase
+      .from("pedidos_compra")
+      .select("id, numero, status, tipo_linha, criado_em, fornecedor:fornecedores(nome), comprador:usuarios(nome)")
+      .eq("obra_id", params.id)
+      .order("criado_em", { ascending: false });
+    pedidos = data ?? [];
+  }
+
+  const obraNumero = obra.numero ? String(obra.numero).padStart(4, "0") : null;
+
   return (
     <div className="px-8 py-8">
-      <Link href="/obras" className="text-sm text-ink-soft hover:text-ink hover:underline">
-        ← Obras
-      </Link>
+      <BackButton href="/obras" />
 
       {/* Cabeçalho da obra */}
       <div className="mt-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs font-medium text-ink-faint">
-              {obra.codigo}
-            </span>
+            {obraNumero && (
+              <span className="font-mono text-sm font-bold text-steel">{obraNumero}</span>
+            )}
+            <span className="font-mono text-xs font-medium text-ink-faint">{obra.codigo}</span>
             {obra.status && (
               <StatusBadge nome={obra.status.nome} cor={obra.status.cor} />
             )}
@@ -95,18 +108,26 @@ export default async function ObraDetalhePage({
             {obra.cidade ? ` · ${obra.cidade}/${obra.estado ?? ""}` : ""}
           </p>
         </div>
+        {abaAtiva === "pedidos" && (
+          <Link
+            href={`/compras/pedidos/novo?obra_id=${params.id}`}
+            className="btn-primary"
+          >
+            Novo pedido
+          </Link>
+        )}
       </div>
 
       {/* Abas */}
-      <div className="mt-6 flex gap-1 border-b border-line">
+      <div className="mt-6 flex gap-1 border-b border-line overflow-x-auto">
         {ABAS.map(({ label, slug }) => (
           <Link
             key={slug}
             href={`/obras/${params.id}?aba=${slug}`}
             className={
               abaAtiva === slug
-                ? "border-b-2 border-steel px-4 py-2.5 text-sm font-medium text-ink"
-                : "px-4 py-2.5 text-sm font-medium text-ink-faint hover:text-ink-soft"
+                ? "shrink-0 border-b-2 border-steel px-4 py-2.5 text-sm font-medium text-ink"
+                : "shrink-0 px-4 py-2.5 text-sm font-medium text-ink-faint hover:text-ink-soft"
             }
           >
             {label}
@@ -172,13 +193,76 @@ export default async function ObraDetalhePage({
         </div>
       )}
 
+      {/* Aba: Pedidos */}
+      {abaAtiva === "pedidos" && (
+        <div className="mt-6">
+          {!pedidos || pedidos.length === 0 ? (
+            <div className="card flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm font-medium text-ink">Nenhum pedido para esta obra</p>
+              <p className="text-sm text-ink-faint">Crie o primeiro pedido vinculado a esta obra.</p>
+              <Link href={`/compras/pedidos/novo?obra_id=${params.id}`} className="btn-primary mt-2">
+                Criar pedido
+              </Link>
+            </div>
+          ) : (
+            <div className="card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                    <th className="px-5 py-3 font-medium">Nº Pedido</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 font-medium">Tipo</th>
+                    <th className="px-5 py-3 font-medium">Fornecedor</th>
+                    <th className="px-5 py-3 font-medium">Comprador</th>
+                    <th className="px-5 py-3 font-medium">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pedidos.map((p: any) => {
+                    const cor = STATUS_PED_COR[p.status as keyof typeof STATUS_PED_COR] ?? "#94a3b8";
+                    return (
+                      <tr key={p.id} className="border-b border-line last:border-0 hover:bg-canvas transition-colors">
+                        <td className="px-5 py-3">
+                          <Link href={`/compras/pedidos/${p.id}`}
+                            className="font-mono text-sm font-bold text-steel hover:underline">
+                            {p.numero}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                            style={{ backgroundColor: cor + "20", color: cor }}>
+                            {STATUS_PED_LABEL[p.status as keyof typeof STATUS_PED_LABEL] ?? p.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-ink-soft">
+                          {p.tipo_linha ?? <span className="text-ink-faint">—</span>}
+                        </td>
+                        <td className="px-5 py-3 text-ink-soft">
+                          {(p.fornecedor as any)?.nome ?? "—"}
+                        </td>
+                        <td className="px-5 py-3 text-ink-soft">
+                          {(p.comprador as any)?.nome ?? "—"}
+                        </td>
+                        <td className="px-5 py-3 text-ink-faint text-xs">
+                          {new Date(p.criado_em).toLocaleDateString("pt-BR")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Aba: Produção */}
       {abaAtiva === "producao" && (
         <AbaProducao obraId={params.id} tipologias={tipologias ?? []} />
       )}
 
       {/* Abas em construção */}
-      {!["resumo", "producao"].includes(abaAtiva) && <AbaConstrucao />}
+      {!["resumo", "pedidos", "producao"].includes(abaAtiva) && <AbaConstrucao />}
     </div>
   );
 }
@@ -186,18 +270,8 @@ export default async function ObraDetalhePage({
 function AbaConstrucao() {
   return (
     <div className="mt-16 flex flex-col items-center gap-4 text-ink-faint">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="40"
-        height="40"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
       </svg>
       <p className="text-sm">Este módulo está em construção</p>

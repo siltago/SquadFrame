@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -8,7 +8,8 @@ import { redirect } from "next/navigation";
 
 export async function criarAba(formData: FormData) {
   const supabase = createClient();
-  const nome = String(formData.get("nome") || "").trim();
+  const nome    = String(formData.get("nome")    || "").trim();
+  const unidade = String(formData.get("unidade") || "UN").trim();
   if (!nome) throw new Error("Nome é obrigatório.");
 
   const slug = nome
@@ -18,11 +19,46 @@ export async function criarAba(formData: FormData) {
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
-  const { error } = await supabase.from("tipos_linha").insert({ nome, slug });
+  const { error } = await supabase.from("tipos_linha").insert({ nome, slug, unidade });
   if (error) {
     if (error.code === "23505") throw new Error("Já existe uma aba com esse nome.");
     throw new Error(error.message);
   }
+
+  revalidatePath("/catalogo");
+}
+
+export async function editarAba(id: string, formData: FormData) {
+  const supabase = createClient();
+  const nome    = String(formData.get("nome")    || "").trim();
+  const unidade = String(formData.get("unidade") || "UN").trim();
+  if (!nome) throw new Error("Nome é obrigatório.");
+
+  const { error } = await supabase
+    .from("tipos_linha")
+    .update({ nome, unidade })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/catalogo");
+}
+
+export async function apagarAba(id: string) {
+  const supabase = createClient();
+
+  const { count } = await supabase
+    .from("linhas")
+    .select("id", { count: "exact", head: true })
+    .eq("tipo", (await supabase.from("tipos_linha").select("slug").eq("id", id).single()).data?.slug ?? "");
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `Esta aba possui ${count} linha(s). Remova as linhas antes de apagar a aba.`
+    );
+  }
+
+  const { error } = await supabase.from("tipos_linha").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 
   revalidatePath("/catalogo");
 }
@@ -35,9 +71,18 @@ export async function criarLinha(formData: FormData) {
   const nome = String(formData.get("nome") || "").trim();
   const fabricante = String(formData.get("fabricante") || "").trim();
   const descricao = String(formData.get("descricao") || "").trim();
-  const tipo = String(formData.get("tipo") || "PERFIL").trim().toUpperCase();
+  const tipoRaw = String(formData.get("tipo") || "").trim();
 
   if (!nome) throw new Error("Nome da linha é obrigatório.");
+  if (!tipoRaw) throw new Error("Selecione a aba do catálogo.");
+
+  // Valida que o tipo existe como slug em tipos_linha (case-insensitive)
+  const { data: tiposValidos } = await supabase.from("tipos_linha").select("slug");
+  const slugMatch = tiposValidos?.find(
+    (t) => t.slug.toUpperCase() === tipoRaw.toUpperCase()
+  );
+  if (!slugMatch) throw new Error("Tipo de aba inválido. Selecione uma aba válida.");
+  const tipo = slugMatch.slug; // usa o slug exato do BD
 
   const { data, error } = await supabase
     .from("linhas")
@@ -49,6 +94,27 @@ export async function criarLinha(formData: FormData) {
 
   revalidatePath("/catalogo");
   redirect(`/catalogo/${data.id}`);
+}
+
+export async function apagarLinha(linhaId: string) {
+  const supabase = createClient();
+
+  const { count } = await supabase
+    .from("produtos")
+    .select("id", { count: "exact", head: true })
+    .eq("linha_id", linhaId);
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `Esta linha possui ${count} produto(s). Remova os produtos antes de apagar a linha.`
+    );
+  }
+
+  const { error } = await supabase.from("linhas").delete().eq("id", linhaId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/catalogo");
+  redirect("/catalogo");
 }
 
 // ─── Categoria ───────────────────────────────────────────────
@@ -75,12 +141,15 @@ export async function criarCategoria(linhaId: string, formData: FormData) {
 export async function criarProduto(linhaId: string, formData: FormData) {
   const supabase = createClient();
 
-  const codigo_mestre = String(formData.get("codigo_mestre") || "").trim();
-  const nome_tecnico = String(formData.get("nome_tecnico") || "").trim();
-  const categoria_id = String(formData.get("categoria_id") || "").trim() || null;
-  const unidade = String(formData.get("unidade") || "UN").trim();
-  const descricao = String(formData.get("descricao") || "").trim() || null;
-  const observacoes = String(formData.get("observacoes") || "").trim() || null;
+  const codigo_mestre  = String(formData.get("codigo_mestre")  || "").trim();
+  const nome_tecnico   = String(formData.get("nome_tecnico")   || "").trim();
+  const categoria_id   = String(formData.get("categoria_id")   || "").trim() || null;
+  const unidade        = String(formData.get("unidade")        || "UN").trim();
+  const descricao      = String(formData.get("descricao")      || "").trim() || null;
+  const observacoes    = String(formData.get("observacoes")    || "").trim() || null;
+  const peso_metro     = parseFloat(String(formData.get("peso_metro")  || "").replace(",", ".")) || null;
+  const preco_metro    = parseFloat(String(formData.get("preco_metro") || "").replace(",", ".")) || null;
+  const tamanho_mm     = parseFloat(String(formData.get("tamanho_mm")  || "").replace(",", ".")) || null;
 
   if (!codigo_mestre) throw new Error("Código mestre é obrigatório.");
   if (!nome_tecnico) throw new Error("Nome técnico é obrigatório.");
@@ -104,6 +173,9 @@ export async function criarProduto(linhaId: string, formData: FormData) {
       unidade,
       descricao,
       observacoes,
+      peso_metro,
+      preco_metro,
+      tamanho_mm,
     })
     .select("id")
     .single();
@@ -182,24 +254,92 @@ export async function vincularCor(
   revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
 }
 
+// ─── Produto (editar) ────────────────────────────────────────
+
+export async function editarProduto(
+  produtoId: string,
+  linhaId: string,
+  formData: FormData
+) {
+  const supabase = createClient();
+  const nome = String(formData.get("nome") || "").trim();
+  const codigo_mestre = String(formData.get("codigo_mestre") || "").trim();
+  const unidade = String(formData.get("unidade") || "").trim();
+  const descricao = String(formData.get("descricao") || "").trim() || null;
+  const observacoes = String(formData.get("observacoes") || "").trim() || null;
+  const status = formData.get("status") === "true";
+  const fornecedor_mestre_id = String(formData.get("fornecedor_mestre_id") || "").trim() || null;
+
+  if (!nome) throw new Error("Nome é obrigatório.");
+  if (!codigo_mestre) throw new Error("Código mestre é obrigatório.");
+  if (!unidade) throw new Error("Unidade é obrigatória.");
+
+  const peso_metro  = parseFloat(String(formData.get("peso_metro")  || "").replace(",", ".")) || null;
+  const preco_metro = parseFloat(String(formData.get("preco_metro") || "").replace(",", ".")) || null;
+  const tamanho_mm  = parseFloat(String(formData.get("tamanho_mm")  || "").replace(",", ".")) || null;
+
+  const { error } = await supabase.from("produtos").update({
+    nome, nome_tecnico: nome, codigo_mestre, unidade, descricao, observacoes, status, fornecedor_mestre_id,
+    peso_metro, preco_metro, tamanho_mm,
+  }).eq("id", produtoId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
+}
+
 // ─── Aliases ─────────────────────────────────────────────────
 
 export async function adicionarAlias(
   produtoId: string,
   linhaId: string,
-  alias: string
+  alias: string,
+  fornecedorId?: string | null,
+  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null }
 ) {
   const supabase = createClient();
 
   const valor = alias.trim();
   if (!valor) throw new Error("Alias não pode ser vazio.");
 
-  const { error } = await supabase
-    .from("produto_aliases")
-    .insert({ produto_id: produtoId, alias: valor });
+  const row: Record<string, unknown> = { produto_id: produtoId, alias: valor };
+  if (fornecedorId) row.fornecedor_id = fornecedorId;
+  if (specs?.peso_metro != null)  row.peso_metro  = specs.peso_metro;
+  if (specs?.preco_metro != null) row.preco_metro = specs.preco_metro;
+  if (specs?.tamanho_mm != null)  row.tamanho_mm  = specs.tamanho_mm;
 
+  const { error } = await supabase.from("produto_aliases").insert(row);
   if (error) throw new Error(error.message);
 
+  revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
+}
+
+export async function editarAlias(
+  aliasId: string,
+  produtoId: string,
+  linhaId: string,
+  alias: string,
+  fornecedorId?: string | null,
+  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null }
+) {
+  const supabase = createClient();
+  const valor = alias.trim();
+  if (!valor) throw new Error("Alias não pode ser vazio.");
+  const row: Record<string, unknown> = {
+    alias: valor,
+    fornecedor_id: fornecedorId || null,
+    peso_metro:  specs?.peso_metro  ?? null,
+    preco_metro: specs?.preco_metro ?? null,
+    tamanho_mm:  specs?.tamanho_mm  ?? null,
+  };
+  const { error } = await supabase.from("produto_aliases").update(row).eq("id", aliasId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
+}
+
+export async function excluirAlias(aliasId: string, produtoId: string, linhaId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("produto_aliases").delete().eq("id", aliasId);
+  if (error) throw new Error(error.message);
   revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
 }
 
@@ -314,15 +454,23 @@ export async function criarCorRal(formData: FormData) {
   const codigo_ral = String(formData.get("codigo_ral") || "").trim().toUpperCase();
   const nome = String(formData.get("nome") || "").trim() || null;
   const hex = String(formData.get("hex") || "").trim() || null;
-  const acabamento_id = String(formData.get("acabamento_id") || "").trim() || null;
+  const tipos = formData.getAll("tipos").map(String).filter(Boolean);
 
   if (!codigo_ral) throw new Error("Código RAL é obrigatório.");
 
-  const row: Record<string, string | null> = { codigo_ral, nome, hex };
-  if (acabamento_id) row.acabamento_id = acabamento_id;
+  const { error } = await supabase.from("cores_ral").insert({ codigo_ral, nome, hex, tipos });
+  if (error) throw new Error(error.message);
 
-  const { error } = await supabase.from("cores_ral").insert(row);
+  revalidatePath("/catalogo");
+}
 
+export async function editarCor(id: string, formData: FormData) {
+  const supabase = createClient();
+  const nome = String(formData.get("nome") || "").trim() || null;
+  const hex = String(formData.get("hex") || "").trim() || null;
+  const tipos = formData.getAll("tipos").map(String).filter(Boolean);
+
+  const { error } = await supabase.from("cores_ral").update({ nome, hex, tipos }).eq("id", id);
   if (error) throw new Error(error.message);
 
   revalidatePath("/catalogo");

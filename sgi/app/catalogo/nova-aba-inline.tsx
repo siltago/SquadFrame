@@ -3,8 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { criarAba } from "@/app/catalogo/actions";
+import { usePode } from "@/components/user-provider";
+import { TIPO_UNIDADE_OPCOES } from "@/lib/tipo-unidade";
 
 export function NovaAbaInline() {
+  const pode = usePode("catalogo.criar");
+  if (!pode) return null;
   const [aberta, setAberta] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -44,16 +48,33 @@ export function NovaAbaInline() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-end gap-2 rounded-lg border border-steel/30 bg-canvas p-3"
     >
-      <input
-        name="nome"
-        autoFocus
-        required
-        placeholder="Nome da aba…"
-        disabled={pending}
-        className="h-8 rounded border border-steel px-2.5 text-sm outline-none focus:ring-1 focus:ring-steel"
-      />
+      <div>
+        <label className="mb-1 block text-xs text-ink-soft">Nome da aba</label>
+        <input
+          name="nome"
+          autoFocus
+          required
+          placeholder="Ex: Perfil, Vidro…"
+          disabled={pending}
+          className="h-8 w-44 rounded border border-steel px-2.5 text-sm outline-none focus:ring-1 focus:ring-steel"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-ink-soft">Unidade padrão</label>
+        <select
+          name="unidade"
+          required
+          defaultValue="UN"
+          disabled={pending}
+          className="h-8 rounded border border-steel px-2 text-sm outline-none focus:ring-1 focus:ring-steel"
+        >
+          {TIPO_UNIDADE_OPCOES.map(op => (
+            <option key={op.value} value={op.value}>{op.label}</option>
+          ))}
+        </select>
+      </div>
       <button
         type="submit"
         disabled={pending}

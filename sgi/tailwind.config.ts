@@ -9,20 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Paleta "instrumento de precisão"
-        canvas: "#F7F8FA",   // fundo da aplicação
-        surface: "#FFFFFF",  // cartões / painéis
+        canvas:  "rgb(var(--color-canvas)  / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
         ink: {
-          DEFAULT: "#1A2332", // texto principal (slate profundo)
-          soft: "#475569",    // texto secundário
-          faint: "#94A3B8",   // legendas / placeholders
+          DEFAULT: "rgb(var(--color-ink)       / <alpha-value>)",
+          soft:    "rgb(var(--color-ink-soft)  / <alpha-value>)",
+          faint:   "rgb(var(--color-ink-faint) / <alpha-value>)",
         },
-        line: "#E2E8F0",      // bordas / divisórias
+        line: "rgb(var(--color-line) / <alpha-value>)",
         steel: {
-          // azul-aço — o acento funcional do produto
-          DEFAULT: "#0F4C81",
-          hover: "#0C3E6B",
-          soft: "#E8F0F7",
+          DEFAULT: "rgb(var(--color-steel)       / <alpha-value>)",
+          hover:   "rgb(var(--color-steel-hover) / <alpha-value>)",
+          soft:    "rgb(var(--color-steel-soft)  / <alpha-value>)",
         },
       },
       fontFamily: {

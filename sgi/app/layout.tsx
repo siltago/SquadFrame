@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { getUsuarioAtual } from "@/lib/auth";
 import { HeaderUser } from "@/components/header-user";
 import { UserProvider } from "@/components/user-provider";
+import { MobileNav } from "@/components/mobile-nav";
 import "./globals.css";
 
 const ThemeToggle = dynamic(
@@ -28,24 +29,27 @@ export default async function RootLayout({
       <body>
         {usuario && (
           <header
-            className="fixed inset-x-0 top-0 z-50 flex items-center gap-2 px-3 sm:gap-3 sm:px-4"
+            className="fixed inset-x-0 top-0 z-50 flex items-center gap-2 px-3 sm:gap-3 sm:px-5"
             style={{ backgroundColor: "#0F4C81", height: 56 }}
           >
+            {/* Hamburguer — só mobile */}
+            <MobileNav />
+
             {/* Logo */}
             <Link href="/" className="flex shrink-0 items-center gap-2">
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sm font-bold text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
                 style={{ backgroundColor: "#0a3660" }}
               >
                 S
               </div>
-              <span className="hidden text-base font-bold leading-none text-white sm:block">
+              <span className="text-base font-bold leading-none text-white">
                 SGI
               </span>
             </Link>
 
-            {/* Navegação — scroll horizontal em telas pequenas */}
-            <nav className="flex flex-1 items-center overflow-x-auto gap-0.5 px-1 sm:gap-1 sm:px-3 scrollbar-none">
+            {/* Navegação desktop */}
+            <nav className="hidden sm:flex flex-1 items-center gap-0.5 px-2">
               {[
                 { href: "/obras",    label: "Obras" },
                 { href: "/catalogo", label: "Catálogo" },
@@ -55,7 +59,7 @@ export default async function RootLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:px-3"
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   {item.label}
                 </Link>
@@ -63,7 +67,7 @@ export default async function RootLayout({
             </nav>
 
             {/* Direita */}
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
               <ThemeToggle />
               <HeaderUser usuario={usuario} />
             </div>

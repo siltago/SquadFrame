@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,31 +6,34 @@
 
 /* ── Tokens de cor ─────────────────────────────────────────── */
 :root {
-  --color-canvas:      247 248 250;
+  --color-canvas:      245 246 250;
   --color-surface:     255 255 255;
-  --color-ink:         26  35  50;
-  --color-ink-soft:    71  85  105;
-  --color-ink-faint:   148 163 184;
-  --color-line:        226 232 240;
+  --color-ink:         17  24  39;
+  --color-ink-soft:    55  65  81;
+  --color-ink-faint:   156 163 175;
+  --color-line:        229 231 235;
   --color-steel:       15  76  129;
   --color-steel-hover: 12  62  107;
-  --color-steel-soft:  232 240 247;
+  --color-steel-soft:  239 246 255;
 }
 
 .dark {
-  --color-canvas:      13  17  23;
-  --color-surface:     22  27  34;
-  --color-ink:         230 237 243;
-  --color-ink-soft:    139 148 158;
-  --color-ink-faint:   72  79  88;
-  --color-line:        48  54  61;
-  --color-steel:       88  166 255;
-  --color-steel-hover: 121 184 255;
-  --color-steel-soft:  28  39  51;
+  --color-canvas:      10  14  20;
+  --color-surface:     17  22  30;
+  --color-ink:         237 242 247;
+  --color-ink-soft:    148 163 184;
+  --color-ink-faint:   71  82  100;
+  --color-line:        30  38  50;
+  --color-steel:       96  165 250;
+  --color-steel-hover: 147 197 253;
+  --color-steel-soft:  19  36  56;
 }
 
 /* ── Base ──────────────────────────────────────────────────── */
 @layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply bg-canvas text-ink font-sans antialiased;
   }
@@ -53,26 +56,30 @@
 /* ── Componentes ───────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-card bg-steel px-4 py-2
-           text-sm font-medium text-white transition-colors hover:bg-steel-hover
+    @apply inline-flex items-center justify-center rounded-xl bg-steel px-4 py-2.5
+           text-sm font-semibold text-white transition-all hover:bg-steel-hover
+           active:scale-[0.97]
            focus:outline-none focus:ring-2 focus:ring-steel focus:ring-offset-2
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-card border border-line
-           bg-surface px-4 py-2 text-sm font-medium text-ink-soft transition-colors
-           hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-steel
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center rounded-xl border border-line
+           bg-surface px-4 py-2.5 text-sm font-semibold text-ink-soft transition-all
+           hover:bg-canvas hover:text-ink active:scale-[0.97]
+           focus:outline-none focus:ring-2 focus:ring-steel
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .field {
-    @apply w-full rounded-card border border-line bg-surface px-3 py-2 text-sm
-           text-ink placeholder:text-ink-faint focus:border-steel focus:outline-none
-           focus:ring-1 focus:ring-steel;
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm
+           text-ink placeholder:text-ink-faint
+           focus:border-steel focus:outline-none focus:ring-2 focus:ring-steel/20
+           transition-shadow;
   }
   .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-soft;
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-faint;
   }
   .card {
-    @apply rounded-card border border-line bg-surface shadow-card;
+    @apply rounded-2xl border border-line bg-surface;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
   }
 }

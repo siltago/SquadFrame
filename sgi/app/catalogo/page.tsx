@@ -62,7 +62,7 @@ export default async function CatalogoPage({
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">
       {/* Cabeçalho */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-ink-faint">
             Catálogo
@@ -78,52 +78,16 @@ export default async function CatalogoPage({
             )}
           </div>
         </div>
-        {aba !== "cores" && podeCriar && (
-          <Link
-            href={`/catalogo/nova-linha?tipo=${aba}`}
-            className="btn-primary"
-          >
-            {labelNova}
-          </Link>
-        )}
-      </div>
-
-      {/* Abas */}
-      <div className="mt-6 flex items-center border-b border-line">
-        <div className="flex overflow-x-auto">
-          {tiposList.map((tab) => (
-            <Link
-              key={tab.slug}
-              href={`/catalogo?aba=${tab.slug}`}
-              className={`-mb-px whitespace-nowrap border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
-                aba === tab.slug
-                  ? "border-steel text-steel"
-                  : "border-transparent text-ink-soft hover:text-ink"
-              }`}
-            >
-              {tab.nome}
-            </Link>
-          ))}
-          <Link
-            href="/catalogo?aba=cores"
-            className={`-mb-px whitespace-nowrap border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
-              aba === "cores"
-                ? "border-steel text-steel"
-                : "border-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            Cores RAL
-          </Link>
-        </div>
-
-        {/* Editar/apagar aba ativa + botão nova aba — alinhados à direita */}
-        <div className="ml-auto shrink-0 flex items-center gap-1 pb-px">
+        <div className="flex shrink-0 items-center gap-2">
           {aba !== "cores" && tipoAtual && (
             <GerenciarAba aba={tipoAtual as { id: string; nome: string; slug: string; unidade?: string | null }} />
           )}
-          <div className="pl-2">
-            <NovaAbaInline />
-          </div>
+          <NovaAbaInline />
+          {aba !== "cores" && podeCriar && (
+            <Link href={`/catalogo/nova-linha?tipo=${aba}`} className="btn-primary">
+              {labelNova}
+            </Link>
+          )}
         </div>
       </div>
 

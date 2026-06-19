@@ -139,10 +139,20 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 10mm; }
+          @page { size: A4; margin: 0; }
+          html, body { width: 210mm; }
           body * { visibility: hidden; }
           #pdf-content, #pdf-content * { visibility: visible; }
-          #pdf-content { position: absolute; left: 0; top: 0; width: 794px; box-shadow: none !important; margin: 0 !important; }
+          #pdf-content {
+            position: fixed;
+            inset: 0;
+            width: 210mm;
+            min-height: unset;
+            box-shadow: none !important;
+            margin: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
       `}</style>
 

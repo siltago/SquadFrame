@@ -9,6 +9,19 @@ export function PrintButton({ numero }: { numero: string }) {
     const el = document.getElementById("pdf-content");
     if (!el) return;
     setBaixando(true);
+
+    // Esconde todos os elementos fixed/sticky e os marcados como print:hidden
+    // para que não apareçam sobre o conteúdo capturado pelo html2canvas
+    const esconder: { el: HTMLElement; display: string }[] = [];
+    document.querySelectorAll<HTMLElement>("*").forEach((node) => {
+      const pos = getComputedStyle(node).position;
+      const hasPrintHidden = node.classList.contains("print:hidden");
+      if (pos === "fixed" || pos === "sticky" || hasPrintHidden) {
+        esconder.push({ el: node, display: node.style.display });
+        node.style.display = "none";
+      }
+    });
+
     try {
       // @ts-ignore
       const html2pdf = (await import("html2pdf.js")).default;
@@ -17,12 +30,13 @@ export function PrintButton({ numero }: { numero: string }) {
           margin: 0,
           filename: `PC-${numero}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         })
         .from(el)
         .save();
     } finally {
+      esconder.forEach(({ el, display }) => { el.style.display = display; });
       setBaixando(false);
     }
   }

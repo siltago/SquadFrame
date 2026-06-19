@@ -131,7 +131,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         </Link>
         <span className="text-sm font-semibold text-ink">Visualização — PC {pcNum}</span>
         <div className="ml-auto">
-          <PrintButton />
+          <PrintButton numero={pcNum} />
         </div>
       </div>
 
@@ -139,6 +139,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
       {/* Folha A4 — 794px = 210mm a 96dpi */}
       <div
+        id="pdf-content"
         className="mx-auto my-8 bg-white shadow-xl print:my-0 print:shadow-none print:w-full"
         style={{ width: 794, minHeight: 1123, fontFamily: "Arial, Helvetica, sans-serif", fontSize: 12, color: "#1a1a1a", display: "flex", flexDirection: "column" }}
       >

@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "dxf": "^5.3.1",
     "git": "^0.1.5",
+    "html2pdf.js": "^0.14.0",
     "next": "14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

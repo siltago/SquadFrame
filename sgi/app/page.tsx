@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
-import { KanbanBoard } from "@/components/kanban/kanban-board";
+import { KanbanCollapsible } from "@/components/kanban/kanban-collapsible";
 import type { Tarefa, Coluna, Etiqueta } from "@/types/kanban";
 
 export const dynamic = "force-dynamic";
@@ -61,23 +61,11 @@ export default async function HomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-line bg-surface">
-        <div>
-          <h1 className="font-display text-xl font-bold text-ink">Meu Kanban</h1>
-          <p className="text-xs text-ink-faint mt-0.5">Olá, {usuario.nome}</p>
-        </div>
-      </div>
-
-      <div className="px-4 py-4 overflow-x-auto">
-        <KanbanBoard
-          colunas={(colunas ?? []) as Coluna[]}
-          tarefas={tarefas}
-          modo="pessoal"
-          usuarioId={usuario.id}
-          setorId={null}
-        />
-      </div>
-    </div>
+    <KanbanCollapsible
+      colunas={(colunas ?? []) as Coluna[]}
+      tarefas={tarefas}
+      usuarioId={usuario.id}
+      usuarioNome={usuario.nome}
+    />
   );
 }

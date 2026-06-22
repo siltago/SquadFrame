@@ -182,7 +182,6 @@ export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId
         <CardPanel
           tarefaId={panelTarefaId}
           onClose={() => setPanelTarefaId(null)}
-          colunas={colunas}
         />
       )}
     </>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { Coluna, TarefaComentario, TarefaHistorico, TarefaLink, TarefaArquivo, ChecklistItem, Tarefa, Etiqueta } from "@/types/kanban";
+import type { TarefaComentario, TarefaHistorico, TarefaLink, TarefaArquivo, ChecklistItem, Tarefa, Etiqueta } from "@/types/kanban";
 import { PRIORIDADE_COR } from "@/types/kanban";
 import {
   buscarDetalhesTarefa,
+  buscarUsuarios,
   editarTarefa,
   concluirTarefa,
   cancelarTarefa,
@@ -19,13 +20,13 @@ import {
   vincularEtiqueta,
   desvincularEtiqueta,
   criarEtiqueta,
+  atribuirTarefa,
 } from "@/app/tarefas/actions";
 import { createClient } from "@/lib/supabase-client";
 
 interface Props {
   tarefaId: string;
   onClose: () => void;
-  colunas: Coluna[];
 }
 
 function RelativeTime({ ts }: { ts: string }) {
@@ -37,7 +38,7 @@ function RelativeTime({ ts }: { ts: string }) {
   return <span>{d.toLocaleDateString("pt-BR")}</span>;
 }
 
-export function CardPanel({ tarefaId, onClose, colunas }: Props) {
+export function CardPanel({ tarefaId, onClose }: Props) {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof buscarDetalhesTarefa>> | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +50,8 @@ export function CardPanel({ tarefaId, onClose, colunas }: Props) {
   const [novaEtiquetaCor, setNovaEtiquetaCor] = useState("#6366f1");
   const [showAddEtiqueta, setShowAddEtiqueta] = useState(false);
   const [showAddLink, setShowAddLink] = useState(false);
+  const [showResponsavelPicker, setShowResponsavelPicker] = useState(false);
+  const [usuarios, setUsuarios] = useState<{ id: string; nome: string }[]>([]);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -62,6 +65,7 @@ export function CardPanel({ tarefaId, onClose, colunas }: Props) {
 
   useEffect(() => {
     reload();
+    buscarUsuarios().then(setUsuarios);
     const supabase = createClient();
     const channel = supabase
       .channel(`card-panel-${tarefaId}`)
@@ -105,6 +109,21 @@ export function CardPanel({ tarefaId, onClose, colunas }: Props) {
     const val = e.target.value || null;
     startTransition(async () => {
       await editarTarefa(tarefaId, { data_limite: val });
+      await reload();
+    });
+  }
+
+  async function handleAtribuir(usuarioId: string, usuarioNome: string) {
+    startTransition(async () => {
+      if (usuarioId === "__remover__") {
+        await editarTarefa(tarefaId, { usuario_responsavel_id: null });
+        flash("Responsável removido");
+      } else {
+        await atribuirTarefa(tarefaId, usuarioId);
+        await adicionarComentario(tarefaId, `📌 Tarefa atribuída para ${usuarioNome}`);
+        flash(`Atribuído para ${usuarioNome}`);
+      }
+      setShowResponsavelPicker(false);
       await reload();
     });
   }
@@ -309,12 +328,61 @@ export function CardPanel({ tarefaId, onClose, colunas }: Props) {
             </div>
           </div>
 
-          {tarefa.responsavel && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-ink-faint">Responsável:</span>
-              <span className="font-medium text-ink">{tarefa.responsavel.nome}</span>
+          <div>
+            <label className="label">Responsável</label>
+            <div className="relative">
+              <button
+                onClick={() => setShowResponsavelPicker((p) => !p)}
+                className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm hover:border-steel transition-colors w-full text-left"
+              >
+                {tarefa.responsavel ? (
+                  <>
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-steel/15 text-xs font-bold text-steel">
+                      {tarefa.responsavel.nome[0].toUpperCase()}
+                    </div>
+                    <span className="flex-1 font-medium text-ink">{tarefa.responsavel.nome}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-dashed border-line text-xs text-ink-faint">+</div>
+                    <span className="flex-1 text-ink-faint">Sem responsável</span>
+                  </>
+                )}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-ink-faint"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+
+              {showResponsavelPicker && (
+                <div className="absolute left-0 top-full z-10 mt-1 w-full rounded-lg border border-line bg-surface shadow-lg overflow-hidden">
+                  <div className="max-h-48 overflow-y-auto">
+                    {tarefa.responsavel && (
+                      <button
+                        onClick={() => handleAtribuir("__remover__", "")}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-canvas transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Remover responsável
+                      </button>
+                    )}
+                    {usuarios.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => handleAtribuir(u.id, u.nome)}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-canvas transition-colors ${tarefa.responsavel?.id === u.id ? "bg-steel/5 text-steel font-medium" : "text-ink"}`}
+                      >
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-steel/15 text-xs font-bold text-steel">
+                          {u.nome[0].toUpperCase()}
+                        </div>
+                        {u.nome}
+                        {tarefa.responsavel?.id === u.id && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-auto"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div>
             <label className="label">Descrição</label>

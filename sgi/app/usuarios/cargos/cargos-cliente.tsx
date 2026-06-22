@@ -373,39 +373,76 @@ export function CargosCliente({
   const setor = setores.find((s) => s.id === setorAtivo) ?? null;
   const cargosDoSetor = cargos.filter((c) => c.setor_id === setorAtivo).sort((a, b) => a.ordem - b.ordem);
 
+  // ── Botões de setor reutilizáveis ────────────────────
+  function SetorBtn({ s }: { s: Setor }) {
+    const count = cargos.filter((c) => c.setor_id === s.id).length;
+    const ativo = s.id === setorAtivo;
+    return (
+      <button
+        key={s.id}
+        onClick={() => setSetorAtivo(s.id)}
+        className={`flex items-center gap-2 shrink-0 rounded-lg px-3 py-2 text-sm transition-colors
+          sm:w-full sm:rounded-none sm:px-4 sm:py-2.5
+          ${ativo ? "bg-steel/10 font-medium text-steel sm:border-r-2 sm:bg-steel/5" : "text-ink-soft hover:bg-canvas hover:text-ink"}`}
+        style={ativo ? { borderRightColor: s.cor } : {}}
+      >
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.cor }} />
+        <span className="flex-1 text-left">{s.nome}</span>
+        <span className={`text-xs ${ativo ? "text-steel/70" : "text-ink-faint"}`}>{count}</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="flex h-[calc(100vh-56px-100px)]">
-      {/* ── Sidebar de setores ─────────────────────────── */}
-      <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-surface">
+    <div className="flex flex-col sm:flex-row sm:h-[calc(100vh-56px)]">
+      {/* ── Cabeçalho mobile (back + título) ──────────── */}
+      <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 sm:hidden">
+        <BackButton href="/usuarios" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Cargos</p>
+      </div>
+
+      {/* ── Tabs de setor (mobile: scroll horizontal) ─── */}
+      <div className="flex overflow-x-auto gap-1 border-b border-line bg-surface px-3 py-2 sm:hidden">
+        {setores.map((s) => <SetorBtn key={s.id} s={s} />)}
+        {podeGerenciar && !adicionandoSetor && (
+          <button
+            onClick={() => setAdicionandoSetor(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-line px-3 py-2 text-xs text-ink-faint hover:border-steel hover:text-steel transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo setor
+          </button>
+        )}
+      </div>
+      {adicionandoSetor && (
+        <div className="border-b border-line bg-surface px-3 py-2 space-y-2 sm:hidden">
+          <input
+            autoFocus value={nomeSetor}
+            onChange={(e) => setNomeSetor(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCriarSetor()}
+            placeholder="Nome do setor…"
+            className="field text-sm"
+          />
+          <div className="flex items-center gap-2">
+            <input type="color" value={corSetor} onChange={(e) => setCorSetor(e.target.value)}
+              className="h-8 w-10 cursor-pointer rounded border border-line p-1" />
+            <button onClick={handleCriarSetor} disabled={pending} className="btn-primary flex-1 py-1 text-xs">Criar</button>
+            <button onClick={() => setAdicionandoSetor(false)} className="text-xs text-ink-faint hover:text-ink">✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sidebar de setores (desktop) ──────────────── */}
+      <aside className="hidden sm:flex w-56 shrink-0 flex-col border-r border-line bg-surface">
         <div className="border-b border-line px-4 py-3">
           <BackButton href="/usuarios" />
           <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-ink-faint">Setores</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-1">
-          {setores.map((s) => {
-            const count = cargos.filter((c) => c.setor_id === s.id).length;
-            const ativo = s.id === setorAtivo;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSetorAtivo(s.id)}
-                className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
-                  ativo
-                    ? "border-r-2 bg-steel/5 font-medium text-steel"
-                    : "text-ink-soft hover:bg-canvas hover:text-ink"
-                }`}
-                style={ativo ? { borderRightColor: s.cor } : {}}
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.cor }} />
-                <span className="flex-1 text-left">{s.nome}</span>
-                <span className={`text-xs ${ativo ? "text-steel/70" : "text-ink-faint"}`}>{count}</span>
-              </button>
-            );
-          })}
+          {setores.map((s) => <SetorBtn key={s.id} s={s} />)}
         </nav>
 
-        {/* Novo setor */}
         {podeGerenciar && (
           <div className="border-t border-line p-3">
             {adicionandoSetor ? (
@@ -420,12 +457,8 @@ export function CargosCliente({
                 <div className="flex items-center gap-2">
                   <input type="color" value={corSetor} onChange={(e) => setCorSetor(e.target.value)}
                     className="h-8 w-10 cursor-pointer rounded border border-line p-1" />
-                  <button onClick={handleCriarSetor} disabled={pending} className="btn-primary flex-1 py-1 text-xs">
-                    Criar
-                  </button>
-                  <button onClick={() => setAdicionandoSetor(false)} className="text-xs text-ink-faint hover:text-ink">
-                    ✕
-                  </button>
+                  <button onClick={handleCriarSetor} disabled={pending} className="btn-primary flex-1 py-1 text-xs">Criar</button>
+                  <button onClick={() => setAdicionandoSetor(false)} className="text-xs text-ink-faint hover:text-ink">✕</button>
                 </div>
               </div>
             ) : (

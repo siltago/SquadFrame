@@ -620,6 +620,16 @@ export async function vincularObra(tarefaId: string, obraId: string) {
   return { ok: true };
 }
 
+export async function buscarUsuarios() {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("usuarios")
+    .select("id, nome")
+    .eq("ativo", true)
+    .order("nome");
+  return (data ?? []) as { id: string; nome: string }[];
+}
+
 export async function buscarDetalhesTarefa(tarefaId: string) {
   const admin = createAdminClient();
 

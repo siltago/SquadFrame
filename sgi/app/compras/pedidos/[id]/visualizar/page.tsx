@@ -139,20 +139,31 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
-          html, body { width: 210mm; }
+          @page {
+            size: A4;
+            margin: 10mm 13mm 14mm 13mm;
+          }
+          html, body { margin: 0; padding: 0; background: white; }
           body * { visibility: hidden; }
           #pdf-content, #pdf-content * { visibility: visible; }
           #pdf-content {
-            position: fixed;
-            inset: 0;
-            width: 210mm;
-            min-height: unset;
+            position: absolute;
+            top: 0; left: 0; right: 0;
             box-shadow: none !important;
             margin: 0 !important;
+            background: white !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          /* cabeçalho da tabela repete em cada página */
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+          /* impede que uma linha seja cortada no meio */
+          tbody tr { page-break-inside: avoid; break-inside: avoid; }
+          /* mantém blocos de totais e assinaturas juntos */
+          .pdf-no-break { page-break-inside: avoid; break-inside: avoid; }
+          /* garante que totais não fiquem orphaned */
+          .pdf-totais { page-break-before: auto; break-before: auto; }
         }
       `}</style>
 
@@ -242,7 +253,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
               </tr>
             )}
             {linhas.map((item: any, i: number) => (
-              <tr key={item.id} style={{ backgroundColor: i % 2 === 0 ? "white" : "#f7fafd" }}>
+              <tr key={item.id} style={{ backgroundColor: i % 2 === 0 ? "white" : "#f7fafd", pageBreakInside: "avoid", breakInside: "avoid" }}>
                 <td style={{ ...tdStyle, textAlign: "center", padding: "4px 6px" }}>
                   {item.thumb ? (
                     <img
@@ -266,7 +277,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         </table>
 
         {/* ── Totais ────────────────────────────────────────── */}
-        <div style={{ borderTop: `2px solid ${azul}` }}>
+        <div className="pdf-no-break pdf-totais" style={{ borderTop: `2px solid ${azul}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 28px", backgroundColor: azulClaro, borderBottom: `1px solid ${cinzaLinha}` }}>
             <span style={{ fontSize: 11 }} />
             <div style={{ display: "flex", gap: 48, alignItems: "center" }}>
@@ -290,13 +301,13 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         </div>
 
         {/* ── Observações ───────────────────────────────────── */}
-        <div style={{ padding: "12px 28px", borderTop: `1px solid ${cinzaLinha}`, minHeight: 80 }}>
+        <div className="pdf-no-break" style={{ padding: "12px 28px", borderTop: `1px solid ${cinzaLinha}`, minHeight: 80 }}>
           <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12 }}>Observações:</div>
           <div style={{ fontSize: 11, color: "#333", whiteSpace: "pre-wrap" }}>{ped.observacoes ?? ""}</div>
         </div>
 
         {/* ── Assinaturas ───────────────────────────────────── */}
-        <div style={{ borderTop: `1px solid ${cinzaLinha}`, marginTop: 48, padding: "16px 28px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div className="pdf-no-break" style={{ borderTop: `1px solid ${cinzaLinha}`, marginTop: 48, padding: "16px 28px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 32 }}>Elaborador</div>
             <div style={{ borderTop: `1px solid #aaa`, paddingTop: 6, fontSize: 11 }}>{comprador.nome ?? ""}</div>
@@ -308,10 +319,9 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         </div>
 
         {/* ── Rodapé ────────────────────────────────────────── */}
-        <div style={{ borderTop: `1px solid ${cinzaLinha}`, padding: "4px 28px", display: "flex", justifyContent: "flex-end", backgroundColor: "#fafafa" }}>
-          <span style={{ fontSize: 9, color: "#888" }}>
-            {pcNum} | {dataEmissao} | Pag. 1 de 1
-          </span>
+        <div style={{ borderTop: `1px solid ${cinzaLinha}`, padding: "4px 28px", display: "flex", justifyContent: "space-between", backgroundColor: "#fafafa" }}>
+          <span style={{ fontSize: 9, color: "#888" }}>{pcNum}</span>
+          <span style={{ fontSize: 9, color: "#888" }}>Emitido em {dataEmissao}</span>
         </div>
       </div>
     </div>

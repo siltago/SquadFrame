@@ -368,7 +368,8 @@ export async function editarPedido(id: string, formData: FormData) {
   await registrarHistorico(admin, "pedido", id, usuario_id, "EDITADO", {});
   await registrarAssinatura(admin, usuario_id, "pedido", id, "EDITADO");
   revalidatePath(`/compras/pedidos/${id}`);
-  redirect(`/compras/pedidos/${id}`);
+  revalidatePath(`/compras/pedidos/${id}/editar`);
+  return { id };
 }
 
 // ── Recebimento ──────────────────────────────────────────────────

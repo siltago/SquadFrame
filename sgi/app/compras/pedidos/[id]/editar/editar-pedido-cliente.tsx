@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { editarPedido } from "@/app/compras/actions";
 import { AssinarModal } from "@/components/assinar-modal";
 import { calcPrecoUnit } from "@/lib/tipo-unidade";
@@ -104,6 +105,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
   );
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">(() =>
@@ -165,8 +167,13 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
     })));
     pendingFn.current = async () => {
       start(async () => {
-        try { await editarPedido(pedido.id, fd); }
-        catch (err: any) { setErro(err.message); }
+        try {
+          await editarPedido(pedido.id, fd);
+          router.refresh();
+          router.push(`/compras/pedidos/${pedido.id}`);
+        } catch (err: any) {
+          setErro(err.message);
+        }
       });
     };
     setModalAcao("Salvar Edição do Pedido");

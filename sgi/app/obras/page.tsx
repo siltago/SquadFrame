@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { StatusBadge } from "@/components/status-badge";
 import { Paginacao } from "@/components/paginacao";
+import { getUsuarioAtual } from "@/lib/auth";
+import { BtnAcaoProtegida } from "@/components/btn-acao-protegida";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +11,8 @@ const POR_PAGINA = 25;
 
 export default async function ObrasPage({ searchParams }: { searchParams: { page?: string } }) {
   const supabase = createAdminClient();
+  const usuario = await getUsuarioAtual();
+  const podeCriar = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes("obras.criar") || false;
   const pagina = Math.max(1, parseInt(searchParams.page ?? "1"));
   const from = (pagina - 1) * POR_PAGINA;
 
@@ -34,9 +38,7 @@ export default async function ObrasPage({ searchParams }: { searchParams: { page
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Obras</h1>
         </div>
-        <Link href="/obras/nova" className="btn-primary">
-          Nova obra
-        </Link>
+        <BtnAcaoProtegida href="/obras/nova" label="Nova obra" temPermissao={podeCriar} acao="criar obras" className="btn-primary" />
       </div>
 
       {/* Lista */}
@@ -49,9 +51,7 @@ export default async function ObrasPage({ searchParams }: { searchParams: { page
             Toda informação do sistema vive dentro de uma obra. Crie a primeira
             para começar.
           </p>
-          <Link href="/obras/nova" className="btn-primary mt-5">
-            Criar primeira obra
-          </Link>
+          <BtnAcaoProtegida href="/obras/nova" label="Criar primeira obra" temPermissao={podeCriar} acao="criar obras" className="btn-primary mt-5" />
         </div>
       ) : (
         <div className="card overflow-hidden">

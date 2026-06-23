@@ -11,16 +11,23 @@ const UNIDADES = [
 ];
 
 type Obra = { id: string; nome: string; codigo: string };
+type CorRal = { id: string; codigo_ral: string; nome: string | null; tipos?: string[] | null };
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string };
 
-type ItemCatalogo = { tipo: "catalogo"; produto: Produto; quantidade: number; unidade: string; observacoes: string };
-type ItemExterno  = { tipo: "externo"; descricao: string; quantidade: number; unidade: string; observacoes: string };
+type ItemCatalogo = { tipo: "catalogo"; produto: Produto; quantidade: number; unidade: string; observacoes: string; cor_id?: string };
+type ItemExterno  = { tipo: "externo"; descricao: string; quantidade: number; unidade: string; observacoes: string; cor_id?: string };
 type Item = ItemCatalogo | ItemExterno;
 
-function BuscaProduto({ onAdd }: { onAdd: (p: Produto) => void }) {
+function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingIds }: {
+  onAdd: (p: Produto) => void;
+  onAddForcar: (p: Produto) => void;
+  onIncrement: (produtoId: string, delta: number) => void;
+  existingIds: Set<string>;
+}) {
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<Produto[]>([]);
   const [aberto, setAberto] = useState(false);
+  const [qtdExtra, setQtdExtra] = useState<Record<string, number>>({});
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,15 +60,48 @@ function BuscaProduto({ onAdd }: { onAdd: (p: Produto) => void }) {
       />
       {aberto && resultados.length > 0 && (
         <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-surface shadow-lg">
-          {resultados.map((p) => (
-            <button key={p.id} type="button"
-              onClick={() => { onAdd(p); setQ(""); setAberto(false); }}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-canvas">
-              <span className="w-24 shrink-0 font-mono text-xs text-ink-faint">{p.codigo_mestre}</span>
-              <span className="flex-1 text-ink">{p.nome}</span>
-              <span className="text-xs text-ink-faint">{p.unidade}</span>
-            </button>
-          ))}
+          {resultados.map((p) => {
+            const jaExiste = existingIds.has(p.id);
+            const qtd = qtdExtra[p.id] ?? 1;
+            if (jaExiste) {
+              return (
+                <div key={p.id} className="px-3 py-2 border-b border-line last:border-0 bg-amber-50/60">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <span className="w-24 shrink-0 font-mono text-xs text-ink-faint">{p.codigo_mestre}</span>
+                    <span className="flex-1 text-sm text-ink">{p.nome}</span>
+                    <span className="text-xs text-amber-600 font-medium">Já na lista</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-[6.5rem]">
+                    <span className="text-xs text-ink-faint">Adicionar mais:</span>
+                    <input type="number" min="1" step="any" value={qtd}
+                      onChange={(e) => setQtdExtra((prev) => ({ ...prev, [p.id]: parseFloat(e.target.value) || 1 }))}
+                      onClick={(e) => e.stopPropagation()}
+                      className="field h-7 w-20 text-xs font-mono" />
+                    <span className="text-xs text-ink-faint">{p.unidade}</span>
+                    <button type="button"
+                      onClick={() => { onIncrement(p.id, qtd); setQtdExtra((prev) => ({ ...prev, [p.id]: 1 })); setQ(""); setAberto(false); }}
+                      className="btn-primary h-7 px-3 text-xs">
+                      Confirmar
+                    </button>
+                    <button type="button"
+                      onClick={() => { onAddForcar(p); setQ(""); setAberto(false); }}
+                      className="btn-secondary h-7 px-3 text-xs">
+                      + Cor diferente
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <button key={p.id} type="button"
+                onClick={() => { onAdd(p); setQ(""); setAberto(false); }}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-canvas border-b border-line last:border-0">
+                <span className="w-24 shrink-0 font-mono text-xs text-ink-faint">{p.codigo_mestre}</span>
+                <span className="flex-1 text-ink">{p.nome}</span>
+                <span className="text-xs text-ink-faint">{p.unidade}</span>
+              </button>
+            );
+          })}
         </div>
       )}
       {aberto && q.length >= 2 && resultados.length === 0 && (
@@ -110,7 +150,7 @@ function FormItemExterno({ onAdd }: { onAdd: (item: ItemExterno) => void }) {
   );
 }
 
-export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
+export function NovaSolicitacaoCliente({ obras, coresRal }: { obras: Obra[]; coresRal: CorRal[] }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [modoAdd, setModoAdd] = useState<"catalogo" | "externo">("catalogo");
   const [erro, setErro] = useState<string | null>(null);
@@ -118,20 +158,20 @@ export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
 
-  function addCatalogo(p: Produto) {
-    if (itens.find((i) => i.tipo === "catalogo" && (i as ItemCatalogo).produto.id === p.id)) return;
-    setItens((prev) => [...prev, { tipo: "catalogo", produto: p, quantidade: 1, unidade: p.unidade, observacoes: "" }]);
+  function addCatalogo(p: Produto, forcar = false) {
+    if (!forcar && itens.find((i) => i.tipo === "catalogo" && (i as ItemCatalogo).produto.id === p.id)) return;
+    setItens((prev) => [...prev, { tipo: "catalogo", produto: p, quantidade: 1, unidade: p.unidade, observacoes: "", cor_id: "" }]);
   }
 
   function addExterno(item: ItemExterno) {
-    setItens((prev) => [...prev, item]);
+    setItens((prev) => [...prev, { ...item, cor_id: "" }]);
   }
 
   function removeItem(idx: number) {
     setItens((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function updateItem(idx: number, field: "quantidade" | "unidade" | "observacoes", value: string | number) {
+  function updateItem(idx: number, field: "quantidade" | "unidade" | "observacoes" | "cor_id", value: string | number | undefined) {
     setItens((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 
@@ -140,11 +180,12 @@ export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
     if (!itens.length) { setErro("Adicione ao menos um item."); return; }
     setErro(null);
     const fd = new FormData(e.currentTarget);
-    fd.set("itens", JSON.stringify(itens.map((i) =>
-      i.tipo === "catalogo"
-        ? { produto_id: i.produto.id, quantidade: i.quantidade, unidade: i.unidade, observacoes: i.observacoes || undefined }
-        : { descricao_manual: i.descricao, quantidade: i.quantidade, unidade: i.unidade, observacoes: i.observacoes || undefined }
-    )));
+    fd.set("itens", JSON.stringify(itens.map((i) => {
+      const cor_id = i.cor_id || undefined;
+      return i.tipo === "catalogo"
+        ? { produto_id: i.produto.id, quantidade: i.quantidade, unidade: i.unidade, observacoes: i.observacoes || undefined, cor_id }
+        : { descricao_manual: i.descricao, quantidade: i.quantidade, unidade: i.unidade, observacoes: i.observacoes || undefined, cor_id };
+    })));
     pendingFn.current = async () => {
       start(async () => {
         try { await criarSolicitacao(fd); }
@@ -222,7 +263,16 @@ export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
           </div>
 
           {modoAdd === "catalogo" ? (
-            <BuscaProduto onAdd={addCatalogo} />
+            <BuscaProduto
+              onAdd={addCatalogo}
+              onAddForcar={(p) => addCatalogo(p, true)}
+              onIncrement={(id, delta) => setItens((prev) => prev.map((it) =>
+                it.tipo === "catalogo" && (it as ItemCatalogo).produto.id === id
+                  ? { ...it, quantidade: (it.quantidade ?? 0) + delta }
+                  : it
+              ))}
+              existingIds={new Set(itens.filter((i): i is ItemCatalogo => i.tipo === "catalogo").map((i) => i.produto.id))}
+            />
           ) : (
             <FormItemExterno onAdd={addExterno} />
           )}
@@ -236,6 +286,7 @@ export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
                     <th className="px-4 py-2 font-medium">Descrição / Produto</th>
                     <th className="px-4 py-2 font-medium w-24">Qtd</th>
                     <th className="px-4 py-2 font-medium w-20">Unid.</th>
+                    {coresRal.length > 0 && <th className="px-4 py-2 font-medium w-40">Cor</th>}
                     <th className="px-4 py-2 font-medium">Obs.</th>
                     <th className="px-4 py-2" />
                   </tr>
@@ -267,6 +318,22 @@ export function NovaSolicitacaoCliente({ obras }: { obras: Obra[] }) {
                           ))}
                         </select>
                       </td>
+                      {coresRal.length > 0 && (
+                        <td className="px-4 py-2">
+                          <select
+                            value={it.cor_id}
+                            onChange={(e) => updateItem(idx, "cor_id", e.target.value)}
+                            className="field h-8 w-40 text-xs"
+                          >
+                            <option value="">— Sem cor —</option>
+                            {coresRal.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
                       <td className="px-4 py-2">
                         <input value={it.observacoes}
                           onChange={(e) => updateItem(idx, "observacoes", e.target.value)}

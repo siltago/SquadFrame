@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/auth";
 
 export async function criarObra(formData: FormData) {
+  const usuario = await getUsuarioAtual();
+  const pode = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes("obras.criar") || false;
+  if (!pode) throw new Error("Sem permissão para criar obras.");
+
   const supabase = createClient();
 
   const nome = String(formData.get("nome") || "").trim();

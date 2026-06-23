@@ -66,9 +66,9 @@ export async function criarSolicitacao(formData: FormData) {
   const usuario = await getUsuario();
   const usuario_id = usuario.id;
 
-  const obra_id     = formData.get("obra_id") as string | null;
-  const origem      = formData.get("origem") as string;
-  const prioridade  = formData.get("prioridade") as string;
+  const obra_id       = formData.get("obra_id") as string | null;
+  const origem        = formData.get("origem") as string;
+  const prioridade    = formData.get("prioridade") as string;
   const justificativa = formData.get("justificativa") as string | null;
   const observacoes   = formData.get("observacoes") as string | null;
   const itensJson     = formData.get("itens") as string;
@@ -80,6 +80,7 @@ export async function criarSolicitacao(formData: FormData) {
     quantidade: number;
     unidade: string;
     observacoes?: string;
+    cor_id?: string | null;
   }[] = JSON.parse(itensJson);
   if (!itens.length) throw new Error("Adicione ao menos um item.");
 
@@ -105,7 +106,10 @@ export async function criarSolicitacao(formData: FormData) {
   if (error) throw new Error(error.message);
 
   await admin.from("solicitacao_itens").insert(
-    itens.map((i) => ({ solicitacao_id: sol.id, ...i }))
+    itens.map((i) => {
+      const { cor_id, ...rest } = i;
+      return cor_id ? { solicitacao_id: sol.id, ...rest, cor_id } : { solicitacao_id: sol.id, ...rest };
+    })
   );
 
   await registrarHistorico(admin, "solicitacao", sol.id, usuario_id, "CRIADA", { numero: sol.numero });
@@ -152,29 +156,16 @@ export async function alterarStatusSolicitacao(
 
 async function gerarNumeroPedido(
   admin: ReturnType<typeof createAdminClient>,
-  obra_id: string | null
 ): Promise<string> {
-  let obraPart = "0000";
-  if (obra_id) {
-    const { data: ob } = await admin.from("obras").select("numero").eq("id", obra_id).single();
-    obraPart = String(ob?.numero ?? 0).padStart(4, "0");
-  }
-  // Busca o maior número já usado para este prefixo e incrementa
-  // (COUNT falha quando pedidos são apagados, gerando duplicatas)
-  const prefix = `${obraPart}-`;
   const { data } = await admin
     .from("pedidos_compra")
     .select("numero")
-    .like("numero", `${prefix}%`)
     .order("numero", { ascending: false })
     .limit(1);
 
-  let seq = 1;
-  if (data?.length) {
-    const last = parseInt((data[0].numero as string).slice(prefix.length), 10);
-    if (!isNaN(last)) seq = last + 1;
-  }
-  return `${prefix}${String(seq).padStart(4, "0")}`;
+  const last = data?.[0]?.numero ? parseInt(data[0].numero as string, 10) : NaN;
+  const next = isNaN(last) || last < 1000 ? 1000 : last + 1;
+  return String(next);
 }
 
 export async function criarPedido(formData: FormData) {
@@ -240,7 +231,7 @@ export async function criarPedido(formData: FormData) {
     }
   }
 
-  const numero = numeroVinculo ?? await gerarNumeroPedido(admin, obra_id);
+  const numero = numeroVinculo ?? await gerarNumeroPedido(admin);
 
   const pedidoPayload: any = { numero, obra_id, fornecedor_id, forma_pagamento_id, comprador_id: usuario_id, observacoes, tipo_linha };
   if (cor_id) pedidoPayload.cor_id = cor_id;

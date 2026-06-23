@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { criarObra } from "../actions";
 import { BackButton } from "@/components/back-button";
+import { getUsuarioAtual } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovaObraPage() {
+  const usuario = await getUsuarioAtual();
+  const pode = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes("obras.criar") || false;
+  if (!pode) redirect("/obras");
 
   return (
     <div className="px-8 py-8">

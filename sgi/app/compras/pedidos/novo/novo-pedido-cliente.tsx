@@ -53,9 +53,10 @@ function itemPeso(it: Item) {
 }
 
 // ── BuscaProduto ──────────────────────────────────────────────────
-function BuscaProduto({ tipoSlug, fornecedorId, nomeFornecedor, onAdd, onIncrement, existingIds }: {
+function BuscaProduto({ tipoSlug, fornecedorId, nomeFornecedor, onAdd, onAddForcar, onIncrement, existingIds }: {
   tipoSlug: string; fornecedorId: string; nomeFornecedor: string;
   onAdd: (p: Produto) => void;
+  onAddForcar: (p: Produto) => void;
   onIncrement: (produtoId: string, delta: number) => void;
   existingIds: Set<string>;
 }) {
@@ -121,6 +122,13 @@ function BuscaProduto({ tipoSlug, fornecedorId, nomeFornecedor, onAdd, onIncreme
                       className="btn-primary h-7 px-3 text-xs"
                     >
                       Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { onAddForcar(p); setQ(""); setAberto(false); }}
+                      className="btn-secondary h-7 px-3 text-xs"
+                    >
+                      + Cor diferente
                     </button>
                   </div>
                 </div>
@@ -248,8 +256,8 @@ export function NovoPedidoCliente({
     ));
   }
 
-  function addProduto(p: Produto) {
-    if (itens.find((i) => i.produto?.id === p.id && !i.solicitacao_item_id)) return;
+  function addProduto(p: Produto, forcar = false) {
+    if (!forcar && itens.find((i) => i.produto?.id === p.id && !i.solicitacao_item_id)) return;
 
     // Se o fornecedor selecionado tem um código específico diferente do mestre → confirmar
     if (fornecedorId && p.codigo_do_fornecedor != null && p.codigo_do_fornecedor !== p.codigo_mestre) {
@@ -567,6 +575,7 @@ export function NovoPedidoCliente({
               fornecedorId={fornecedorId}
               nomeFornecedor={nomeFornecedorAtual}
               onAdd={addProduto}
+              onAddForcar={(p) => addProduto(p, true)}
               onIncrement={incrementarProduto}
               existingIds={new Set(itens.filter((i) => !i.solicitacao_item_id && i.produto).map((i) => i.produto!.id))}
             />

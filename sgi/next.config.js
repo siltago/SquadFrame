@@ -16,8 +16,13 @@ const nextConfig = {
 
   webpack: (config, { dev }) => {
     if (dev) {
-      // Desabilita cache de filesystem em dev para evitar chunks obsoletos
       config.cache = false;
+      // Nomes estáveis entre rebuilds — evita "Cannot find module './2618.js'"
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: "named",
+        chunkIds: "named",
+      };
     }
     return config;
   },

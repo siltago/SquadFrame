@@ -1,14 +1,16 @@
 import "server-only";
 import { createAdminClient } from "./supabase-admin";
 
-// Colunas específicas do fluxo de Compras
+// Colunas do fluxo de Compras em ordem visual
+// "Solicitações em aprovação" foi adicionada para reflectir PURCHASE_REQUEST_SUBMITTED
 export const COLUNAS_COMPRAS = [
-  { nome: "Solicitações abertas",  ordem: 0, tipo: "PADRAO" as const, aceita_automaticas: true  },
-  { nome: "Rascunho",              ordem: 1, tipo: "PADRAO" as const, aceita_automaticas: true  },
-  { nome: "Aguard. Aprovação",     ordem: 2, tipo: "PADRAO" as const, aceita_automaticas: true  },
-  { nome: "Aprovados",             ordem: 3, tipo: "PADRAO" as const, aceita_automaticas: false },
-  { nome: "Em Recebimento",        ordem: 4, tipo: "PADRAO" as const, aceita_automaticas: false },
-  { nome: "Concluído",             ordem: 5, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Solicitações abertas",      ordem: 0, tipo: "PADRAO" as const, aceita_automaticas: true  },
+  { nome: "Solicitações em aprovação", ordem: 1, tipo: "PADRAO" as const, aceita_automaticas: true  },
+  { nome: "Rascunho",                  ordem: 2, tipo: "PADRAO" as const, aceita_automaticas: true  },
+  { nome: "Aguard. Aprovação",         ordem: 3, tipo: "PADRAO" as const, aceita_automaticas: true  },
+  { nome: "Aprovados",                 ordem: 4, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Em Recebimento",            ordem: 5, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Concluído",                 ordem: 6, tipo: "PADRAO" as const, aceita_automaticas: false },
 ];
 
 // Mapeamento de status do pedido → nome da coluna
@@ -17,7 +19,7 @@ const STATUS_PEDIDO_COLUNA: Record<string, string> = {
   AGUARDANDO_APROVACAO:   "Aguard. Aprovação",
   APROVADO:               "Aprovados",
   AGUARDANDO_RECEBIMENTO: "Em Recebimento",
-  RECEBIMENTO_PARCIAL:    "Em Recebimento",
+  RECEBIDO_PARCIAL:       "Em Recebimento",
   RECEBIDO:               "Concluído",
   FINALIZADO:             "Concluído",
   CANCELADO:              "Concluído",
@@ -47,7 +49,6 @@ export async function garantirColunasCompras(setorId: string): Promise<Record<st
   const mapa: Record<string, string> = {};
   for (const c of existentes ?? []) mapa[c.nome] = c.id;
 
-  // Cria as que faltam
   const faltam = COLUNAS_COMPRAS.filter((c) => !mapa[c.nome]);
   if (faltam.length > 0) {
     const { data: criadas } = await admin
@@ -60,7 +61,6 @@ export async function garantirColunasCompras(setorId: string): Promise<Record<st
   return mapa;
 }
 
-// Retorna o coluna_id correto para um status de pedido
 export async function colunaPorStatusPedido(setorId: string, status: string): Promise<string | null> {
   const nomeColuna = STATUS_PEDIDO_COLUNA[status];
   if (!nomeColuna) return null;
@@ -68,7 +68,12 @@ export async function colunaPorStatusPedido(setorId: string, status: string): Pr
   return mapa[nomeColuna] ?? null;
 }
 
-// Move a tarefa vinculada a um pedido para a coluna correta
+// Move a tarefa vinculada a um pedido para a coluna correta.
+//
+// BUG 1 FIX: separa "mover para coluna terminal" de "definir status da tarefa".
+//   CANCELADO → coluna "Concluído" + status "CANCELADA"  (antes era "CONCLUIDA" — errado)
+//   RECEBIDO / FINALIZADO → coluna "Concluído" + status "CONCLUIDA"
+//   Demais → só muda coluna, não toca o status
 export async function moverTarefaPedido(pedidoId: string, novoStatus: string, usuarioId?: string) {
   const admin = createAdminClient();
 
@@ -89,11 +94,18 @@ export async function moverTarefaPedido(pedidoId: string, novoStatus: string, us
 
   if (!tarefa || tarefa.coluna_id === colunaId) return;
 
-  const isFinal = ["RECEBIDO", "FINALIZADO", "CANCELADO"].includes(novoStatus);
+  // Separa "é um estado terminal" de "qual status a tarefa recebe"
+  const moveParaColunaFinal = ["RECEBIDO", "FINALIZADO", "CANCELADO"].includes(novoStatus);
+  const statusTarefa =
+    novoStatus === "CANCELADO" ? "CANCELADA"   // pedido cancelado → tarefa CANCELADA
+    : moveParaColunaFinal      ? "CONCLUIDA"   // recebido/finalizado → tarefa CONCLUIDA
+    : undefined;                               // demais → não altera status
 
   await admin.from("tarefas").update({
     coluna_id: colunaId,
-    ...(isFinal ? { status: "CONCLUIDA", concluida_em: new Date().toISOString() } : {}),
+    ...(statusTarefa
+      ? { status: statusTarefa, concluida_em: new Date().toISOString() }
+      : {}),
   }).eq("id", tarefa.id);
 
   await admin.from("tarefa_historico").insert({

@@ -1,6 +1,10 @@
 import "server-only";
 import { createAdminClient } from "./supabase-admin";
 
+// BUG 3 FIX: upsert com onConflict para garantir idempotência.
+// O unique index idx_tarefa_entidade_unica (entidade_ref, entidade_ref_id)
+// garante que o mesmo evento processado N vezes sempre gere 1 card.
+// ignoreDuplicates: true → conflito retorna null sem erro, não cria duplicata.
 export async function criarTarefaAutomatica({
   titulo,
   descricao,
@@ -43,36 +47,40 @@ export async function criarTarefaAutomatica({
     colunaId = coluna?.id ?? null;
   }
 
+  const payload = {
+    titulo,
+    descricao: descricao ?? null,
+    coluna_id: coluna_id ?? colunaId,
+    origem,
+    entidade_ref: entidade_ref ?? null,
+    entidade_ref_id: entidade_ref_id ?? null,
+    setor_id: setor_id ?? null,
+    obra_id: obra_id ?? null,
+    pedido_id: pedido_id ?? null,
+    orcamento_id: orcamento_id ?? null,
+    prioridade,
+    status: "SEM_DONO",
+    criado_por: criado_por ?? null,
+  };
+
   const { data, error } = await admin
     .from("tarefas")
-    .insert({
-      titulo,
-      descricao: descricao ?? null,
-      coluna_id: coluna_id ?? colunaId,
-      origem,
-      entidade_ref: entidade_ref ?? null,
-      entidade_ref_id: entidade_ref_id ?? null,
-      setor_id: setor_id ?? null,
-      obra_id: obra_id ?? null,
-      pedido_id: pedido_id ?? null,
-      orcamento_id: orcamento_id ?? null,
-      prioridade,
-      status: "SEM_DONO",
-      criado_por: criado_por ?? null,
+    .upsert(payload, {
+      onConflict: "entidade_ref,entidade_ref_id",
+      ignoreDuplicates: true,
     })
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (error) return null;
+  if (!data?.id) return null; // duplicata ignorada — card já existe
 
-  if (data?.id) {
-    await admin.from("tarefa_historico").insert({
-      tarefa_id: data.id,
-      usuario_id: criado_por ?? null,
-      acao: "CRIADA_AUTOMATICAMENTE",
-      dados: { origem, entidade_ref, entidade_ref_id },
-    });
-  }
+  await admin.from("tarefa_historico").insert({
+    tarefa_id: data.id,
+    usuario_id: criado_por ?? null,
+    acao: "CRIADA_AUTOMATICAMENTE",
+    dados: { origem, entidade_ref, entidade_ref_id },
+  });
 
   return data;
 }

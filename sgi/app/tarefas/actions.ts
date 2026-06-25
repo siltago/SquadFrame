@@ -715,7 +715,7 @@ export async function sincronizarTarefasCompras(): Promise<{ criadas: number; co
   // Coluna "Sem dono" do setor de Compras
   const colunasMap = await garantirColunasCompras(setorId);
 
-  const STATUS_ATIVOS = ["RASCUNHO", "AGUARDANDO_APROVACAO", "APROVADO", "AGUARDANDO_RECEBIMENTO", "RECEBIMENTO_PARCIAL"];
+  const STATUS_ATIVOS = ["RASCUNHO", "AGUARDANDO_APROVACAO", "APROVADO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"];
 
   const { data: pedidos } = await admin
     .from("pedidos_compra")
@@ -789,7 +789,7 @@ const STATUS_LABEL: Record<string, string> = {
   AGUARDANDO_APROVACAO:   "aguardando aprovação",
   APROVADO:               "aprovado",
   AGUARDANDO_RECEBIMENTO: "aguardando recebimento",
-  RECEBIMENTO_PARCIAL:    "recebimento parcial",
+  RECEBIDO_PARCIAL:       "recebimento parcial",
 };
 
 const STATUS_COLUNA: Record<string, string> = {
@@ -797,5 +797,5 @@ const STATUS_COLUNA: Record<string, string> = {
   AGUARDANDO_APROVACAO:   "Aguard. Aprovação",
   APROVADO:               "Aprovados",
   AGUARDANDO_RECEBIMENTO: "Em Recebimento",
-  RECEBIMENTO_PARCIAL:    "Em Recebimento",
+  RECEBIDO_PARCIAL:       "Em Recebimento",
 };

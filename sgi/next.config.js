@@ -14,18 +14,6 @@ const nextConfig = {
     ],
   },
 
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-      // Nomes estáveis entre rebuilds — evita "Cannot find module './2618.js'"
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: "named",
-        chunkIds: "named",
-      };
-    }
-    return config;
-  },
 };
 
 module.exports = nextConfig;

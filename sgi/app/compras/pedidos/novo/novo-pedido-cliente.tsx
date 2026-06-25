@@ -499,21 +499,6 @@ export function NovoPedidoCliente({
               <label className="label">Observações</label>
               <textarea name="observacoes" rows={2} className="field" />
             </div>
-            <div className="sm:col-span-2">
-              <label className="label">
-                Número de vínculo{" "}
-                <span className="font-normal text-ink-soft">(opcional — deixe em branco para gerar automaticamente)</span>
-              </label>
-              <input
-                name="numero_vinculo"
-                className="field font-mono"
-                placeholder="Ex: 0023-0001 ou PC-2024-042"
-                maxLength={30}
-              />
-              <p className="mt-1 text-xs text-ink-faint">
-                Se o número já existir no sistema, você será redirecionado para o pedido cadastrado.
-              </p>
-            </div>
           </div>
         </div>
 

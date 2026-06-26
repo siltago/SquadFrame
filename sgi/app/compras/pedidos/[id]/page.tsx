@@ -77,14 +77,16 @@ export default async function PedidoPage({ params }: { params: { id: string } })
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/compras/pedidos/${params.id}/visualizar`}
-            target="_blank"
-            className="btn-ghost flex items-center gap-2 text-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Visualizar PDF
-          </Link>
+          {ped.status !== "RASCUNHO" && (
+            <Link
+              href={`/compras/pedidos/${params.id}/visualizar`}
+              target="_blank"
+              className="btn-ghost flex items-center gap-2 text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Visualizar PDF
+            </Link>
+          )}
           <PedidoCliente pedido={ped} />
         </div>
       </div>

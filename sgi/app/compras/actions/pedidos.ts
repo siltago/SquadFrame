@@ -33,6 +33,7 @@ export async function criarPedido(formData: FormData) {
   const itensJson          = formData.get("itens") as string;
 
   if (!fornecedor_id) throw new Error("Selecione um fornecedor.");
+  if (!obra_id) throw new Error("Selecione uma obra.");
 
   const itens: {
     produto_id: string; descricao_snapshot: string; quantidade_pedida: number;
@@ -200,7 +201,7 @@ export async function adicionarAnotacao(pedidoId: string, texto: string) {
 
 export async function excluirPedidos(ids: string[]) {
   if (!ids.length) return;
-  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
+  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_EXCLUIR);
 
   const admin = createAdminClient();
   const usuario_id = await getUsuarioId();

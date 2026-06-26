@@ -13,7 +13,7 @@ import type { Notificacao } from "@/types/kanban";
 const TIPO_LABEL: Record<string, string> = {
   tarefa_atribuida:            "Tarefa atribuída",
   tarefa_comentario:           "Novo comentário em tarefa",
-  pedido_aprovado:             "Pedido aprovado",
+  pedido_aprovado:             "Pedido aprovado — emita agora",
   pedido_aguardando_aprovacao: "Pedido aguardando aprovação",
   solicitacao_aprovada:        "Solicitação aprovada",
   solicitacao_rejeitada:       "Solicitação rejeitada",

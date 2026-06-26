@@ -434,9 +434,9 @@ export function NovoPedidoCliente({
               )}
             </div>
             <div>
-              <label className="label">Obra <span className="text-ink-faint font-normal">(opcional)</span></label>
-              <select name="obra_id" defaultValue={fromObraId ?? ""} className="field">
-                <option value="">Sem obra</option>
+              <label className="label">Obra <span className="text-red-500">*</span></label>
+              <select name="obra_id" required defaultValue={fromObraId ?? ""} className="field">
+                <option value="">Selecione uma obra…</option>
                 {obras.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.numero ? String(o.numero).padStart(4, "0") + " — " : ""}{o.nome}

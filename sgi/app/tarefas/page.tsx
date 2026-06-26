@@ -115,6 +115,10 @@ export default async function TarefasPage({ searchParams }: PageProps) {
     };
   });
 
+  // Oculta colunas sem nenhuma tarefa para deixar o fluxo mais limpo
+  const colunasComTarefas = new Set(tarefas.map((t: any) => t.coluna_id));
+  const colunasVisiveis = colunas.filter((c) => colunasComTarefas.has(c.id));
+
   return (
     <div className="min-h-screen bg-canvas">
       <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-line bg-surface">
@@ -122,7 +126,7 @@ export default async function TarefasPage({ searchParams }: PageProps) {
           <h1 className="font-display text-xl font-bold text-ink">Tarefas do Setor</h1>
           {setorIdParam && (
             <p className="text-xs text-ink-faint mt-0.5">
-              {colunas.length} colunas · {tarefas.length} tarefas
+              {colunasVisiveis.length} colunas · {tarefas.length} tarefas
             </p>
           )}
         </div>
@@ -143,7 +147,7 @@ export default async function TarefasPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <KanbanBoard
-            colunas={colunas}
+            colunas={colunasVisiveis}
             tarefas={tarefas}
             modo="setor"
             usuarioId={usuario.id}

@@ -14,6 +14,7 @@ INSERT INTO permissoes (chave, nome, modulo) VALUES
   ('compras.pedido.criar',            'Criar pedidos de compra',               'COMPRAS'),
   ('compras.pedido.aprovar',          'Aprovar pedidos de compra',             'COMPRAS'),
   ('compras.pedido.cancelar',         'Cancelar pedidos de compra',            'COMPRAS'),
+  ('compras.pedido.excluir',          'Excluir pedidos de compra',             'COMPRAS'),
   ('compras.recebimento.registrar',   'Registrar recebimentos de pedidos',     'COMPRAS'),
   ('compras.documento.upload',        'Fazer upload de documentos em pedidos', 'COMPRAS'),
   ('compras.documento.excluir',       'Excluir documentos de pedidos',         'COMPRAS'),

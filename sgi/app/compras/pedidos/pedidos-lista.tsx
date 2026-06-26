@@ -12,7 +12,7 @@ type Pedido = {
 };
 
 export function PedidosLista({ pedidos }: { pedidos: Pedido[] }) {
-  const podeExcluir = usePode("compras.pedido.criar");
+  const podeExcluir = usePode("compras.pedido.excluir");
   const [modoExcluir, setModoExcluir] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState<string | null>(null);

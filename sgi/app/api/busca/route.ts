@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const like = `%${q}%`;
 
-  const [obras, produtos, fornecedores, pedidos, tarefas] = await Promise.all([
+  const [obras, produtos, fornecedores, pedidos, tarefas, pedidosPorItem, solicitacoesPorItem] = await Promise.all([
     admin.from("obras")
       .select("id, nome, codigo, numero, cliente:clientes(nome)")
       .ilike("nome", like)
@@ -33,7 +33,20 @@ export async function GET(req: NextRequest) {
       .is("deleted_at", null)
       .not("status", "in", '("CONCLUIDA","CANCELADA")')
       .limit(5),
+    // Pedidos que contêm itens com a descrição pesquisada
+    admin.from("pedido_itens")
+      .select("pedido:pedidos_compra(id, numero, status, fornecedor:fornecedores(nome)), descricao_snapshot")
+      .ilike("descricao_snapshot", like)
+      .limit(4),
+    // Solicitações que contêm itens com a descrição pesquisada
+    admin.from("solicitacao_itens")
+      .select("solicitacao:solicitacoes_compra(id, numero, status), descricao_manual")
+      .ilike("descricao_manual", like)
+      .limit(4),
   ]);
+
+  // IDs de pedidos já encontrados pelo número (evitar duplicatas)
+  const pedidosIdsJaEncontrados = new Set((pedidos.data ?? []).map((p: any) => p.id));
 
   const resultados = [
     ...(obras.data ?? []).map((o: any) => ({
@@ -64,6 +77,26 @@ export async function GET(req: NextRequest) {
       subtitulo: p.fornecedor?.nome ?? "Pedido de compra",
       href: `/compras/pedidos/${p.id}`,
     })),
+    // Pedidos encontrados via item — sem duplicar os do bloco anterior
+    ...((pedidosPorItem.data ?? []) as any[])
+      .filter((r) => r.pedido && !pedidosIdsJaEncontrados.has(r.pedido.id))
+      .map((r) => ({
+        tipo: "pedido" as const,
+        id: r.pedido.id,
+        titulo: r.pedido.numero,
+        subtitulo: `Item: ${r.descricao_snapshot}`,
+        href: `/compras/pedidos/${r.pedido.id}`,
+      })),
+    // Solicitações encontradas via item
+    ...((solicitacoesPorItem.data ?? []) as any[])
+      .filter((r) => r.solicitacao)
+      .map((r) => ({
+        tipo: "solicitacao" as const,
+        id: r.solicitacao.id,
+        titulo: r.solicitacao.numero,
+        subtitulo: `Item: ${r.descricao_manual ?? ""}`,
+        href: `/compras/solicitacoes/${r.solicitacao.id}`,
+      })),
     ...(tarefas.data ?? []).map((t: any) => ({
       tipo: "tarefa" as const,
       id: t.id,

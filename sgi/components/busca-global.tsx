@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type Resultado = {
-  tipo: "obra" | "produto" | "fornecedor" | "pedido" | "tarefa";
+  tipo: "obra" | "produto" | "fornecedor" | "pedido" | "solicitacao" | "tarefa";
   id: string;
   titulo: string;
   subtitulo: string;
@@ -16,6 +16,7 @@ const TIPO_LABEL: Record<Resultado["tipo"], string> = {
   produto: "Produto",
   fornecedor: "Fornecedor",
   pedido: "Pedido",
+  solicitacao: "Solicitação",
   tarefa: "Tarefa",
 };
 
@@ -24,6 +25,7 @@ const TIPO_COR: Record<Resultado["tipo"], string> = {
   produto: "bg-amber-100 text-amber-700",
   fornecedor: "bg-emerald-100 text-emerald-700",
   pedido: "bg-violet-100 text-violet-700",
+  solicitacao: "bg-purple-100 text-purple-700",
   tarefa: "bg-teal-100 text-teal-700",
 };
 

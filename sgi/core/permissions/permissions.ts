@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   COMPRAS_PEDIDO_CRIAR:    "compras.pedido.criar",
   COMPRAS_PEDIDO_APROVAR:  "compras.pedido.aprovar",
   COMPRAS_PEDIDO_CANCELAR: "compras.pedido.cancelar",
+  COMPRAS_PEDIDO_EXCLUIR:  "compras.pedido.excluir",
 
   // Recebimentos
   COMPRAS_RECEBIMENTO_REGISTRAR: "compras.recebimento.registrar",

@@ -61,12 +61,12 @@ const ACAO_LABEL: Record<string, string> = {
 };
 
 const COMPRAS_GRUPOS: { key: string; label: string }[] = [
-  { key: "compras.solicitacao", label: "Solicitações" },
-  { key: "compras.pedido",      label: "Pedidos" },
-  { key: "compras.recebimento", label: "Recebimentos" },
-  { key: "compras.fornecedor",  label: "Fornecedores" },
-  { key: "compras.documento",   label: "Documentos" },
-  { key: "compras.anotacao",    label: "Anotações" },
+  { key: "compras.solicitacao",    label: "Solicitações" },
+  { key: "compras.pedido",         label: "Pedidos" },
+  { key: "compras.recebimento",    label: "Recebimentos" },
+  { key: "compras.fornecedor",     label: "Fornecedores" },
+  { key: "compras.documento",      label: "Documentos" },
+  { key: "compras.anotacao",       label: "Anotações" },
   { key: "compras.formapagamento", label: "Formas de pagamento" },
 ];
 

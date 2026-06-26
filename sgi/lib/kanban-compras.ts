@@ -9,8 +9,9 @@ export const COLUNAS_COMPRAS = [
   { nome: "Rascunho",                  ordem: 2, tipo: "PADRAO" as const, aceita_automaticas: true  },
   { nome: "Aguard. Aprovação",         ordem: 3, tipo: "PADRAO" as const, aceita_automaticas: true  },
   { nome: "Aprovados",                 ordem: 4, tipo: "PADRAO" as const, aceita_automaticas: false },
-  { nome: "Em Recebimento",            ordem: 5, tipo: "PADRAO" as const, aceita_automaticas: false },
-  { nome: "Concluído",                 ordem: 6, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Emitidos",                  ordem: 5, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Em Recebimento",            ordem: 6, tipo: "PADRAO" as const, aceita_automaticas: false },
+  { nome: "Concluído",                 ordem: 7, tipo: "PADRAO" as const, aceita_automaticas: false },
 ];
 
 // Mapeamento de status do pedido → nome da coluna
@@ -18,6 +19,7 @@ const STATUS_PEDIDO_COLUNA: Record<string, string> = {
   RASCUNHO:               "Rascunho",
   AGUARDANDO_APROVACAO:   "Aguard. Aprovação",
   APROVADO:               "Aprovados",
+  EMITIDO:                "Emitidos",
   AGUARDANDO_RECEBIMENTO: "Em Recebimento",
   RECEBIDO_PARCIAL:       "Em Recebimento",
   RECEBIDO:               "Concluído",

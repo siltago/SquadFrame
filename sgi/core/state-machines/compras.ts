@@ -51,6 +51,7 @@ export type StatusPedido =
   | "RASCUNHO"
   | "AGUARDANDO_APROVACAO"
   | "APROVADO"
+  | "EMITIDO"
   | "AGUARDANDO_RECEBIMENTO"
   | "RECEBIDO_PARCIAL"
   | "RECEBIDO"
@@ -60,7 +61,8 @@ export type StatusPedido =
 const TRANSICOES_PEDIDO: Record<StatusPedido, StatusPedido[]> = {
   RASCUNHO:               ["AGUARDANDO_APROVACAO"],
   AGUARDANDO_APROVACAO:   ["APROVADO", "CANCELADO"],
-  APROVADO:               ["AGUARDANDO_RECEBIMENTO", "CANCELADO"],
+  APROVADO:               ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "CANCELADO"],
+  EMITIDO:                ["AGUARDANDO_RECEBIMENTO", "CANCELADO"],
   AGUARDANDO_RECEBIMENTO: ["RECEBIDO_PARCIAL", "RECEBIDO", "CANCELADO"],
   RECEBIDO_PARCIAL:       ["RECEBIDO"],  // [sistema] via registrarRecebimento
   RECEBIDO:               [],            // terminal

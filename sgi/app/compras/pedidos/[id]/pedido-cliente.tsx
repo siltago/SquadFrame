@@ -10,15 +10,15 @@ import { usePode } from "@/components/user-provider";
 type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
 
 const TRANSICOES: Record<string, Transicao[]> = {
-  RASCUNHO:             [{ label: "Enviar aprovação", status: "AGUARDANDO_APROVACAO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
-  AGUARDANDO_APROVACAO: [{ label: "Aprovar", status: "APROVADO", variant: "primary" }, { label: "Rejeitar", status: "CANCELADO", variant: "danger" }],
-  APROVADO:             [{ label: "Emitir pedido", status: "EMITIDO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
-  EMITIDO:              [{ label: "Aguardar recebimento", status: "AGUARDANDO_RECEBIMENTO", variant: "ghost" }],
+  RASCUNHO:               [{ label: "Enviar aprovação", status: "AGUARDANDO_APROVACAO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
+  AGUARDANDO_APROVACAO:   [{ label: "Aprovar", status: "APROVADO", variant: "primary" }, { label: "Rejeitar", status: "CANCELADO", variant: "danger" }],
+  APROVADO:               [{ label: "Emitir pedido", status: "AGUARDANDO_RECEBIMENTO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
+  EMITIDO:                [{ label: "Emitir pedido", status: "AGUARDANDO_RECEBIMENTO", variant: "primary" }],
   AGUARDANDO_RECEBIMENTO: [],
-  RECEBIDO_PARCIAL:     [],
-  RECEBIDO:             [{ label: "Finalizar", status: "FINALIZADO", variant: "primary" }],
-  FINALIZADO:           [],
-  CANCELADO:            [],
+  RECEBIDO_PARCIAL:       [],
+  RECEBIDO:               [{ label: "Finalizar", status: "FINALIZADO", variant: "primary" }],
+  FINALIZADO:             [],
+  CANCELADO:              [],
 };
 
 const ACAO_LABEL: Record<string, string> = {
@@ -68,7 +68,10 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     setModalAcao(ACAO_LABEL[status] ?? status);
   }
 
-  if (!transicoes.length && !podeEditarAgora) return null;
+  const podeRegistrarRecebimento =
+    podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
+
+  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento) return null;
 
   return (
     <>
@@ -85,6 +88,11 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
           {podeEditarAgora && (
             <Link href={`/compras/pedidos/${pedido.id}/editar`} className="btn-ghost">
               Editar
+            </Link>
+          )}
+          {podeRegistrarRecebimento && (
+            <Link href={`/compras/pedidos/${pedido.id}/receber`} className="btn-primary">
+              Registrar recebimento
             </Link>
           )}
           {transicoes.map((t) => (

@@ -66,7 +66,7 @@ export default async function UsuariosPage() {
   }));
 
   return (
-    <div className="flex h-[calc(100vh-56px)]">
+    <div className="flex" style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))" }}>
       <UsuariosSidebar setores={setoresComCount} />
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
         <UsuariosCliente

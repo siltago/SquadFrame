@@ -72,8 +72,12 @@ export default async function RootLayout({
         <OfflineBanner />
         {usuario && (
           <header
-            className="fixed inset-x-0 top-0 z-50 flex items-center gap-2 px-3 sm:gap-3 sm:px-5"
-            style={{ backgroundColor: "#0F4C81", height: 56 }}
+            className="fixed inset-x-0 top-0 z-50 flex items-end gap-2 px-3 sm:gap-3 sm:px-5"
+            style={{
+              backgroundColor: "#0F4C81",
+              paddingTop: "env(safe-area-inset-top)",
+              height: "calc(56px + env(safe-area-inset-top))",
+            }}
           >
             {/* Hamburguer — só mobile */}
             <MobileNav />
@@ -117,7 +121,10 @@ export default async function RootLayout({
 
         <UserProvider usuario={usuario}>
           <ToastProvider>
-            <main className={usuario ? "pt-14" : ""}>{children}</main>
+            <main
+              className={usuario ? "" : ""}
+              style={usuario ? { paddingTop: "calc(56px + env(safe-area-inset-top))" } : undefined}
+            >{children}</main>
           </ToastProvider>
         </UserProvider>
         </PwaProvider>

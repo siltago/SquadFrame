@@ -54,7 +54,7 @@ export default async function ObrasPage({ searchParams }: { searchParams: { page
           <BtnAcaoProtegida href="/obras/nova" label="Criar primeira obra" temPermissao={podeCriar} acao="criar obras" className="btn-primary mt-5" />
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

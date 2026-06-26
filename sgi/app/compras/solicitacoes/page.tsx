@@ -71,7 +71,7 @@ export default async function SolicitacoesPage({
         ))}
       </div>
 
-      <div className="mt-6 card overflow-hidden">
+      <div className="mt-6 card overflow-x-auto">
         <SolicitacoesLista solicitacoes={(solicitacoes ?? []) as any} />
         <Paginacao
           paginaAtual={pagina}

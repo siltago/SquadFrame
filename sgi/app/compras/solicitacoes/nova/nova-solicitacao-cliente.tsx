@@ -278,7 +278,7 @@ export function NovaSolicitacaoCliente({ obras, coresRal }: { obras: Obra[]; cor
           )}
 
           {itens.length > 0 && (
-            <div className="mt-3 card overflow-hidden">
+            <div className="mt-3 card overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

@@ -227,7 +227,7 @@ function TabelaProdutos({
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

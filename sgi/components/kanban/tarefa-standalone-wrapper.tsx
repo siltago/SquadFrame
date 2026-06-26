@@ -11,7 +11,7 @@ export function TarefaStandaloneWrapper({ tarefaId }: Props) {
   const router = useRouter();
 
   return (
-    <div className="relative flex" style={{ minHeight: "calc(100vh - 100px)" }}>
+    <div className="relative flex" style={{ minHeight: "calc(100dvh - 100px)" }}>
       {/* Painel em modo standalone: ocupa a tela toda sem overlay */}
       <div className="w-full max-w-2xl mx-auto">
         <CardPanel

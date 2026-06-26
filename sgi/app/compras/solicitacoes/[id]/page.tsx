@@ -95,7 +95,7 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-ink-faint">
           Itens ({(itens ?? []).length})
         </h2>
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

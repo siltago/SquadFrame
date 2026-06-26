@@ -98,7 +98,7 @@ export function BuscaGlobal() {
       </button>
 
       {aberto && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4" onClick={() => setAberto(false)}>
+        <div className="fixed inset-0 z-[100] flex items-start justify-center px-4" style={{ paddingTop: "max(10vh, env(safe-area-inset-top))" }} onClick={() => setAberto(false)}>
           <div
             className="w-full max-w-lg rounded-2xl border border-line bg-surface shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}

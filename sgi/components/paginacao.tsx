@@ -45,12 +45,12 @@ export function Paginacao({ paginaAtual, total, porPagina, buildUrl }: Props) {
 
 function PagLink({ href, label, active, disabled }: { href: string; label: string; active?: boolean; disabled?: boolean }) {
   if (disabled) {
-    return <span className="flex h-7 w-7 items-center justify-center rounded text-xs text-ink-faint/40">{label}</span>;
+    return <span className="flex h-9 w-9 items-center justify-center rounded text-xs text-ink-faint/40">{label}</span>;
   }
   return (
     <Link
       href={href}
-      className={`flex h-7 w-7 items-center justify-center rounded text-xs font-medium transition-colors ${
+      className={`flex h-9 w-9 items-center justify-center rounded text-xs font-medium transition-colors ${
         active ? "bg-steel text-white" : "text-ink-soft hover:bg-canvas"
       }`}
     >

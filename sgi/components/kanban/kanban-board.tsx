@@ -198,7 +198,7 @@ export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId
       >
         <div
           className="flex gap-3 overflow-x-auto pb-4"
-          style={{ minHeight: "calc(100vh - 120px)" }}
+          style={{ minHeight: "calc(100dvh - 120px)" }}
         >
           {colunas.map((coluna) => (
             <KanbanColumn

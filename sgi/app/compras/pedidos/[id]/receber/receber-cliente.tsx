@@ -69,7 +69,7 @@ export function ReceberCliente({ pedidoId, itens }: { pedidoId: string; itens: I
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-ink">Quantidades recebidas</h2>
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

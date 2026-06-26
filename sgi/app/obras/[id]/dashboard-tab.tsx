@@ -284,7 +284,7 @@ export async function DashboardTab({
 
       {/* Gargalos */}
       {gargalos.length > 0 && (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <div className="flex items-center gap-2 border-b border-line px-5 py-3">
             <span className="h-2 w-2 rounded-full bg-red-500" />
             <h2 className="text-sm font-semibold text-ink">Pendências que precisam de atenção</h2>
@@ -325,7 +325,7 @@ export async function DashboardTab({
       </div>
 
       {/* Tarefas da obra */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <div className="flex items-center gap-3 border-b border-line px-5 py-3">
           <h2 className="text-sm font-semibold text-ink">Tarefas</h2>
           {tarefas.length > 0 && (
@@ -389,7 +389,7 @@ export async function DashboardTab({
       </div>
 
       {/* Últimas atividades */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <div className="border-b border-line px-5 py-3">
           <h2 className="text-sm font-semibold text-ink">Últimas atividades</h2>
         </div>

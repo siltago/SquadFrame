@@ -204,7 +204,7 @@ export function FornecedoresLista({
       {fornecedores.length === 0 ? (
         <div className="card p-8 text-center text-sm text-ink-faint">Nenhum fornecedor cadastrado.</div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           {modoExcluir && (
             <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 border-b border-line">
               <input type="checkbox" checked={n === fornecedores.length && n > 0}

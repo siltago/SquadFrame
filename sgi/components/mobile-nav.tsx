@@ -48,7 +48,7 @@ export function MobileNav() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Abrir menu"
-        className="flex h-9 w-9 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors sm:hidden"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors sm:hidden"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="3" y1="6" x2="21" y2="6"/>
@@ -88,7 +88,7 @@ export function MobileNav() {
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.href} href={item.href} onClick={() => setOpen(false)}>
               <span className="text-ink-soft">{item.icon}</span>

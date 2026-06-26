@@ -64,7 +64,7 @@ export default async function PedidosPage({
         ))}
       </div>
 
-      <div className="mt-6 card overflow-hidden">
+      <div className="mt-6 card overflow-x-auto">
         <PedidosLista pedidos={(pedidos ?? []) as any} />
         <Paginacao
           paginaAtual={pagina}

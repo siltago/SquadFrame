@@ -31,7 +31,10 @@ export function OfflineBanner() {
   return (
     <div
       className="fixed bottom-0 inset-x-0 z-[200] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white transition-all"
-      style={{ backgroundColor: isOnline ? "#10b981" : "#ef4444" }}
+      style={{
+        backgroundColor: isOnline ? "#10b981" : "#ef4444",
+        paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))",
+      }}
     >
       <span
         className="h-2 w-2 rounded-full"
@@ -51,7 +54,10 @@ export function UpdateBanner() {
   if (!hasUpdate) return null;
 
   return (
-    <div className="fixed top-14 inset-x-0 z-[190] flex items-center justify-between gap-3 bg-steel px-4 py-2.5 text-sm text-white shadow-md">
+    <div
+      className="fixed inset-x-0 z-[190] flex items-center justify-between gap-3 bg-steel px-4 py-2.5 text-sm text-white shadow-md"
+      style={{ top: "calc(56px + env(safe-area-inset-top))" }}
+    >
       <span>
         Nova versão disponível.
       </span>

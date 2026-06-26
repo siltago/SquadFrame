@@ -217,7 +217,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
 
       {/* Modal de instrução para iOS */}
       {showIOSModal && (
-        <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 p-4" onClick={() => setShowIOSModal(false)}>
+        <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 p-4" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }} onClick={() => setShowIOSModal(false)}>
           <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-ink mb-1">Instalar no iPhone</h3>
             <p className="text-sm text-ink-soft mb-4">Para adicionar o SquadFrame à sua tela de início:</p>

@@ -9,7 +9,7 @@ export default async function CatalogoLayout({ children }: { children: React.Rea
     .order("ordem");
 
   return (
-    <div className="flex h-[calc(100vh-56px)]">
+    <div className="flex" style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))" }}>
       <CatalogoSidebar tipos={tipos ?? []} />
       <div className="flex-1 overflow-y-auto">{children}</div>
     </div>

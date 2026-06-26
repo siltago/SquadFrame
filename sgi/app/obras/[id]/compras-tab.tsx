@@ -92,7 +92,7 @@ export async function ComprasTab({ obraId }: { obraId: string }) {
             )}
           </div>
         ) : (
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
@@ -170,7 +170,7 @@ export async function ComprasTab({ obraId }: { obraId: string }) {
             )}
           </div>
         ) : (
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">

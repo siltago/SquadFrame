@@ -87,8 +87,8 @@ function SidebarInner({
       <button
         onClick={() => setMobileOpen(true)}
         aria-label="Menu do catálogo"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-steel text-white shadow-lg lg:hidden"
-        style={{ boxShadow: "0 4px 20px rgba(15,76,129,0.4)" }}
+        className="fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-steel text-white shadow-lg lg:hidden"
+        style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))", right: "calc(1.25rem + env(safe-area-inset-right))", boxShadow: "0 4px 20px rgba(15,76,129,0.4)" }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>

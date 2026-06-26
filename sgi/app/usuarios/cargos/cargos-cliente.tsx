@@ -455,7 +455,7 @@ export function CargosCliente({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row sm:h-[calc(100vh-56px)]">
+    <div className="flex flex-col sm:flex-row sm:h-[calc(100dvh-56px-env(safe-area-inset-top))]">
       {/* ── Cabeçalho mobile (back + título) ──────────── */}
       <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 sm:hidden">
         <BackButton href="/usuarios" />

@@ -12,7 +12,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
   const [imgError, setImgError] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
   const router = useRouter();
-  const { isOnline, canInstall, installApp, showIOSInstructions, pushPermission, requestPushPermission } = usePwa();
+  const { isOnline, canInstall, isInstalled, installApp, showIOSInstructions, isPushSupported, pushPermission, requestPushPermission } = usePwa();
 
   async function handleLogout() {
     const supabase = createClient();
@@ -183,8 +183,8 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
                 </button>
               )}
 
-              {/* Ativar notificações push */}
-              {pushPermission === "default" && (
+              {/* Ativar notificações push — mostra se instalado em standalone OU se push é suportado e permissão ainda não foi concedida/negada */}
+              {(isInstalled || isPushSupported) && pushPermission !== "granted" && pushPermission !== "denied" && (
                 <button
                   onClick={async () => { setAberto(false); await requestPushPermission(); }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-ink-soft hover:bg-canvas hover:text-ink"

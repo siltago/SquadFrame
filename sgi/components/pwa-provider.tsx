@@ -181,7 +181,13 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
   }, []);
 
   const requestPushPermission = useCallback(async () => {
-    if (!isPushSupported || !usuarioId || !vapidPublicKey) return;
+    if (!usuarioId || !vapidPublicKey) return;
+    // No iOS o PushManager só fica disponível após interação — retestar no momento do clique
+    const pushOk =
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      "Notification" in window;
+    if (!pushOk) return;
     try {
       const permission = await Notification.requestPermission();
       setPushPermission(permission);

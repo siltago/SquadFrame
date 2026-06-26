@@ -31,7 +31,9 @@ const ACAO_LABEL: Record<string, string> = {
 };
 
 export function PedidoCliente({ pedido }: { pedido: any }) {
-  const podeEditar = usePode("compras.editar");
+  const podeCriar    = usePode("compras.pedido.criar");
+  const podeAprovar  = usePode("compras.pedido.aprovar");
+  const podeCancelar = usePode("compras.pedido.cancelar");
   const [obs, setObs] = useState("");
   const [showObs, setShowObs] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<string | null>(null);
@@ -41,8 +43,12 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const router = useRouter();
 
-  const transicoes = TRANSICOES[pedido.status] ?? [];
-  const podeEditarAgora = podeEditar && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status);
+  const podeEditarAgora = podeCriar && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status);
+  const transicoes = (TRANSICOES[pedido.status] ?? []).filter((t) => {
+    if (t.status === "APROVADO")  return podeAprovar;
+    if (t.status === "CANCELADO") return podeCancelar;
+    return podeCriar;
+  });
 
   function handleAcao(status: string) {
     if (status === "CANCELADO") { setAcaoPendente(status); setShowObs(true); return; }
@@ -62,7 +68,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     setModalAcao(ACAO_LABEL[status] ?? status);
   }
 
-  if (!transicoes.length) return null;
+  if (!transicoes.length && !podeEditarAgora) return null;
 
   return (
     <>

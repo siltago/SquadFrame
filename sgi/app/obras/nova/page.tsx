@@ -3,6 +3,7 @@ import { criarObra } from "../actions";
 import { BackButton } from "@/components/back-button";
 import { getUsuarioAtual } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { SubmitButton } from "@/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,7 @@ export default async function NovaObraPage() {
         </div>
 
         <div className="mt-6 flex gap-3">
-          <button type="submit" className="btn-primary">Salvar obra</button>
+          <SubmitButton label="Salvar obra" pendingLabel="Salvando…" />
           <Link href="/obras" className="btn-ghost">Cancelar</Link>
         </div>
       </form>

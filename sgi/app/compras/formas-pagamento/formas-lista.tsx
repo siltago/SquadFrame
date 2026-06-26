@@ -7,7 +7,7 @@ import { alterarFormaPagamento, excluirFormasPagamento } from "@/app/compras/act
 type FormasPagamento = { id: string; nome: string; descricao: string | null; ativo: boolean };
 
 export function FormasPagamentoLista({ formas }: { formas: FormasPagamento[] }) {
-  const podeExcluir = usePode("compras.excluir");
+  const podeExcluir = usePode("compras.formapagamento.gerenciar");
   const [modoExcluir, setModoExcluir] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState<string | null>(null);

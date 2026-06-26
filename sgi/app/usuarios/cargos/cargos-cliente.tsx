@@ -29,7 +29,7 @@ import { BackButton } from "@/components/back-button";
 
 // ─── Tipos ───────────────────────────────────────────────────
 
-type Permissao = { id: string; chave: string; modulo: string; acao: string };
+type Permissao = { id: string; chave: string; nome: string; modulo: string; acao: string };
 type Setor = { id: string; nome: string; cor: string; ordem: number };
 type Cargo = {
   id: string;
@@ -41,8 +41,9 @@ type Cargo = {
   permissao_ids: string[];
 };
 
+// "compras" é tratado como seção separada abaixo do grid
 const MODULOS = [
-  "obras", "catalogo", "compras", "producao",
+  "obras", "catalogo", "producao",
   "qualidade", "expedicao", "tarefas", "usuarios", "cargos",
 ] as const;
 
@@ -58,6 +59,16 @@ const ACAO_LABEL: Record<string, string> = {
   criar: "Criar", editar: "Editar",
   alterar_status: "Alterar status", apagar: "Apagar",
 };
+
+const COMPRAS_GRUPOS: { key: string; label: string }[] = [
+  { key: "compras.solicitacao", label: "Solicitações" },
+  { key: "compras.pedido",      label: "Pedidos" },
+  { key: "compras.recebimento", label: "Recebimentos" },
+  { key: "compras.fornecedor",  label: "Fornecedores" },
+  { key: "compras.documento",   label: "Documentos" },
+  { key: "compras.anotacao",    label: "Anotações" },
+  { key: "compras.formapagamento", label: "Formas de pagamento" },
+];
 
 // ─── Card de cargo (sortable) ─────────────────────────────────
 
@@ -101,7 +112,9 @@ function CargoCard({
   }
 
   function toggleModulo(modulo: string, checked: boolean) {
-    const ids = permissoes.filter((p) => p.modulo === modulo).map((p) => p.id);
+    const ids = permissoes
+      .filter((p) => p.modulo === modulo || p.modulo.startsWith(modulo + "."))
+      .map((p) => p.id);
     setPermsIds((prev) => {
       const n = new Set(prev);
       ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
@@ -143,8 +156,11 @@ function CargoCard({
     });
   }
 
-  const modulosAtivos = MODULOS.filter((m) =>
-    permissoes.filter((p) => p.modulo === m).some((p) => permsIds.has(p.id))
+  const MODULOS_DISPLAY = [...MODULOS, "compras"] as const;
+  const modulosAtivos = MODULOS_DISPLAY.filter((m) =>
+    permissoes
+      .filter((p) => p.modulo === m || p.modulo.startsWith(m + "."))
+      .some((p) => permsIds.has(p.id))
   );
 
   return (
@@ -279,6 +295,51 @@ function CargoCard({
               </tbody>
             </table>
           </div>
+
+          {/* Compras — permissões granulares */}
+          {!isAdmin && (() => {
+            const todosCompras = permissoes.filter((p) => p.chave.startsWith("compras."));
+            if (!todosCompras.length) return null;
+            const todosMarcados = todosCompras.every((p) => permsIds.has(p.id));
+            return (
+              <div className="mt-3 overflow-hidden rounded-lg border border-line">
+                <div className="flex items-center justify-between border-b border-line bg-canvas px-3 py-2">
+                  <span className="text-xs font-medium text-ink-soft">Compras</span>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-soft">
+                    <input type="checkbox"
+                      checked={todosMarcados}
+                      onChange={(e) => toggleModulo("compras", e.target.checked)}
+                      className="h-3.5 w-3.5 rounded accent-steel"
+                    />
+                    Tudo
+                  </label>
+                </div>
+                <div className="divide-y divide-line">
+                  {COMPRAS_GRUPOS.map(({ key, label }) => {
+                    const grupoPerms = todosCompras.filter((p) => p.modulo === key);
+                    if (!grupoPerms.length) return null;
+                    return (
+                      <div key={key} className="px-3 py-2">
+                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                          {grupoPerms.map((p) => (
+                            <label key={p.id} className="flex cursor-pointer items-center gap-2">
+                              <input type="checkbox"
+                                checked={permsIds.has(p.id)}
+                                onChange={() => togglePerm(p.id)}
+                                className="h-3.5 w-3.5 rounded accent-steel"
+                              />
+                              <span className="text-xs text-ink">{p.nome}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {erro && <p className="mt-3 text-xs text-red-500">{erro}</p>}
 

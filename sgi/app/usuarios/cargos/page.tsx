@@ -1,9 +1,11 @@
 import { createAdminClient } from "@/lib/supabase-admin";
 import { CargosCliente } from "./cargos-cliente";
 
-function toPermissao(p: { id: string; chave: string }) {
-  const [modulo = "", acao = ""] = p.chave.split(".");
-  return { id: p.id, chave: p.chave, modulo, acao };
+function toPermissao(p: { id: string; chave: string; nome: string | null }) {
+  const parts = p.chave.split(".");
+  const acao  = parts[parts.length - 1];
+  const modulo = parts.slice(0, -1).join(".");
+  return { id: p.id, chave: p.chave, nome: p.nome ?? p.chave, modulo, acao };
 }
 
 export const dynamic = "force-dynamic";
@@ -19,7 +21,7 @@ export default async function CargosPage() {
   ] = await Promise.all([
     supabase.from("setores").select("id, nome, cor, ordem").eq("ativo", true).order("ordem"),
     supabase.from("cargos").select("id, nome, cor, setor_id, ordem, is_admin").eq("ativo", true).order("ordem"),
-    supabase.from("permissoes").select("id, chave"),
+    supabase.from("permissoes").select("id, chave, nome"),
     supabase.from("cargo_permissoes").select("cargo_id, permissao_id"),
   ]);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import {
   buscarNotificacoes,
@@ -11,13 +11,32 @@ import {
 import type { Notificacao } from "@/types/kanban";
 
 const TIPO_LABEL: Record<string, string> = {
-  tarefa_atribuida: "Tarefa atribuída",
-  tarefa_comentario: "Novo comentário",
-  pedido_aprovado: "Pedido aprovado",
+  tarefa_atribuida:            "Tarefa atribuída",
+  tarefa_comentario:           "Novo comentário em tarefa",
+  pedido_aprovado:             "Pedido aprovado",
   pedido_aguardando_aprovacao: "Pedido aguardando aprovação",
-  solicitacao_aprovada: "Solicitação aprovada",
-  solicitacao_rejeitada: "Solicitação rejeitada",
+  solicitacao_aprovada:        "Solicitação aprovada",
+  solicitacao_rejeitada:       "Solicitação rejeitada",
 };
+
+function resolverLink(n: Notificacao): { href: string; label: string } | null {
+  const p = n.payload as Record<string, string>;
+  switch (n.tipo) {
+    case "tarefa_atribuida":
+    case "tarefa_comentario":
+      if (n.tarefa_id) return { href: `/tarefas?tarefa=${n.tarefa_id}`, label: p.titulo ?? "Ver tarefa" };
+      break;
+    case "pedido_aguardando_aprovacao":
+    case "pedido_aprovado":
+      if (p.order_id) return { href: `/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
+      break;
+    case "solicitacao_aprovada":
+    case "solicitacao_rejeitada":
+      if (p.request_id) return { href: `/compras/solicitacoes/${p.request_id}`, label: p.numero ?? "Ver solicitação" };
+      break;
+  }
+  return null;
+}
 
 interface Props {
   usuarioId: string;
@@ -35,6 +54,7 @@ function RelativeTime({ ts }: { ts: string }) {
 }
 
 export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
+  const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [naoLidas, setNaoLidas] = useState(naoLidasIniciais);
@@ -149,46 +169,45 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
                   Nenhuma notificação
                 </div>
               ) : (
-                notificacoes.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex items-start gap-3 px-4 py-3 hover:bg-canvas transition-colors ${!n.lida ? "bg-steel/5" : ""}`}
-                  >
-                    {!n.lida && (
-                      <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-steel" />
-                    )}
-                    {n.lida && <div className="mt-1.5 h-2 w-2 shrink-0" />}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-ink">
-                        {TIPO_LABEL[n.tipo] ?? n.tipo}
-                      </p>
-                      {n.tarefa_id && (
-                        <Link
-                          href={`/tarefas/${n.tarefa_id}`}
-                          onClick={() => {
-                            if (!n.lida) handleMarcarLida(n.id);
-                            setAberto(false);
-                          }}
-                          className="text-xs text-steel hover:underline truncate block"
+                notificacoes.map((n) => {
+                  const link = resolverLink(n);
+                  return (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        if (!link) return;
+                        if (!n.lida) handleMarcarLida(n.id);
+                        setAberto(false);
+                        router.push(link.href);
+                      }}
+                      className={`flex items-start gap-3 px-4 py-3 transition-colors ${!n.lida ? "bg-steel/5" : ""} ${link ? "cursor-pointer hover:bg-canvas" : ""}`}
+                    >
+                      <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!n.lida ? "bg-steel" : ""}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-ink">
+                          {TIPO_LABEL[n.tipo] ?? n.tipo}
+                        </p>
+                        {link && (
+                          <p className="truncate text-xs text-steel">
+                            {link.label} →
+                          </p>
+                        )}
+                        <span className="text-[10px] text-ink-faint">
+                          <RelativeTime ts={n.criado_em} />
+                        </span>
+                      </div>
+                      {!n.lida && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleMarcarLida(n.id); }}
+                          className="shrink-0 text-[10px] text-ink-faint hover:text-steel transition-colors mt-0.5"
+                          title="Marcar como lida"
                         >
-                          {(n.payload as any)?.titulo ?? "Ver tarefa →"}
-                        </Link>
+                          ✓
+                        </button>
                       )}
-                      <span className="text-[10px] text-ink-faint">
-                        <RelativeTime ts={n.criado_em} />
-                      </span>
                     </div>
-                    {!n.lida && (
-                      <button
-                        onClick={() => handleMarcarLida(n.id)}
-                        className="shrink-0 text-[10px] text-ink-faint hover:text-steel transition-colors mt-0.5"
-                        title="Marcar como lida"
-                      >
-                        ✓
-                      </button>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { getUsuarioAtual } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
 import { BtnAcaoProtegida } from "@/components/btn-acao-protegida";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 import { StatusObraSelector } from "./status-selector";
 import { AbaProducao } from "./aba-producao";
 import { DashboardTab } from "./dashboard-tab";
@@ -124,6 +125,18 @@ export default async function ObraPage({
           );
         })}
       </div>
+
+      {/* Realtime: qualquer mudança nesta obra atualiza automaticamente */}
+      <RealtimeRefresher
+        channelName={`obra-${params.id}`}
+        subs={[
+          { table: "pedidos_compra",    filter: `obra_id=eq.${params.id}` },
+          { table: "solicitacoes_compra", filter: `obra_id=eq.${params.id}` },
+          { table: "tarefas",           filter: `obra_id=eq.${params.id}` },
+          { table: "lotes_obra",        filter: `obra_id=eq.${params.id}` },
+          { table: "tipologias_obra" },
+        ]}
+      />
 
       {/* Conteúdo por aba */}
       {aba === "dashboard" && (

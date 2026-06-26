@@ -13,7 +13,6 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useRouter } from "next/navigation";
 import type { Coluna, Tarefa } from "@/types/kanban";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
@@ -31,7 +30,6 @@ interface Props {
 }
 
 export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId, setorId }: Props) {
-  const router = useRouter();
   const [tarefas, setTarefas] = useState<Tarefa[]>(tarefasIniciais);
   const [activeTarefa, setActiveTarefa] = useState<Tarefa | null>(null);
   const [panelTarefaId, setPanelTarefaId] = useState<string | null>(null);
@@ -102,23 +100,11 @@ export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId
           atualizarCardLocal(payload.new as Record<string, any>);
         }
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "tarefas",
-          ...(filterStr ? { filter: filterStr } : {}),
-        },
-        () => {
-          // Novo card precisa de dados joined (responsavel, etiquetas)
-          router.refresh();
-        }
-      )
       .subscribe();
+      // INSERT de nova tarefa é tratado pelo RealtimeRefresher da página pai
 
     return () => { supabase.removeChannel(channel); };
-  }, [setorId, usuarioId, router, atualizarCardLocal]);
+  }, [setorId, usuarioId, atualizarCardLocal]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

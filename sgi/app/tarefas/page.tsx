@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 import { TarefasFilterBar } from "@/components/kanban/tarefas-filter-bar";
 import { SyncButton } from "@/components/kanban/sync-button";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 import type { Tarefa, Coluna, Etiqueta } from "@/types/kanban";
 
 export const dynamic = "force-dynamic";
@@ -136,6 +137,15 @@ export default async function TarefasPage({ searchParams }: PageProps) {
           setorAtual={setorIdParam}
         />
         {isAdmin && <SyncButton />}
+        {/* INSERT de nova tarefa dispara refresh (substitui o router.refresh() inline do kanban-board) */}
+        <RealtimeRefresher
+          channelName={`tarefas-page-${setorIdParam ?? "all"}`}
+          subs={[
+            setorIdParam
+              ? { table: "tarefas", event: "INSERT", filter: `setor_id=eq.${setorIdParam}` }
+              : { table: "tarefas", event: "INSERT" },
+          ]}
+        />
       </div>
 
       <div className="px-4 py-4 overflow-x-auto">

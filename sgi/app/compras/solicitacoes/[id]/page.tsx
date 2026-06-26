@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 import { SolicitacaoCliente } from "./solicitacao-cliente";
 import { pluralUnit } from "@/lib/unidade";
 import { STATUS_SOL_COR, STATUS_SOL_LABEL, PRIORIDADE_COR, PRIORIDADE_LABEL, ORIGEM_LABEL } from "@/types/compras";
@@ -9,6 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function SolicitacaoPage({ params }: { params: { id: string } }) {
   const admin = createAdminClient();
+  const usuario = await getUsuarioAtual();
+  const podeCriarPedido =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("compras.pedido.criar");
 
   const [{ data: sol }, { data: itens }, { data: hist }] = await Promise.all([
     admin.from("solicitacoes_compra")
@@ -30,6 +36,14 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
 
   return (
     <div className="px-8 py-8 max-w-4xl">
+      <RealtimeRefresher
+        channelName={`solicitacao-${params.id}`}
+        subs={[
+          { table: "solicitacoes_compra", filter: `id=eq.${params.id}` },
+          { table: "solicitacao_itens",   filter: `solicitacao_id=eq.${params.id}` },
+          { table: "compra_historico",    filter: `entidade_id=eq.${params.id}` },
+        ]}
+      />
       <BackButton href="/compras/solicitacoes" />
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
@@ -52,7 +66,7 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
         </div>
 
         <div className="flex items-start gap-3">
-          {isAprovada && (
+          {isAprovada && podeCriarPedido && (
             <a
               href={`/compras/pedidos/novo?from=${sol.id}`}
               className="btn-primary flex items-center gap-1.5 text-sm"

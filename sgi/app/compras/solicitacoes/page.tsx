@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { STATUS_SOL_LABEL, PRIORIDADE_LABEL } from "@/types/compras";
 import { SolicitacoesLista } from "./solicitacoes-lista";
 import { Paginacao } from "@/components/paginacao";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,10 @@ export default async function SolicitacoesPage({
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher
+        channelName="solicitacoes-compra-lista"
+        subs={[{ table: "solicitacoes_compra" }]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Solicitações de Compra</h1>

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import { STATUS_PED_LABEL } from "@/types/compras";
 import { PedidosLista } from "./pedidos-lista";
 import { Paginacao } from "@/components/paginacao";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,11 @@ const POR_PAGINA = 30;
 export default async function PedidosPage({
   searchParams,
 }: { searchParams: { status?: string; fornecedor?: string; page?: string } }) {
+  const usuario = await getUsuarioAtual();
+  const podeCriar =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("compras.pedido.criar");
+
   const admin = createAdminClient();
   const pagina = Math.max(1, parseInt(searchParams.page ?? "1"));
   const from = (pagina - 1) * POR_PAGINA;
@@ -30,12 +37,18 @@ export default async function PedidosPage({
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher
+        channelName="pedidos-compra-lista"
+        subs={[{ table: "pedidos_compra" }]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Pedidos de Compra</h1>
           <p className="mt-1 text-sm text-ink-soft">{count ?? 0} registro(s)</p>
         </div>
-        <Link href="/compras/pedidos/novo" className="btn-primary">Novo pedido</Link>
+        {podeCriar && (
+          <Link href="/compras/pedidos/novo" className="btn-primary">Novo pedido</Link>
+        )}
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">

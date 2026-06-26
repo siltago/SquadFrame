@@ -95,7 +95,7 @@ export async function moverTarefaPedido(pedidoId: string, novoStatus: string, us
     .not("status", "in", '("CANCELADA")')
     .maybeSingle();
 
-  if (!tarefa || tarefa.coluna_id === colunaId) return;
+  if (!tarefa) return;
 
   // Separa "é um estado terminal" de "qual status a tarefa recebe"
   const moveParaColunaFinal = ["RECEBIDO", "FINALIZADO", "CANCELADO"].includes(novoStatus);
@@ -104,10 +104,29 @@ export async function moverTarefaPedido(pedidoId: string, novoStatus: string, us
     : moveParaColunaFinal      ? "CONCLUIDA"   // recebido/finalizado → tarefa CONCLUIDA
     : undefined;                               // demais → não altera status
 
+  // Pedido aprovado → atribui a tarefa de volta ao comprador para aparecer em Minha Central
+  let compradorId: string | undefined;
+  if (novoStatus === "APROVADO") {
+    const { data: ped } = await admin
+      .from("pedidos_compra")
+      .select("comprador_id")
+      .eq("id", pedidoId)
+      .single();
+    compradorId = ped?.comprador_id ?? undefined;
+  }
+
+  // Só pula se a coluna já está certa E não há atribuição de comprador para fazer
+  const precisaMoverColuna = tarefa.coluna_id !== colunaId;
+  const precisaAtribuir = !!compradorId;
+  if (!precisaMoverColuna && !precisaAtribuir) return;
+
   await admin.from("tarefas").update({
-    coluna_id: colunaId,
+    ...(precisaMoverColuna ? { coluna_id: colunaId } : {}),
     ...(statusTarefa
       ? { status: statusTarefa, concluida_em: new Date().toISOString() }
+      : {}),
+    ...(compradorId
+      ? { usuario_responsavel_id: compradorId, status: "ACEITA" }
       : {}),
   }).eq("id", tarefa.id);
 
@@ -115,6 +134,6 @@ export async function moverTarefaPedido(pedidoId: string, novoStatus: string, us
     tarefa_id: tarefa.id,
     usuario_id: usuarioId ?? null,
     acao: "MOVIDA_AUTOMATICAMENTE",
-    dados: { status: novoStatus, coluna_id: colunaId },
+    dados: { status: novoStatus, coluna_id: colunaId, ...(compradorId ? { atribuida_a: compradorId } : {}) },
   });
 }

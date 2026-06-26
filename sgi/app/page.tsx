@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { MinhaCentral } from "@/components/kanban/minha-central";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -46,11 +47,22 @@ export default async function HomePage() {
   }
 
   return (
-    <MinhaCentral
-      minhasTarefas={(minhasTarefasRaw ?? []) as any}
-      setorTarefas={setorTarefasRaw as any}
-      usuarioId={usuario.id}
-      usuarioNome={usuario.nome}
-    />
+    <>
+      <RealtimeRefresher
+        channelName={`home-${usuario.id}`}
+        subs={[
+          { table: "tarefas", filter: `usuario_responsavel_id=eq.${usuario.id}` },
+          ...(usuario.setor?.id
+            ? [{ table: "tarefas" as const, filter: `setor_id=eq.${usuario.setor.id}`, event: "INSERT" as const }]
+            : []),
+        ]}
+      />
+      <MinhaCentral
+        minhasTarefas={(minhasTarefasRaw ?? []) as any}
+        setorTarefas={setorTarefasRaw as any}
+        usuarioId={usuario.id}
+        usuarioNome={usuario.nome}
+      />
+    </>
   );
 }

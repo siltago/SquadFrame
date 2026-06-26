@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import Link from "next/link";
 import { STATUS_PED_COR, STATUS_PED_LABEL, STATUS_SOL_COR, STATUS_SOL_LABEL } from "@/types/compras";
 
@@ -29,6 +30,13 @@ function DiasParado({ dias, destaque }: { dias: number; destaque: boolean }) {
 
 export async function ComprasTab({ obraId }: { obraId: string }) {
   const supabase = createAdminClient();
+  const usuario = await getUsuarioAtual();
+  const podeCriarPedido =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("compras.pedido.criar");
+  const podeCriarSolicitacao =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("compras.solicitacao.criar");
 
   const [resPed, resSol] = await Promise.all([
     supabase
@@ -67,17 +75,21 @@ export async function ComprasTab({ obraId }: { obraId: string }) {
               {pedidos.length}
             </span>
           </h2>
-          <Link href={`/compras/pedidos/novo?obra_id=${obraId}`} className="btn-primary text-sm">
-            Novo pedido
-          </Link>
+          {podeCriarPedido && (
+            <Link href={`/compras/pedidos/novo?obra_id=${obraId}`} className="btn-primary text-sm">
+              Novo pedido
+            </Link>
+          )}
         </div>
 
         {pedidos.length === 0 ? (
           <div className="card flex flex-col items-center gap-3 py-12 text-center">
             <p className="text-sm font-medium text-ink">Nenhum pedido para esta obra</p>
-            <Link href={`/compras/pedidos/novo?obra_id=${obraId}`} className="btn-primary text-sm">
-              Criar primeiro pedido
-            </Link>
+            {podeCriarPedido && (
+              <Link href={`/compras/pedidos/novo?obra_id=${obraId}`} className="btn-primary text-sm">
+                Criar primeiro pedido
+              </Link>
+            )}
           </div>
         ) : (
           <div className="card overflow-hidden">
@@ -141,17 +153,21 @@ export async function ComprasTab({ obraId }: { obraId: string }) {
               {solicitacoes.length}
             </span>
           </h2>
-          <Link href={`/compras/solicitacoes/nova?obra_id=${obraId}`} className="btn-primary text-sm">
-            Nova solicitação
-          </Link>
+          {podeCriarSolicitacao && (
+            <Link href={`/compras/solicitacoes/nova?obra_id=${obraId}`} className="btn-primary text-sm">
+              Nova solicitação
+            </Link>
+          )}
         </div>
 
         {solicitacoes.length === 0 ? (
           <div className="card flex flex-col items-center gap-3 py-12 text-center">
             <p className="text-sm font-medium text-ink">Nenhuma solicitação para esta obra</p>
-            <Link href={`/compras/solicitacoes/nova?obra_id=${obraId}`} className="btn-primary text-sm">
-              Criar primeira solicitação
-            </Link>
+            {podeCriarSolicitacao && (
+              <Link href={`/compras/solicitacoes/nova?obra_id=${obraId}`} className="btn-primary text-sm">
+                Criar primeira solicitação
+              </Link>
+            )}
           </div>
         ) : (
           <div className="card overflow-hidden">

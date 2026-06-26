@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BackButton } from "@/components/back-button";
+import { usePode } from "@/components/user-provider";
 
 const NAV_ITEMS = [
   {
@@ -42,6 +43,8 @@ export function ComprasSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const podeCriarPedido = usePode("compras.pedido.criar");
+  const podeCriarSolicitacao = usePode("compras.solicitacao.criar");
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
@@ -107,8 +110,8 @@ export function ComprasSidebar() {
           ))}
         </nav>
         <div className="border-t border-line p-3 space-y-2" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <Link href="/compras/solicitacoes/nova" className="btn-primary w-full text-center text-sm">Nova solicitação</Link>
-          <Link href="/compras/pedidos/novo" className="btn-ghost w-full text-center text-sm">Novo pedido</Link>
+          {podeCriarSolicitacao && <Link href="/compras/solicitacoes/nova" className="btn-primary w-full text-center text-sm">Nova solicitação</Link>}
+          {podeCriarPedido && <Link href="/compras/pedidos/novo" className="btn-ghost w-full text-center text-sm">Novo pedido</Link>}
         </div>
       </div>
 
@@ -156,10 +159,10 @@ export function ComprasSidebar() {
           ))}
         </nav>
 
-        {!collapsed && (
+        {!collapsed && (podeCriarSolicitacao || podeCriarPedido) && (
           <div className="border-t border-line p-3 space-y-2">
-            <Link href="/compras/solicitacoes/nova" className="btn-primary w-full text-center text-sm">Nova solicitação</Link>
-            <Link href="/compras/pedidos/novo" className="btn-ghost w-full text-center text-sm">Novo pedido</Link>
+            {podeCriarSolicitacao && <Link href="/compras/solicitacoes/nova" className="btn-primary w-full text-center text-sm">Nova solicitação</Link>}
+            {podeCriarPedido && <Link href="/compras/pedidos/novo" className="btn-ghost w-full text-center text-sm">Novo pedido</Link>}
           </div>
         )}
       </aside>

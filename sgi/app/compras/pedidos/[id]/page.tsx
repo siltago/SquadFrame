@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { BackButton } from "@/components/back-button";
+import { RealtimeRefresher } from "@/components/realtime-refresher";
 import { PedidoCliente } from "./pedido-cliente";
 import { PedidoTabs } from "./pedido-tabs";
 import { STATUS_PED_COR, STATUS_PED_LABEL } from "@/types/compras";
@@ -76,6 +77,15 @@ export default async function PedidoPage({ params }: { params: { id: string } })
             {(ped.fornecedor as any)?.nome} · {(ped.obra as any)?.nome ?? "Sem obra"} · {(ped.comprador as any)?.nome}
           </p>
         </div>
+        <RealtimeRefresher
+          channelName={`pedido-${params.id}`}
+          subs={[
+            { table: "pedidos_compra",  filter: `id=eq.${params.id}` },
+            { table: "pedido_itens",    filter: `pedido_id=eq.${params.id}` },
+            { table: "recebimentos",    filter: `pedido_id=eq.${params.id}` },
+            { table: "compra_historico", filter: `entidade_id=eq.${params.id}` },
+          ]}
+        />
         <div className="flex items-center gap-2">
           {ped.status !== "RASCUNHO" && (
             <Link

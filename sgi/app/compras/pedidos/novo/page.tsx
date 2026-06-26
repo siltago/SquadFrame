@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import { NovoPedidoCliente } from "./novo-pedido-cliente";
 import { BackButton } from "@/components/back-button";
 
@@ -9,6 +11,12 @@ export default async function NovoPedidoPage({
 }: {
   searchParams: { from?: string; obra_id?: string };
 }) {
+  const usuario = await getUsuarioAtual();
+  const podeCriar =
+    usuario?.permissoes?.includes("*") ||
+    usuario?.permissoes?.includes("compras.pedido.criar");
+  if (!podeCriar) redirect("/compras/pedidos");
+
   const admin = createAdminClient();
 
   const [{ data: obras }, { data: fornecedores }, { data: solAprovadas }, { data: tipos }, { data: formas }, { data: coresRal }] =

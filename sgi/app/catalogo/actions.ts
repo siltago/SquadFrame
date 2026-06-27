@@ -1,12 +1,15 @@
 "use server";
 
 import { createAdminClient as createClient } from "@/lib/supabase-admin";
+import { verificarPermissao } from "@/core/permissions/check-permission";
+import { PERMISSIONS } from "@/core/permissions/permissions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 // ─── Abas (tipos de linha) ───────────────────────────────────
 
 export async function criarAba(formData: FormData) {
+  await verificarPermissao("catalogo.criar");
   const supabase = createClient();
   const nome    = String(formData.get("nome")    || "").trim();
   const unidade = String(formData.get("unidade") || "UN").trim();
@@ -29,6 +32,7 @@ export async function criarAba(formData: FormData) {
 }
 
 export async function editarAba(id: string, formData: FormData) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const nome    = String(formData.get("nome")    || "").trim();
   const unidade = String(formData.get("unidade") || "UN").trim();
@@ -44,6 +48,7 @@ export async function editarAba(id: string, formData: FormData) {
 }
 
 export async function apagarAba(id: string) {
+  await verificarPermissao("catalogo.apagar");
   const supabase = createClient();
 
   const { count } = await supabase
@@ -66,6 +71,7 @@ export async function apagarAba(id: string) {
 // ─── Linha ───────────────────────────────────────────────────
 
 export async function criarLinha(formData: FormData) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_LINHA_GERENCIAR);
   const supabase = createClient();
 
   const nome = String(formData.get("nome") || "").trim();
@@ -97,6 +103,7 @@ export async function criarLinha(formData: FormData) {
 }
 
 export async function editarLinha(linhaId: string, formData: FormData) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_LINHA_GERENCIAR);
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim();
   const fabricante = String(formData.get("fabricante") || "").trim() || null;
@@ -112,6 +119,7 @@ export async function editarLinha(linhaId: string, formData: FormData) {
 }
 
 export async function apagarLinha(linhaId: string) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_LINHA_GERENCIAR);
   const supabase = createClient();
 
   const { count } = await supabase
@@ -135,6 +143,7 @@ export async function apagarLinha(linhaId: string) {
 // ─── Categoria ───────────────────────────────────────────────
 
 export async function criarCategoria(linhaId: string, formData: FormData) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_CATEGORIA_GERENCIAR);
   const supabase = createClient();
 
   const nome = String(formData.get("nome") || "").trim().toUpperCase();
@@ -152,6 +161,7 @@ export async function criarCategoria(linhaId: string, formData: FormData) {
 }
 
 export async function editarCategoria(categoriaId: string, linhaId: string, formData: FormData) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_CATEGORIA_GERENCIAR);
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim().toUpperCase();
   const tipo = String(formData.get("tipo") || "OUTROS").trim().toUpperCase();
@@ -166,6 +176,7 @@ export async function editarCategoria(categoriaId: string, linhaId: string, form
 }
 
 export async function apagarCategoria(categoriaId: string, linhaId: string) {
+  await verificarPermissao(PERMISSIONS.CATALOGO_CATEGORIA_GERENCIAR);
   const supabase = createClient();
   // Desvincula produtos antes de apagar
   await supabase.from("produtos").update({ categoria_id: null }).eq("categoria_id", categoriaId);
@@ -181,6 +192,7 @@ export async function importarPerfisXml(
   linhaId: string,
   itensJson: string,
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const itens: Array<{ codigo: string; peso: number }> = JSON.parse(itensJson);
@@ -234,6 +246,7 @@ export async function importarPerfisXml(
 }
 
 export async function atualizarUnidadeLinha(linhaId: string, de: string, para: string) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   // Conta antes
   const { count: antes } = await supabase
@@ -252,6 +265,7 @@ export async function atualizarUnidadeLinha(linhaId: string, de: string, para: s
 }
 
 export async function definirComprimentoLinha(linhaId: string, tamanho_mm: number) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const { count: antes } = await supabase
     .from("produtos")
@@ -272,6 +286,7 @@ export async function atualizarPesosXml(
   linhaId: string,
   itensJson: string,
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const itens: Array<{ codigo: string; peso: number }> = JSON.parse(itensJson);
   if (!itens.length) throw new Error("Nenhum item para atualizar.");
@@ -295,6 +310,7 @@ export async function atualizarPesosXml(
 // ─── Produto ─────────────────────────────────────────────────
 
 export async function criarProduto(linhaId: string, formData: FormData) {
+  await verificarPermissao("catalogo.criar");
   const supabase = createClient();
 
   const codigo_mestre  = String(formData.get("codigo_mestre")  || "").trim();
@@ -357,6 +373,7 @@ export async function criarProduto(linhaId: string, formData: FormData) {
 // ─── Cores ───────────────────────────────────────────────────
 
 export async function vincularTodasCores(produtoId: string, linhaId: string) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const [{ data: todasCores }, { data: jaVinculadas }] = await Promise.all([
@@ -393,6 +410,7 @@ export async function vincularCor(
   corId: string,
   acabamentoId: string | null
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   if (!corId) throw new Error("Selecione uma cor.");
@@ -417,6 +435,7 @@ export async function editarProduto(
   linhaId: string,
   formData: FormData
 ): Promise<{ redirect?: string }> {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim();
   const codigo_mestre = String(formData.get("codigo_mestre") || "").trim();
@@ -462,6 +481,7 @@ export async function adicionarAlias(
   fornecedorId?: string | null,
   specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null }
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const valor = alias.trim();
@@ -487,6 +507,7 @@ export async function editarAlias(
   fornecedorId?: string | null,
   specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null }
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const valor = alias.trim();
   if (!valor) throw new Error("Alias não pode ser vazio.");
@@ -503,6 +524,7 @@ export async function editarAlias(
 }
 
 export async function excluirAlias(aliasId: string, produtoId: string, linhaId: string) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const { error } = await supabase.from("produto_aliases").delete().eq("id", aliasId);
   if (error) throw new Error(error.message);
@@ -516,6 +538,7 @@ export async function adicionarFornecedor(
   linhaId: string,
   formData: FormData
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const fornecedorNome = String(formData.get("fornecedor_nome") || "").trim();
@@ -566,6 +589,7 @@ export async function deletarArquivo(
   url: string,
   urlPreview: string | null
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const extractPath = (publicUrl: string) => {
@@ -596,6 +620,7 @@ export async function deletarArquivo(
 // ─── Excluir Produto ─────────────────────────────────────────
 
 export async function deletarProduto(linhaId: string, produtoId: string) {
+  await verificarPermissao("catalogo.apagar");
   const supabase = createClient();
 
   // Remove itens de solicitação vinculados a este produto
@@ -617,6 +642,7 @@ export async function deletarProduto(linhaId: string, produtoId: string) {
 // ─── Cores RAL (cadastro / exclusão) ────────────────────────
 
 export async function deletarCor(corId: string) {
+  await verificarPermissao("catalogo.apagar");
   const supabase = createClient();
   const { error } = await supabase.from("cores_ral").delete().eq("id", corId);
   if (error) throw new Error(error.message);
@@ -624,6 +650,7 @@ export async function deletarCor(corId: string) {
 }
 
 export async function criarCorRal(formData: FormData) {
+  await verificarPermissao("catalogo.criar");
   const supabase = createClient();
   const codigo_ral = String(formData.get("codigo_ral") || "").trim().toUpperCase();
   const nome = String(formData.get("nome") || "").trim() || null;
@@ -639,6 +666,7 @@ export async function criarCorRal(formData: FormData) {
 }
 
 export async function editarCor(id: string, formData: FormData) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim() || null;
   const hex = String(formData.get("hex") || "").trim() || null;
@@ -722,6 +750,7 @@ export async function enviarArquivo(
   linhaId: string,
   formData: FormData
 ) {
+  await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
   const file = formData.get("arquivo") as File;

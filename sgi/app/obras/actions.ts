@@ -4,11 +4,10 @@ import { createAdminClient as createClient } from "@/lib/supabase-admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/auth";
+import { verificarPermissao } from "@/core/permissions/check-permission";
 
 export async function criarObra(formData: FormData) {
-  const usuario = await getUsuarioAtual();
-  const pode = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes("obras.criar") || false;
-  if (!pode) throw new Error("Sem permissão para criar obras.");
+  await verificarPermissao("obras.criar");
 
   const supabase = createClient();
 
@@ -118,6 +117,7 @@ export async function buscarStatusObra() {
 }
 
 export async function alterarStatusObra(obraId: string, statusId: string, motivo?: string) {
+  await verificarPermissao("obras.editar");
   const supabase = createClient();
 
   const { error } = await supabase
@@ -149,6 +149,7 @@ export async function importarTipologias(
   loteNome: string,
   tipologiasJson: string,
 ) {
+  await verificarPermissao("obras.editar");
   const supabase = createClient();
 
   const itens: Array<{
@@ -184,6 +185,7 @@ export async function importarTipologias(
 }
 
 export async function excluirLote(loteId: string, obraId: string) {
+  await verificarPermissao("obras.editar");
   const supabase = createClient();
   const { error } = await supabase.from("lotes_obra").delete().eq("id", loteId);
   if (error) throw new Error(error.message);
@@ -201,6 +203,7 @@ export async function editarTipologia(
     peso_unit: number | null; preco_unit: number | null;
   },
 ) {
+  await verificarPermissao("obras.editar");
   const supabase = createClient();
   const { error } = await supabase
     .from("tipologias_obra")
@@ -211,6 +214,7 @@ export async function editarTipologia(
 }
 
 export async function adicionarTipologia(obraId: string, formData: FormData) {
+  await verificarPermissao("obras.criar", "obras.editar");
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim();
   const quantidade = parseInt(String(formData.get("quantidade") || "1"), 10);
@@ -229,13 +233,9 @@ export async function adicionarTipologia(obraId: string, formData: FormData) {
 }
 
 export async function editarObra(obraId: string, formData: FormData) {
+  await verificarPermissao("obras.editar");
   const supabase = createClient();
   const usuario = await getUsuarioAtual();
-  const podeEditar =
-    usuario?.permissoes?.includes("*") ||
-    usuario?.permissoes?.includes("obras.editar") ||
-    false;
-  if (!podeEditar) throw new Error("Sem permissão para editar obras.");
 
   const nome = String(formData.get("nome") || "").trim();
   const cliente_nome = String(formData.get("cliente_nome") || "").trim();

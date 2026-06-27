@@ -2,9 +2,11 @@
 
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/lib/supabase-server";
+import { verificarPermissao } from "@/core/permissions/check-permission";
 import { revalidatePath } from "next/cache";
 
 export async function atribuirCargo(usuarioId: string, cargoId: string | null) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
 
   let setorId: string | null = null;
@@ -27,6 +29,7 @@ export async function atribuirCargo(usuarioId: string, cargoId: string | null) {
 }
 
 export async function alterarStatusUsuario(usuarioId: string, ativo: boolean) {
+  await verificarPermissao("usuarios.editar");
   const admin = createAdminClient();
   const { error } = await admin
     .from("usuarios")

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getUsuarioAtual } from "@/lib/auth";
+import { verificarPermissao } from "@/core/permissions/check-permission";
 import { revalidatePath } from "next/cache";
 
 async function audit(acao: string, tabela: string, registro_id: string, dados?: object) {
@@ -17,6 +18,7 @@ async function audit(acao: string, tabela: string, registro_id: string, dados?: 
 }
 
 export async function criarSetor(formData: FormData) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
   const nome = String(formData.get("nome") || "").trim();
   const cor  = String(formData.get("cor")  || "#475569").trim();
@@ -41,6 +43,7 @@ export async function criarSetor(formData: FormData) {
 }
 
 export async function criarCargo(formData: FormData) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
   const nome     = String(formData.get("nome")     || "").trim();
   const cor      = String(formData.get("cor")      || "#475569").trim();
@@ -77,6 +80,7 @@ export async function salvarCargo(
     permissao_ids: string[];
   }
 ) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
   const { nome, cor, setor_id, is_admin, permissao_ids } = payload;
 
@@ -101,6 +105,7 @@ export async function salvarCargo(
 }
 
 export async function reordenarCargos(itens: { id: string; ordem: number }[]) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
   await Promise.all(
     itens.map(({ id, ordem }) =>
@@ -111,6 +116,7 @@ export async function reordenarCargos(itens: { id: string; ordem: number }[]) {
 }
 
 export async function excluirCargo(cargoId: string) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
 
   const { count } = await admin
@@ -145,6 +151,7 @@ export async function excluirCargo(cargoId: string) {
 }
 
 export async function atribuirCargo(usuarioId: string, cargoId: string | null) {
+  await verificarPermissao("cargos.criar");
   const admin = createAdminClient();
   const { error } = await admin
     .from("usuarios")

@@ -1,11 +1,15 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUsuarioAtual } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export type SalvarResult = { ok: true; logo_url: string | null } | { ok: false; erro: string };
 
 export async function salvarEmpresa(formData: FormData): Promise<SalvarResult> {
+  const usuario = await getUsuarioAtual();
+  if (!usuario) return { ok: false, erro: "Não autenticado." };
+  if (!usuario.permissoes?.includes("*")) return { ok: false, erro: "Apenas administradores podem alterar dados da empresa." };
   const admin = createAdminClient();
 
   const logoFile = formData.get("logo_file") as File | null;

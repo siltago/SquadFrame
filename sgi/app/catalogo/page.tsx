@@ -5,6 +5,9 @@ import { AbaCoresCatalogo } from "./aba-cores-catalogo";
 import { NovaAbaInline } from "./nova-aba-inline";
 import { GerenciarAba } from "./gerenciar-aba";
 import { FilterBar } from "./filter-bar";
+import { GerenciarFornecedores } from "./gerenciar-fornecedores";
+import { GerenciarLinhas } from "./gerenciar-linhas";
+import { GerenciarCategorias } from "./gerenciar-categorias";
 import type { CatalogItem } from "./catalog-item";
 import type { Filters } from "./filter-bar";
 
@@ -42,6 +45,7 @@ export default async function CatalogoPage({
     status?: string;
     ordem?: string;
     pagina?: string;
+    gerenciar?: string;
   };
 }) {
   const supabase = createAdminClient();
@@ -50,6 +54,7 @@ export default async function CatalogoPage({
     usuario?.permissoes?.includes("*") ||
     usuario?.permissoes?.includes("catalogo.criar") ||
     false;
+  const gerenciar = searchParams.gerenciar?.trim() ?? "";
 
   // Carrega tipos de linha
   const { data: tiposRaw, error: tiposErr } = await supabase
@@ -261,6 +266,69 @@ export default async function CatalogoPage({
   const hasFilters =
     filtroQ || filtroFornecedor || filtroLinha || filtroCategoria || filtroStatus;
 
+  // ── Dados das views de gerenciamento (carregados apenas quando necessário) ────
+  let fornecedoresGerenciar: any[] = [];
+  let tiposLinhaGerenciar: { nome: string; slug: string }[] = [];
+  let linhasComCategorias: { id: string; nome: string; fabricante: string | null; descricao: string | null; categorias: { id: string; nome: string; tipo: string }[] }[] = [];
+  let linhasComProdutos: { id: string; nome: string; fabricante: string | null; descricao: string | null; _count: number }[] = [];
+
+  if (gerenciar === "fornecedores") {
+    const [{ data: fLista }, { data: tiposLista }] = await Promise.all([
+      supabase.from("fornecedores").select(
+        "id, nome, razao_social, cnpj, email, telefone, contato, ativo, tipos, endereco, numero, complemento, bairro, cidade, estado, cep"
+      ).order("nome"),
+      supabase.from("tipos_linha").select("nome, slug").order("ordem"),
+    ]);
+    fornecedoresGerenciar = fLista ?? [];
+    tiposLinhaGerenciar = tiposLista ?? [];
+  }
+
+  if (gerenciar === "linhas") {
+    const { data: linhasLista } = await supabase
+      .from("linhas")
+      .select("id, nome, fabricante, descricao")
+      .eq("tipo", tipoSlug)
+      .order("nome");
+    const linhasIds = (linhasLista ?? []).map((l) => l.id);
+    let contagens: Record<string, number> = {};
+    if (linhasIds.length > 0) {
+      const { data: countRows } = await supabase
+        .from("produtos")
+        .select("linha_id")
+        .in("linha_id", linhasIds)
+        .is("deleted_at", null);
+      for (const r of countRows ?? []) {
+        contagens[r.linha_id] = (contagens[r.linha_id] ?? 0) + 1;
+      }
+    }
+    linhasComProdutos = (linhasLista ?? []).map((l) => ({ ...l, _count: contagens[l.id] ?? 0 }));
+  }
+
+  if (gerenciar === "categorias") {
+    const { data: linhasLista } = await supabase
+      .from("linhas")
+      .select("id, nome, fabricante, descricao")
+      .eq("tipo", tipoSlug)
+      .order("nome");
+    const linhasIds = (linhasLista ?? []).map((l) => l.id);
+    let catsPorLinha: Record<string, { id: string; nome: string; tipo: string }[]> = {};
+    if (linhasIds.length > 0) {
+      const { data: catsLista } = await supabase
+        .from("categorias_perfil")
+        .select("id, nome, tipo, linha_id")
+        .in("linha_id", linhasIds)
+        .order("nome");
+      for (const c of catsLista ?? []) {
+        if (!catsPorLinha[c.linha_id]) catsPorLinha[c.linha_id] = [];
+        catsPorLinha[c.linha_id].push({ id: c.id, nome: c.nome, tipo: c.tipo ?? "OUTROS" });
+      }
+    }
+    linhasComCategorias = (linhasLista ?? []).map((l) => ({
+      ...l,
+      categorias: catsPorLinha[l.id] ?? [],
+    }));
+  }
+
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">
 
@@ -295,14 +363,54 @@ export default async function CatalogoPage({
         </div>
       </div>
 
-      {/* Dashboard compacto */}
+      {/* Dashboard compacto — cards clicáveis para gerenciar */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard value={totalProdutos} label="produtos" filtered={!!hasFilters} />
-        <StatCard value={totalFornecedores} label="fornecedores" />
-        <StatCard value={totalLinhas} label="linhas" />
-        <StatCard value={totalCategorias} label="categorias" />
+        <StatCard
+          value={totalProdutos} label="produtos" filtered={!!hasFilters}
+          href={`/catalogo?tipo=${tipoSlug.toLowerCase()}`}
+          active={!gerenciar}
+        />
+        <StatCard
+          value={totalFornecedores} label="fornecedores"
+          href={`/catalogo?tipo=${tipoSlug.toLowerCase()}&gerenciar=fornecedores`}
+          active={gerenciar === "fornecedores"}
+        />
+        <StatCard
+          value={totalLinhas} label="linhas"
+          href={`/catalogo?tipo=${tipoSlug.toLowerCase()}&gerenciar=linhas`}
+          active={gerenciar === "linhas"}
+        />
+        <StatCard
+          value={totalCategorias} label="categorias"
+          href={`/catalogo?tipo=${tipoSlug.toLowerCase()}&gerenciar=categorias`}
+          active={gerenciar === "categorias"}
+        />
       </div>
 
+      {/* Views de gerenciamento */}
+      {gerenciar === "fornecedores" && (
+        <GerenciarFornecedores
+          fornecedores={fornecedoresGerenciar}
+          tiposLinha={tiposLinhaGerenciar}
+        />
+      )}
+      {gerenciar === "linhas" && (
+        <GerenciarLinhas
+          linhas={linhasComProdutos}
+          tipoSlug={tipoSlug.toLowerCase()}
+          podeCriar={podeCriar}
+        />
+      )}
+      {gerenciar === "categorias" && (
+        <GerenciarCategorias
+          linhas={linhasComCategorias}
+          podeCriar={podeCriar}
+        />
+      )}
+
+      {/* Conteúdo normal (produtos) — apenas quando não há view de gerenciamento */}
+      {!gerenciar && (
+        <>
       {/* FilterBar */}
       <div className="mt-4">
         <FilterBar
@@ -496,6 +604,8 @@ export default async function CatalogoPage({
           )}
         </div>
       )}
+        </>
+      )}
     </div>
   );
 }
@@ -504,18 +614,31 @@ function StatCard({
   value,
   label,
   filtered,
+  href,
+  active,
 }: {
   value: number;
   label: string;
   filtered?: boolean;
+  href?: string;
+  active?: boolean;
 }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+  const inner = (
+    <>
       <p className="text-2xl font-bold tracking-tight text-ink">{value.toLocaleString("pt-BR")}</p>
       <p className="mt-0.5 text-xs text-ink-soft">
         {label}
         {filtered && <span className="ml-1 text-ink-faint">(filtrado)</span>}
       </p>
-    </div>
+    </>
   );
+  const cls = `rounded-xl border px-4 py-3 transition-colors ${
+    active
+      ? "border-steel bg-steel/5"
+      : "border-line bg-surface hover:border-steel/40 hover:bg-canvas"
+  }`;
+  if (href) {
+    return <Link href={href} className={cls}>{inner}</Link>;
+  }
+  return <div className={cls}>{inner}</div>;
 }

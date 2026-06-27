@@ -39,7 +39,7 @@ export async function excluirFormasPagamento(ids: string[]) {
 // ── Fornecedores ─────────────────────────────────────────────────────────────
 
 export async function criarFornecedor(formData: FormData) {
-  await verificarPermissao(PERMISSIONS.COMPRAS_FORNECEDOR_CRIAR);
+  await verificarPermissao(PERMISSIONS.CATALOGO_FORNECEDOR_CRIAR, PERMISSIONS.COMPRAS_FORNECEDOR_CRIAR);
   const admin = createAdminClient();
   const g = (k: string) => (formData.get(k) as string | null)?.trim() || null;
   const nome  = (formData.get("nome") as string).trim();
@@ -61,7 +61,7 @@ export async function criarFornecedor(formData: FormData) {
 }
 
 export async function editarFornecedor(id: string, formData: FormData) {
-  await verificarPermissao(PERMISSIONS.COMPRAS_FORNECEDOR_EDITAR);
+  await verificarPermissao(PERMISSIONS.CATALOGO_FORNECEDOR_EDITAR, PERMISSIONS.COMPRAS_FORNECEDOR_EDITAR);
   const admin = createAdminClient();
   const g = (k: string) => (formData.get(k) as string | null)?.trim() || null;
   const nome  = (formData.get("nome") as string).trim();
@@ -83,7 +83,7 @@ export async function editarFornecedor(id: string, formData: FormData) {
 
 export async function excluirFornecedores(ids: string[]) {
   if (!ids.length) return;
-  await verificarPermissao(PERMISSIONS.COMPRAS_FORNECEDOR_EXCLUIR);
+  await verificarPermissao(PERMISSIONS.CATALOGO_FORNECEDOR_EXCLUIR, PERMISSIONS.COMPRAS_FORNECEDOR_EXCLUIR);
   const admin = createAdminClient();
   const { error } = await admin.from("fornecedores").delete().in("id", ids);
   if (error) throw new Error("Não é possível excluir: há pedidos ou registros vinculados a esse fornecedor.");

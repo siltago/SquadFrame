@@ -25,7 +25,7 @@ export default async function ProdutoPage({
       `id, codigo_mestre, nome, unidade, status, descricao, observacoes, fornecedor_mestre_id,
        peso_metro, preco_metro, tamanho_mm,
        linha:linhas(nome, fabricante, tipo),
-       categoria:categorias_perfil(nome)`
+       categoria:categorias_perfil(id, nome)`
     )
     .eq("id", params.produtoId)
     .eq("linha_id", params.linhaId)
@@ -66,9 +66,26 @@ export default async function ProdutoPage({
   let arquivos: any[] = [];
 
   // Fornecedores sempre carregados (usados em Geral e Aliases)
-  const { data: fDisp } = await supabase
-    .from("fornecedores").select("id, nome").eq("ativo", true).order("nome");
+  const [{ data: fDisp }, { data: linhasDoTipo }, ] = await Promise.all([
+    supabase.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
+    linha?.tipo
+      ? supabase.from("linhas").select("id, nome").eq("tipo", linha.tipo).eq("ativo", true).order("nome")
+      : { data: [] },
+  ]);
   fornecedoresDisponiveis = fDisp ?? [];
+  const linhasDisponiveis = linhasDoTipo ?? [];
+
+  // Categorias de todas as linhas do mesmo tipo (para o select em aba-geral)
+  let todasCategorias: { id: string; nome: string; linha_id: string }[] = [];
+  if (linhasDisponiveis.length > 0) {
+    const linhaIds = linhasDisponiveis.map((l) => l.id);
+    const { data: cats } = await supabase
+      .from("categorias_perfil")
+      .select("id, nome, linha_id")
+      .in("linha_id", linhaIds)
+      .order("nome");
+    todasCategorias = cats ?? [];
+  }
 
   if (abaAtiva === "cores") {
     const results = await Promise.all([
@@ -154,6 +171,8 @@ export default async function ProdutoPage({
           linhaId={params.linhaId}
           tipoUnidade={tipoUnidade}
           fornecedoresDisponiveis={fornecedoresDisponiveis}
+          linhasDisponiveis={linhasDisponiveis}
+          todasCategorias={todasCategorias}
         />
       )}
 

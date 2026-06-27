@@ -12,23 +12,35 @@ type Produto = {
   fornecedor_mestre_id?: string | null;
   peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null;
   linha?: { nome: string; fabricante?: string | null } | null;
-  categoria?: { nome: string } | null;
+  categoria?: { id?: string; nome: string } | null;
 };
 type Fornecedor = { id: string; nome: string };
+type LinhaDisp = { id: string; nome: string };
+type CategoriaDisp = { id: string; nome: string; linha_id: string };
 
 export function AbaGeral({
-  produto, linhaId, tipoUnidade, fornecedoresDisponiveis,
+  produto, linhaId, tipoUnidade, fornecedoresDisponiveis, linhasDisponiveis, todasCategorias,
 }: {
-  produto: Produto; linhaId: string; tipoUnidade?: string | null; fornecedoresDisponiveis: Fornecedor[];
+  produto: Produto; linhaId: string; tipoUnidade?: string | null;
+  fornecedoresDisponiveis: Fornecedor[];
+  linhasDisponiveis?: LinhaDisp[];
+  todasCategorias?: CategoriaDisp[];
 }) {
   const [editando, setEditando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [linhaIdSelecionada, setLinhaIdSelecionada] = useState(linhaId);
+  const [categoriaIdSelecionada, setCategoriaIdSelecionada] = useState((produto.categoria as any)?.id ?? "");
   const router = useRouter();
 
   const labels = specLabels(tipoUnidade);
   const showTamanho = !!labels.tamanho;
   const showSpecs = tipoUnidade && tipoUnidade !== "UN" && tipoUnidade !== "CX";
+
+  // Categorias filtradas pela linha selecionada no form
+  const categoriasDaLinha = (todasCategorias ?? []).filter(
+    (c) => c.linha_id === linhaIdSelecionada
+  );
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -36,9 +48,13 @@ export function AbaGeral({
     const fd = new FormData(e.currentTarget);
     start(async () => {
       try {
-        await editarProduto(produto.id, linhaId, fd);
-        setEditando(false);
-        router.refresh();
+        const result = await editarProduto(produto.id, linhaId, fd);
+        if (result?.redirect) {
+          router.push(result.redirect);
+        } else {
+          setEditando(false);
+          router.refresh();
+        }
       } catch (err: any) { setErro(err.message); }
     });
   }
@@ -75,6 +91,40 @@ export function AbaGeral({
                 <option value="">Sem fornecedor</option>
                 {fornecedoresDisponiveis.map((f) => (
                   <option key={f.id} value={f.id}>{f.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            {(linhasDisponiveis?.length ?? 0) > 1 && (
+              <div>
+                <label className="label">Linha</label>
+                <select
+                  name="linha_id"
+                  value={linhaIdSelecionada}
+                  onChange={(e) => {
+                    setLinhaIdSelecionada(e.target.value);
+                    setCategoriaIdSelecionada(""); // reset categoria ao trocar linha
+                  }}
+                  className="field"
+                >
+                  {linhasDisponiveis!.map((l) => (
+                    <option key={l.id} value={l.id}>{l.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="label">Categoria</label>
+              <select
+                name="categoria_id"
+                value={categoriaIdSelecionada}
+                onChange={(e) => setCategoriaIdSelecionada(e.target.value)}
+                className="field"
+              >
+                <option value="">Sem categoria</option>
+                {categoriasDaLinha.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}
               </select>
             </div>

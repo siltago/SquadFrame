@@ -19,10 +19,10 @@ export function useUsuario(): UsuarioAtual | null {
   return useContext(UserContext);
 }
 
-/** Retorna true se o usuário logado tem a permissão informada */
-export function usePode(chave: string): boolean {
+/** Retorna true se o usuário logado tem ao menos uma das permissões informadas */
+export function usePode(...chaves: string[]): boolean {
   const u = useContext(UserContext);
   if (!u || !u.permissoes) return false;
   if (u.permissoes.includes("*")) return true;
-  return u.permissoes.includes(chave);
+  return chaves.some((c) => u.permissoes!.includes(c));
 }

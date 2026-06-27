@@ -96,6 +96,21 @@ export async function criarLinha(formData: FormData) {
   redirect(`/catalogo/${data.id}`);
 }
 
+export async function editarLinha(linhaId: string, formData: FormData) {
+  const supabase = createClient();
+  const nome = String(formData.get("nome") || "").trim();
+  const fabricante = String(formData.get("fabricante") || "").trim() || null;
+  const descricao = String(formData.get("descricao") || "").trim() || null;
+  if (!nome) throw new Error("Nome é obrigatório.");
+  const { error } = await supabase
+    .from("linhas")
+    .update({ nome, fabricante, descricao })
+    .eq("id", linhaId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/catalogo");
+  revalidatePath(`/catalogo/${linhaId}`);
+}
+
 export async function apagarLinha(linhaId: string) {
   const supabase = createClient();
 
@@ -134,6 +149,30 @@ export async function criarCategoria(linhaId: string, formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath(`/catalogo/${linhaId}`);
+}
+
+export async function editarCategoria(categoriaId: string, linhaId: string, formData: FormData) {
+  const supabase = createClient();
+  const nome = String(formData.get("nome") || "").trim().toUpperCase();
+  const tipo = String(formData.get("tipo") || "OUTROS").trim().toUpperCase();
+  if (!nome) throw new Error("Nome da categoria é obrigatório.");
+  const { error } = await supabase
+    .from("categorias_perfil")
+    .update({ nome, tipo })
+    .eq("id", categoriaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/catalogo/${linhaId}`);
+  revalidatePath("/catalogo");
+}
+
+export async function apagarCategoria(categoriaId: string, linhaId: string) {
+  const supabase = createClient();
+  // Desvincula produtos antes de apagar
+  await supabase.from("produtos").update({ categoria_id: null }).eq("categoria_id", categoriaId);
+  const { error } = await supabase.from("categorias_perfil").delete().eq("id", categoriaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/catalogo/${linhaId}`);
+  revalidatePath("/catalogo");
 }
 
 // ─── Importação XML em massa ─────────────────────────────────
@@ -377,7 +416,7 @@ export async function editarProduto(
   produtoId: string,
   linhaId: string,
   formData: FormData
-) {
+): Promise<{ redirect?: string }> {
   const supabase = createClient();
   const nome = String(formData.get("nome") || "").trim();
   const codigo_mestre = String(formData.get("codigo_mestre") || "").trim();
@@ -386,6 +425,8 @@ export async function editarProduto(
   const observacoes = String(formData.get("observacoes") || "").trim() || null;
   const status = formData.get("status") === "true";
   const fornecedor_mestre_id = String(formData.get("fornecedor_mestre_id") || "").trim() || null;
+  const novaLinhaId = String(formData.get("linha_id") || "").trim() || linhaId;
+  const categoria_id = String(formData.get("categoria_id") || "").trim() || null;
 
   if (!nome) throw new Error("Nome é obrigatório.");
   if (!codigo_mestre) throw new Error("Código mestre é obrigatório.");
@@ -396,12 +437,20 @@ export async function editarProduto(
   const tamanho_mm  = parseFloat(String(formData.get("tamanho_mm")  || "").replace(",", ".")) || null;
 
   const { error } = await supabase.from("produtos").update({
-    nome, nome_tecnico: nome, codigo_mestre, unidade, descricao, observacoes, status, fornecedor_mestre_id,
+    nome, nome_tecnico: nome, codigo_mestre, unidade, descricao, observacoes, status,
+    fornecedor_mestre_id, linha_id: novaLinhaId, categoria_id,
     peso_metro, preco_metro, tamanho_mm,
   }).eq("id", produtoId);
 
   if (error) throw new Error(error.message);
+
+  if (novaLinhaId !== linhaId) {
+    revalidatePath(`/catalogo/${novaLinhaId}/${produtoId}`);
+    return { redirect: `/catalogo/${novaLinhaId}/${produtoId}` };
+  }
+
   revalidatePath(`/catalogo/${linhaId}/${produtoId}`);
+  return {};
 }
 
 // ─── Aliases ─────────────────────────────────────────────────

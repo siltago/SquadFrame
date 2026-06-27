@@ -25,10 +25,19 @@ export const PERMISSIONS = {
   // Formas de pagamento
   COMPRAS_FORMA_PAGAMENTO_GERENCIAR: "compras.formapagamento.gerenciar",
 
-  // Fornecedores
+  // Fornecedores (compras — mantido para compatibilidade)
   COMPRAS_FORNECEDOR_CRIAR:   "compras.fornecedor.criar",
   COMPRAS_FORNECEDOR_EDITAR:  "compras.fornecedor.editar",
   COMPRAS_FORNECEDOR_EXCLUIR: "compras.fornecedor.excluir",
+
+  // Fornecedores (catálogo — migrado de compras)
+  CATALOGO_FORNECEDOR_CRIAR:   "catalogo.fornecedor.criar",
+  CATALOGO_FORNECEDOR_EDITAR:  "catalogo.fornecedor.editar",
+  CATALOGO_FORNECEDOR_EXCLUIR: "catalogo.fornecedor.excluir",
+
+  // Linhas e categorias (catálogo)
+  CATALOGO_LINHA_GERENCIAR:     "catalogo.linha.gerenciar",
+  CATALOGO_CATEGORIA_GERENCIAR: "catalogo.categoria.gerenciar",
 
   // Obras (já existente no sistema)
   OBRAS_CRIAR: "obras.criar",

@@ -19,7 +19,7 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
-  const podeEditar = usePode("compras.fornecedor.editar");
+  const podeEditar = usePode("catalogo.fornecedor.editar", "compras.fornecedor.editar");
 
   function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -157,7 +157,7 @@ export function FornecedoresLista({
 }: {
   fornecedores: Fornecedor[]; tiposLinha: TipoLinha[];
 }) {
-  const podeExcluir = usePode("compras.fornecedor.excluir");
+  const podeExcluir = usePode("catalogo.fornecedor.excluir", "compras.fornecedor.excluir");
   const [modoExcluir, setModoExcluir] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [erro, setErro] = useState<string | null>(null);

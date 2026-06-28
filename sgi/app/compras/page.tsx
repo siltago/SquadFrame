@@ -16,7 +16,7 @@ export default async function ComprasPage() {
   ] = await Promise.all([
     admin.from("solicitacoes_compra").select("id", { count: "exact", head: true }).in("status", ["ABERTA", "AGUARDANDO_APROVACAO"]),
     admin.from("pedidos_compra").select("id", { count: "exact", head: true }).eq("status", "AGUARDANDO_APROVACAO"),
-    admin.from("pedidos_compra").select("id", { count: "exact", head: true }).eq("status", "EMITIDO"),
+    admin.from("pedidos_compra").select("id", { count: "exact", head: true }).eq("status", "AGUARDANDO_RECEBIMENTO"),
     admin.from("pedidos_compra").select("id", { count: "exact", head: true }).eq("status", "RECEBIDO_PARCIAL"),
     admin.from("solicitacoes_compra")
       .select("id, numero, status, prioridade, criado_em, obra:obras(nome)")
@@ -29,7 +29,7 @@ export default async function ComprasPage() {
   const stats = [
     { label: "Solicitações abertas",     value: (solAbertasData as any)?.length ?? 0,   href: "/compras/solicitacoes", cor: "#3b82f6" },
     { label: "Pedidos aguard. aprovação",value: (pedAguardandoData as any)?.length ?? 0, href: "/compras/pedidos",      cor: "#f59e0b" },
-    { label: "Pedidos emitidos",         value: (pedEmitidosData as any)?.length ?? 0,   href: "/compras/pedidos",      cor: "#8b5cf6" },
+    { label: "Aguardando recebimento",    value: (pedEmitidosData as any)?.length ?? 0,   href: "/compras/pedidos?status=AGUARDANDO_RECEBIMENTO", cor: "#8b5cf6" },
     { label: "Recebimentos parciais",    value: (pedParcialData as any)?.length ?? 0,    href: "/compras/pedidos",      cor: "#f97316" },
   ];
 
@@ -37,7 +37,7 @@ export default async function ComprasPage() {
   const [c1, c2, c3, c4] = await Promise.all([
     admin.from("solicitacoes_compra").select("id").in("status", ["ABERTA","AGUARDANDO_APROVACAO"]),
     admin.from("pedidos_compra").select("id").eq("status","AGUARDANDO_APROVACAO"),
-    admin.from("pedidos_compra").select("id").eq("status","EMITIDO"),
+    admin.from("pedidos_compra").select("id").eq("status","AGUARDANDO_RECEBIMENTO"),
     admin.from("pedidos_compra").select("id").eq("status","RECEBIDO_PARCIAL"),
   ]);
   stats[0].value = (c1.data ?? []).length;

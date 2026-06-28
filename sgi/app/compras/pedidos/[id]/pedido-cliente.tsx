@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alterarStatusPedido } from "@/app/compras/actions";
+import { alterarStatusPedido, registrarValorFinal } from "@/app/compras/actions";
 import { AssinarModal } from "@/components/assinar-modal";
 import { usePode } from "@/components/user-provider";
 
@@ -41,6 +41,12 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const [erro, setErro] = useState<string | null>(null);
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
+  const [showValorFinal, setShowValorFinal] = useState(false);
+  const [valorFinalInput, setValorFinalInput] = useState(
+    pedido.valor_final != null ? String(pedido.valor_final) : ""
+  );
+  const [pendingVF, startVF] = useTransition();
+  const [erroVF, setErroVF] = useState<string | null>(null);
   const router = useRouter();
 
   const podeEditarAgora = podeCriar && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status);
@@ -71,7 +77,23 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const podeRegistrarRecebimento =
     podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
 
-  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento) return null;
+  const statusPermiteValorFinal = ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"].includes(pedido.status);
+  const podeRegistrarValorFinal = podeCriar && statusPermiteValorFinal;
+
+  function salvarValorFinal() {
+    const v = parseFloat(valorFinalInput.replace(",", ".").replace(/[^0-9.]/g, ""));
+    if (isNaN(v) || v <= 0) { setErroVF("Insira um valor válido."); return; }
+    setErroVF(null);
+    startVF(async () => {
+      try {
+        await registrarValorFinal(pedido.id, v);
+        setShowValorFinal(false);
+        router.refresh();
+      } catch (e: any) { setErroVF(e.message); }
+    });
+  }
+
+  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal) return null;
 
   return (
     <>
@@ -84,11 +106,22 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
       )}
 
       <div className="flex flex-col items-end gap-2">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 justify-end">
           {podeEditarAgora && (
             <Link href={`/compras/pedidos/${pedido.id}/editar`} className="btn-ghost">
               Editar
             </Link>
+          )}
+          {podeRegistrarValorFinal && (
+            <button
+              onClick={() => setShowValorFinal((v) => !v)}
+              className={`btn-ghost flex items-center gap-1.5 ${pedido.valor_final != null ? "text-green-700 border-green-200 bg-green-50 hover:bg-green-100" : ""}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              {pedido.valor_final != null
+                ? `Valor final: ${Number(pedido.valor_final).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                : "Adicionar valor final"}
+            </button>
           )}
           {podeRegistrarRecebimento && (
             <Link href={`/compras/pedidos/${pedido.id}/receber`} className="btn-primary">
@@ -106,6 +139,36 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
             </button>
           ))}
         </div>
+
+        {showValorFinal && (
+          <div className="w-80 rounded-xl border border-line bg-surface p-4 shadow-lg">
+            <p className="text-sm font-semibold text-ink mb-1">Valor final do pedido</p>
+            <p className="text-xs text-ink-soft mb-3">
+              Informe o valor real confirmado com o fornecedor. Esse valor será usado no controle financeiro.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-ink-soft shrink-0">R$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={valorFinalInput}
+                onChange={(e) => setValorFinalInput(e.target.value)}
+                placeholder="0,00"
+                className="field h-9 flex-1 text-sm font-mono"
+                onKeyDown={(e) => e.key === "Enter" && salvarValorFinal()}
+                autoFocus
+              />
+              <button onClick={salvarValorFinal} disabled={pendingVF} className="btn-primary h-9 px-3 text-sm shrink-0">
+                {pendingVF ? "…" : "Salvar"}
+              </button>
+              <button onClick={() => { setShowValorFinal(false); setErroVF(null); }} className="btn-ghost h-9 px-3 text-sm shrink-0">
+                ✕
+              </button>
+            </div>
+            {erroVF && <p className="mt-2 text-xs text-red-500">{erroVF}</p>}
+          </div>
+        )}
+
         {showObs && (
           <div className="w-72 rounded-lg border border-line bg-surface p-3 shadow-sm">
             <label className="label">Motivo <span className="text-ink-faint font-normal">(opcional)</span></label>

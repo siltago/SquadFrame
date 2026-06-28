@@ -203,6 +203,39 @@ export async function adicionarAnotacao(pedidoId: string, texto: string) {
   revalidatePath(`/compras/pedidos/${pedidoId}`);
 }
 
+export async function registrarValorFinal(pedidoId: string, valorFinal: number) {
+  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
+  const admin = createAdminClient();
+
+  const { data: ped } = await admin
+    .from("pedidos_compra")
+    .select("status")
+    .eq("id", pedidoId)
+    .single();
+
+  const statusPermitidos = ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
+  if (!ped || !statusPermitidos.includes(ped.status)) {
+    throw new Error("Valor final só pode ser registrado após a emissão do pedido.");
+  }
+
+  const { error } = await admin
+    .from("pedidos_compra")
+    .update({ valor_final: valorFinal })
+    .eq("id", pedidoId);
+  if (error) throw new Error(error.message);
+
+  const usuario_id = await getUsuarioId();
+  await admin.from("compra_historico").insert({
+    entidade: "pedido", entidade_id: pedidoId,
+    acao: "VALOR_FINAL_REGISTRADO",
+    valor_novo: { valor_final: valorFinal },
+    usuario_id,
+  });
+
+  revalidatePath(`/compras/pedidos/${pedidoId}`);
+  revalidatePath("/compras/financeiro");
+}
+
 export async function excluirPedidos(ids: string[]) {
   if (!ids.length) return;
   await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_EXCLUIR);

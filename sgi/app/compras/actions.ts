@@ -14,6 +14,7 @@ export {
   editarPedido,
   adicionarAnotacao,
   excluirPedidos,
+  registrarValorFinal,
 } from "./actions/pedidos";
 
 export { registrarRecebimento } from "./actions/recebimentos";

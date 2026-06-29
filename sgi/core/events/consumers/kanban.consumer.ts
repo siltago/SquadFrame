@@ -161,8 +161,20 @@ export async function kanbanConsumerHandler(event: DomainEvent): Promise<void> {
       // BUG 4 FIX: setor não encontrado → erro visível em eventos_dominio
       if (!setorId) throw new Error("Setor Compras não encontrado. Verifique se existe um setor com 'compra' no nome.");
       const colunas = await garantirColunasCompras(setorId);
+
+      let tituloTarefa = `Pedido ${p.numero}`;
+      if (p.obra_id) {
+        const admin = createAdminClient();
+        const { data: obra } = await admin
+          .from("obras")
+          .select("nome")
+          .eq("id", p.obra_id as string)
+          .maybeSingle();
+        if (obra?.nome) tituloTarefa += ` — ${obra.nome}`;
+      }
+
       await criarTarefaAutomatica({
-        titulo: `Pedido ${p.numero} — rascunho`,
+        titulo: tituloTarefa,
         setor_id: setorId,
         origem: "COMPRA",
         entidade_ref: "pedido",

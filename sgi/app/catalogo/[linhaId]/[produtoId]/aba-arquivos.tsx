@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { enviarArquivo, deletarArquivo } from "@/app/catalogo/actions";
 
@@ -102,7 +102,7 @@ export function AbaArquivos({
   const inputRef = useRef<HTMLInputElement>(null);
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const router = useRouter();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -122,16 +122,17 @@ export function AbaArquivos({
     }
 
     setErro(null);
-    startTransition(async () => {
-      try {
-        await enviarArquivo(produtoId, linhaId, fd);
-        setNomeArquivo(null);
-        if (inputRef.current) inputRef.current.value = "";
-        router.refresh();
-      } catch (err: any) {
-        setErro(err.message);
-      }
-    });
+    setPending(true);
+    try {
+      await enviarArquivo(produtoId, linhaId, fd);
+      setNomeArquivo(null);
+      if (inputRef.current) inputRef.current.value = "";
+      router.refresh();
+    } catch (err: any) {
+      setErro(err.message ?? "Erro ao enviar arquivo.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

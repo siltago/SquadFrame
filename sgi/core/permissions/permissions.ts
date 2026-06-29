@@ -35,6 +35,9 @@ export const PERMISSIONS = {
   CATALOGO_FORNECEDOR_EDITAR:  "catalogo.fornecedor.editar",
   CATALOGO_FORNECEDOR_EXCLUIR: "catalogo.fornecedor.excluir",
 
+  // Catálogo — edição geral (produtos, arquivos, cores, aliases, specs)
+  CATALOGO_EDITAR: "catalogo.editar",
+
   // Linhas e categorias (catálogo)
   CATALOGO_LINHA_GERENCIAR:     "catalogo.linha.gerenciar",
   CATALOGO_CATEGORIA_GERENCIAR: "catalogo.categoria.gerenciar",

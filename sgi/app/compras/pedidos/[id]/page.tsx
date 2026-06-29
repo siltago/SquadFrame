@@ -87,7 +87,7 @@ export default async function PedidoPage({ params }: { params: { id: string } })
           ]}
         />
         <div className="flex items-center gap-2">
-          {ped.status !== "RASCUNHO" && (
+          {!["RASCUNHO", "AGUARDANDO_APROVACAO", "CANCELADO"].includes(ped.status) && (
             <Link
               href={`/compras/pedidos/${params.id}/visualizar`}
               target="_blank"

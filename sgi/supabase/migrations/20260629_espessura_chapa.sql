@@ -1,0 +1,3 @@
+-- Para chapas: espessura vem de produtos.tamanho_mm (já existente).
+-- Nenhuma mudança de schema necessária.
+-- Arquivo mantido para documentar a decisão de design.

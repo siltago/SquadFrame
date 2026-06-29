@@ -140,7 +140,13 @@ function itemMedida(it: any) {
   if (area != null) return { valor: area, sufixo: "m²" };
   return calcMedida(Number(it.quantidade_pedida), it.unidade ?? "", it.produto?.tamanho_mm);
 }
+const FATOR_MASSA_CHAPA = 0.0000025;
 function itemPeso(it: any) {
+  // Chapa: L(mm) × A(mm) × espessura(mm) × 0.0000025 × qtd_pecas
+  // espessura = tamanho_mm do produto (ex.: 3 para chapa de 3mm)
+  if (isItChapa(it) && it.largura_m && it.altura_m && it.produto?.tamanho_mm && it.qtd_pecas) {
+    return Number(it.largura_m) * 1000 * Number(it.altura_m) * 1000 * Number(it.produto.tamanho_mm) * FATOR_MASSA_CHAPA * Number(it.qtd_pecas);
+  }
   const area = itAreaChapa(it);
   if (area != null && it.produto?.peso_metro) return area * Number(it.produto.peso_metro);
   return calcPesoTotal(Number(it.quantidade_pedida), it.unidade ?? "", it.produto?.tamanho_mm, it.produto?.peso_metro);
@@ -229,8 +235,14 @@ function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; core
                           <span className="font-medium">L</span>{" "}
                           {Math.round(Number(it.largura_m) * 1000).toLocaleString("pt-BR")} ×{" "}
                           <span className="font-medium">A</span>{" "}
-                          {Math.round(Number(it.altura_m) * 1000).toLocaleString("pt-BR")} mm
+                          {Math.round(Number(it.altura_m) * 1000).toLocaleString("pt-BR")}
+                          {it.produto?.tamanho_mm ? ` × E ${Number(it.produto.tamanho_mm).toLocaleString("pt-BR")}` : ""} mm
                         </p>
+                        {it.largura_m && it.altura_m && it.qtd_pecas && (
+                          <p className="text-xs text-ink-faint">
+                            {(Number(it.largura_m) * Number(it.altura_m) * Number(it.qtd_pecas)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <span>{Number(it.quantidade_pedida).toLocaleString("pt-BR")} {pluralUnit(Number(it.quantidade_pedida), it.unidade)}</span>

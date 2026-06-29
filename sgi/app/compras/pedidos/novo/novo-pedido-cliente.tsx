@@ -21,7 +21,7 @@ type Item = {
   produto?: Produto | null; quantidade_pedida: number; unidade: string; preco_unitario: number;
   codigo_fornecedor: string; descricao_snapshot: string;
   peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null;
-  // Dimensões para CHAPA (largura × altura × qtd_pecas)
+  // Dimensões para CHAPA (largura × altura × qtd_pecas); espessura vem de tamanho_mm do produto
   largura_m?: number | null; altura_m?: number | null; qtd_pecas?: number | null;
   cor_id?: string | null;
   obra_id?: string; solicitacao_item_id?: string;
@@ -46,7 +46,13 @@ function itemMedida(it: Item) {
   if (area != null) return { valor: area, sufixo: "m²" };
   return calcMedida(it.quantidade_pedida, it.unidade, it.tamanho_mm);
 }
+const FATOR_MASSA_CHAPA = 0.0000025;
 function itemPeso(it: Item) {
+  // Chapa: L(mm) × A(mm) × espessura(mm) × 0.0000025 × qtd_pecas
+  // espessura vem de tamanho_mm do produto
+  if (isChapa(it) && it.largura_m && it.altura_m && it.tamanho_mm && it.qtd_pecas) {
+    return it.largura_m * 1000 * it.altura_m * 1000 * it.tamanho_mm * FATOR_MASSA_CHAPA * it.qtd_pecas;
+  }
   const area = itemAreaChapa(it);
   if (area != null && it.peso_metro) return area * it.peso_metro;
   return calcPesoTotal(it.quantidade_pedida, it.unidade, it.tamanho_mm, it.peso_metro);
@@ -680,6 +686,11 @@ export function NovoPedidoCliente({
                                 className="field h-7 w-16 text-xs" />
                               <span className="text-xs text-ink-faint">peças</span>
                             </div>
+                            {it.largura_m && it.altura_m && it.qtd_pecas && (
+                              <p className="text-[10px] text-ink-faint">
+                                {((it.largura_m * it.altura_m * it.qtd_pecas)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">

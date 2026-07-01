@@ -33,7 +33,7 @@ export default function CadastroPage() {
             email: String(fd.get("email") || ""),
             password: senha,
           });
-          if (!loginError) { router.push("/"); router.refresh(); return; }
+          if (!loginError) { router.refresh(); return; }
         }
         setErro(err.message);
         return;
@@ -46,7 +46,6 @@ export default function CadastroPage() {
       });
 
       if (loginError) { setErro(loginError.message); return; }
-      router.push("/");
       router.refresh();
     });
   }

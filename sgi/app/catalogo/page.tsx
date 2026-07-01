@@ -7,6 +7,10 @@ import { FilterBar } from "./filter-bar";
 import { GerenciarFornecedores } from "./gerenciar-fornecedores";
 import { GerenciarLinhas } from "./gerenciar-linhas";
 import { GerenciarCategorias } from "./gerenciar-categorias";
+import { Badge } from "@/ui/components/Badge";
+import { Button } from "@/ui/components/Button";
+import { Pagination } from "@/ui/components/Pagination";
+import { EmptyState } from "@/ui/components/EmptyState";
 import type { CatalogItem } from "./catalog-item";
 import type { Filters } from "./filter-bar";
 
@@ -37,6 +41,7 @@ export default async function CatalogoPage({
   searchParams: {
     tipo?: string;
     aba?: string;
+    aplicacao?: string;
     fornecedor?: string;
     linha?: string;
     categoria?: string;
@@ -83,11 +88,15 @@ export default async function CatalogoPage({
       <div className="px-4 py-6 sm:px-8 sm:py-8">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-ink-faint">Catálogo</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-text-3">Catálogo</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight">Cores RAL</h1>
           </div>
         </div>
-        <AbaCoresCatalogo cores={cores ?? []} tiposLinha={tiposList as any} />
+        <AbaCoresCatalogo
+          cores={cores ?? []}
+          tiposLinha={tiposList as any}
+          aplicacaoAtiva={searchParams.aplicacao?.toLowerCase() ?? null}
+        />
       </div>
     );
   }
@@ -95,7 +104,7 @@ export default async function CatalogoPage({
   if (!tipoSlug) {
     return (
       <div className="px-4 py-6 sm:px-8 sm:py-8">
-        <p className="mt-8 text-sm text-ink-soft">Nenhuma aba cadastrada.</p>
+        <p className="mt-8 text-sm text-text-2">Nenhuma aba cadastrada.</p>
       </div>
     );
   }
@@ -110,7 +119,6 @@ export default async function CatalogoPage({
   const pagina           = Math.max(1, parseInt(searchParams.pagina ?? "1") || 1);
   const offset           = (pagina - 1) * PAGE_SIZE;
 
-  // Estado base dos filtros (passado para FilterBar e para buildFilterUrl)
   const baseParams: Record<string, string> = {
     tipo: tipoSlug.toLowerCase(),
     ...(filtroFornecedor ? { fornecedor: filtroFornecedor } : {}),
@@ -140,24 +148,21 @@ export default async function CatalogoPage({
     .order("nome");
   const linhasDoTipo = todasLinhas ?? [];
 
-  // Fornecedores únicos para o FilterBar
   const fornecedoresDisponiveis = Array.from(
     new Set(linhasDoTipo.map((l) => l.fabricante).filter(Boolean))
   ).sort() as string[];
 
-  // Linhas filtradas por fornecedor (dependência de filtro)
   const linhasFiltPorForn = filtroFornecedor
     ? linhasDoTipo.filter((l) => l.fabricante === filtroFornecedor)
     : linhasDoTipo;
 
-  // IDs de linhas filtradas (aplica também filtro de linha específica)
   const linhaIdsFiltradas = filtroLinha
     ? linhasFiltPorForn.filter((l) => l.id === filtroLinha).map((l) => l.id)
     : linhasFiltPorForn.map((l) => l.id);
 
   const linhasDisponiveis = linhasFiltPorForn.map((l) => ({ id: l.id, nome: l.nome }));
 
-  // ── Categorias disponíveis (dependem de linhas filtradas) ────
+  // ── Categorias disponíveis ────────────────────────────────────
   const categoriasNomes: string[] = [];
   if (linhaIdsFiltradas.length > 0) {
     const { data: cats } = await supabase
@@ -171,23 +176,21 @@ export default async function CatalogoPage({
     }
   }
 
-  // ── Stats globais do tipo (sem filtros de produto) ───────────
+  // ── Stats globais ─────────────────────────────────────────────
   const totalLinhas     = linhasDoTipo.length;
   const totalCategorias = categoriasNomes.length;
 
-  // Conta fornecedores vinculados a este tipo (pelo campo tipos[])
   const { count: fornCount } = await supabase
     .from("fornecedores")
     .select("*", { count: "exact", head: true })
     .contains("tipos", [tipoSlug]);
   const totalFornecedores = fornCount ?? 0;
 
-  // ── Query de produtos ────────────────────────────────────────
+  // ── Query de produtos ─────────────────────────────────────────
   let items: CatalogItem[] = [];
   let totalProdutos = 0;
 
   if (linhaIdsFiltradas.length > 0) {
-    // Resolve IDs de categoria pelo nome (transversal entre linhas)
     let categoriaIds: string[] | null = null;
     if (filtroCategoria) {
       const { data: catRows } = await supabase
@@ -198,7 +201,6 @@ export default async function CatalogoPage({
       categoriaIds = (catRows ?? []).map((c) => c.id);
     }
 
-    // Só executa a query de produtos se houver IDs de categoria válidos (ou sem filtro)
     const podeBuscar = !filtroCategoria || (categoriaIds !== null && categoriaIds.length > 0);
 
     if (podeBuscar) {
@@ -214,17 +216,14 @@ export default async function CatalogoPage({
         .in("linha_id", linhaIdsFiltradas)
         .is("deleted_at", null);
 
-      // Status
       if (filtroStatus === "inativo") query = query.eq("status", false);
       else if (filtroStatus === "todos") { /* sem filtro */ }
       else query = query.eq("status", true);
 
-      // Categoria
       if (categoriaIds && categoriaIds.length > 0) {
         query = query.in("categoria_id", categoriaIds);
       }
 
-      // Busca textual — inclui aliases
       if (filtroQ) {
         const { data: aliasMatches } = await supabase
           .from("produto_aliases")
@@ -237,7 +236,6 @@ export default async function CatalogoPage({
         query = query.or(orClause);
       }
 
-      // Ordenação
       if (filtroOrdem === "codigo") {
         query = query.order("codigo_mestre");
       } else if (filtroOrdem === "categoria") {
@@ -273,12 +271,11 @@ export default async function CatalogoPage({
     }
   }
 
-  // Paginação
   const totalPaginas = Math.ceil(totalProdutos / PAGE_SIZE);
   const hasFilters =
     filtroQ || filtroFornecedor || filtroLinha || filtroCategoria || filtroStatus;
 
-  // ── Dados das views de gerenciamento (carregados apenas quando necessário) ────
+  // ── Dados de gerenciamento ────────────────────────────────────
   let fornecedoresGerenciar: any[] = [];
   let tiposLinhaGerenciar: { nome: string; slug: string }[] = [];
   let linhasComCategorias: { id: string; nome: string; fabricante: string | null; descricao: string | null; categorias: { id: string; nome: string; tipo: string }[] }[] = [];
@@ -349,13 +346,13 @@ export default async function CatalogoPage({
       {/* Cabeçalho */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-ink-faint">Catálogo</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-text-3">Catálogo</p>
           <div className="mt-1 flex items-baseline gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {tipoAtual?.nome ?? "Catálogo"}
             </h1>
             {(tipoAtual as any)?.unidade && (tipoAtual as any).unidade !== "UN" && (
-              <span className="rounded-full bg-steel/10 px-2.5 py-0.5 text-xs font-medium text-steel">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 {(tipoAtual as any).unidade}
               </span>
             )}
@@ -366,25 +363,19 @@ export default async function CatalogoPage({
             <GerenciarAba aba={tipoAtual as { id: string; nome: string; slug: string; unidade?: string | null }} />
           )}
           {podeCriar && (
-            <Link
-              href={`/catalogo/nova-linha?tipo=${tipoSlug.toLowerCase()}`}
-              className="btn-secondary text-sm"
-            >
+            <Button as="a" href={`/catalogo/nova-linha?tipo=${tipoSlug.toLowerCase()}`} variant="secondary" size="sm">
               Nova linha
-            </Link>
+            </Button>
           )}
           {podeCriar && filtroLinha && (
-            <Link
-              href={`/catalogo/${filtroLinha}/novo-produto`}
-              className="btn-primary text-sm"
-            >
+            <Button as="a" href={`/catalogo/${filtroLinha}/novo-produto`} size="sm">
               Novo item
-            </Link>
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Dashboard compacto — cards clicáveis para gerenciar */}
+      {/* Dashboard compacto */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           value={totalProdutos} label="produtos" filtered={!!hasFilters}
@@ -430,202 +421,152 @@ export default async function CatalogoPage({
         />
       )}
 
-      {/* Conteúdo normal (produtos) — apenas quando não há view de gerenciamento */}
+      {/* Conteúdo normal (produtos) */}
       {!gerenciar && (
         <>
-      {/* FilterBar */}
-      <div className="mt-4">
-        <FilterBar
-          fornecedores={fornecedoresDisponiveis}
-          linhas={linhasDisponiveis}
-          categorias={categoriasNomes}
-          current={currentFilters}
-        />
-      </div>
+          <div className="mt-4">
+            <FilterBar
+              fornecedores={fornecedoresDisponiveis}
+              linhas={linhasDisponiveis}
+              categorias={categoriasNomes}
+              current={currentFilters}
+            />
+          </div>
 
-      {/* Resumo de resultados */}
-      <div className="mt-4 flex items-center justify-between text-sm text-ink-soft">
-        <span>
-          {totalProdutos === 0
-            ? "Nenhum produto encontrado"
-            : `${totalProdutos} produto${totalProdutos !== 1 ? "s" : ""}${hasFilters ? " encontrados" : ""}`}
-          {totalPaginas > 1 && ` · página ${pagina} de ${totalPaginas}`}
-        </span>
-      </div>
+          <div className="mt-4 flex items-center justify-between text-sm text-text-2">
+            <span>
+              {totalProdutos === 0
+                ? "Nenhum produto encontrado"
+                : `${totalProdutos} produto${totalProdutos !== 1 ? "s" : ""}${hasFilters ? " encontrados" : ""}`}
+              {totalPaginas > 1 && ` · página ${pagina} de ${totalPaginas}`}
+            </span>
+          </div>
 
-      {/* Lista de produtos */}
-      {items.length > 0 ? (
-        <div className="mt-3 card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
-                <th className="w-[68px] px-3 py-2.5 font-medium" />
-                <th className="px-4 py-2.5 font-medium">Código</th>
-                <th className="px-4 py-2.5 font-medium">Descrição</th>
-                <th className="hidden px-4 py-2.5 font-medium sm:table-cell">Fornecedor</th>
-                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Linha</th>
-                <th className="hidden px-4 py-2.5 font-medium lg:table-cell">Categoria</th>
-                <th className="px-4 py-2.5 font-medium">Und.</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-line last:border-0 transition-colors hover:bg-canvas"
-                >
-                  {/* Preview */}
-                  <td className="px-3 py-2">
-                    <Link href={item.href}>
-                      {item.previewUrl ? (
-                        <img
-                          src={item.previewUrl}
-                          alt={item.descricao}
-                          className="h-[52px] w-[52px] rounded border border-line bg-white object-contain p-0.5"
-                        />
-                      ) : (
-                        <div className="h-[52px] w-[52px] rounded border border-line bg-canvas" />
-                      )}
-                    </Link>
-                  </td>
-
-                  {/* Código */}
-                  <td className="px-4 py-3">
-                    <Link
-                      href={item.href}
-                      className="font-mono text-xs font-medium text-steel hover:underline"
+          {items.length > 0 ? (
+            <div className="mt-3 card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+                    <th className="w-[68px] px-3 py-2.5 font-medium" />
+                    <th className="px-4 py-2.5 font-medium">Código</th>
+                    <th className="px-4 py-2.5 font-medium">Descrição</th>
+                    <th className="hidden px-4 py-2.5 font-medium sm:table-cell">Fornecedor</th>
+                    <th className="hidden px-4 py-2.5 font-medium md:table-cell">Linha</th>
+                    <th className="hidden px-4 py-2.5 font-medium lg:table-cell">Categoria</th>
+                    <th className="px-4 py-2.5 font-medium">Und.</th>
+                    <th className="px-4 py-2.5 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-border last:border-0 transition-colors hover:bg-bg"
                     >
-                      {item.codigo}
-                    </Link>
-                  </td>
-
-                  {/* Descrição */}
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={item.href} className="hover:text-steel hover:underline">
-                      {item.descricao}
-                    </Link>
-                  </td>
-
-                  {/* Fornecedor — clicável para filtrar */}
-                  <td className="hidden px-4 py-3 sm:table-cell">
-                    {item.fornecedor ? (
-                      <Link
-                        href={buildFilterUrl(baseParams, "fornecedor", item.fornecedor)}
-                        className="text-xs text-ink-soft hover:text-steel hover:underline"
-                      >
-                        {item.fornecedor}
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-ink-faint">—</span>
-                    )}
-                  </td>
-
-                  {/* Linha — clicável para filtrar */}
-                  <td className="hidden px-4 py-3 md:table-cell">
-                    {item.linha ? (
-                      <Link
-                        href={buildFilterUrl(baseParams, "linha", item.linha.id)}
-                        className="text-xs text-ink-soft hover:text-steel hover:underline"
-                      >
-                        {item.linha.nome}
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-ink-faint">—</span>
-                    )}
-                  </td>
-
-                  {/* Categoria — clicável para filtrar */}
-                  <td className="hidden px-4 py-3 lg:table-cell">
-                    {item.categoria ? (
-                      <Link
-                        href={buildFilterUrl(baseParams, "categoria", item.categoria.nome)}
-                        className="text-xs text-ink-soft hover:text-steel hover:underline"
-                      >
-                        {item.categoria.nome}
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-ink-faint">—</span>
-                    )}
-                  </td>
-
-                  {/* Unidade */}
-                  <td className="px-4 py-3 text-xs text-ink-faint">{item.unidade}</td>
-
-                  {/* Status */}
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        item.status
-                          ? "bg-green-50 text-green-700"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          item.status ? "bg-green-500" : "bg-slate-400"
-                        }`}
-                      />
-                      {item.status ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="mt-3 card flex flex-col items-center justify-center px-6 py-16 text-center">
-          <p className="font-display text-lg font-semibold">
-            {hasFilters ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
-          </p>
-          <p className="mt-1 max-w-sm text-sm text-ink-soft">
-            {hasFilters
-              ? "Tente ajustar os filtros ou limpar a busca."
-              : `${tipoAtual?.nome ?? "Esta categoria"} ainda não possui produtos.`}
-          </p>
-          {hasFilters ? (
-            <Link
-              href={`/catalogo?tipo=${tipoSlug.toLowerCase()}`}
-              className="btn-secondary mt-5 text-sm"
-            >
-              Limpar filtros
-            </Link>
-          ) : podeCriar ? (
-            <Link
-              href={`/catalogo/nova-linha?tipo=${tipoSlug.toLowerCase()}`}
-              className="btn-primary mt-5"
-            >
-              Nova linha
-            </Link>
-          ) : null}
-        </div>
-      )}
-
-      {/* Paginação */}
-      {totalPaginas > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-2">
-          {pagina > 1 && (
-            <Link
-              href={buildPageUrl(baseParams, pagina - 1)}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-soft hover:bg-canvas"
-            >
-              ← Anterior
-            </Link>
+                      <td className="px-3 py-2">
+                        <Link href={item.href}>
+                          {item.previewUrl ? (
+                            <img
+                              src={item.previewUrl}
+                              alt={item.descricao}
+                              className="h-[52px] w-[52px] rounded border border-border bg-white object-contain p-0.5"
+                            />
+                          ) : (
+                            <div className="h-[52px] w-[52px] rounded border border-border bg-bg" />
+                          )}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={item.href}
+                          className="font-mono text-xs font-medium text-primary hover:underline"
+                        >
+                          {item.codigo}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={item.href} className="hover:text-primary hover:underline">
+                          {item.descricao}
+                        </Link>
+                      </td>
+                      <td className="hidden px-4 py-3 sm:table-cell">
+                        {item.fornecedor ? (
+                          <Link
+                            href={buildFilterUrl(baseParams, "fornecedor", item.fornecedor)}
+                            className="text-xs text-text-2 hover:text-primary hover:underline"
+                          >
+                            {item.fornecedor}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-text-3">—</span>
+                        )}
+                      </td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        {item.linha ? (
+                          <Link
+                            href={buildFilterUrl(baseParams, "linha", item.linha.id)}
+                            className="text-xs text-text-2 hover:text-primary hover:underline"
+                          >
+                            {item.linha.nome}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-text-3">—</span>
+                        )}
+                      </td>
+                      <td className="hidden px-4 py-3 lg:table-cell">
+                        {item.categoria ? (
+                          <Link
+                            href={buildFilterUrl(baseParams, "categoria", item.categoria.nome)}
+                            className="text-xs text-text-2 hover:text-primary hover:underline"
+                          >
+                            {item.categoria.nome}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-text-3">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-text-3">{item.unidade}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={item.status ? "success" : "default"} size="sm" dot>
+                          {item.status ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-3 card flex flex-col items-center justify-center px-6 py-16 text-center">
+              <EmptyState
+                title={hasFilters ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
+                description={
+                  hasFilters
+                    ? "Tente ajustar os filtros ou limpar a busca."
+                    : `${tipoAtual?.nome ?? "Esta categoria"} ainda não possui produtos.`
+                }
+              />
+              {hasFilters ? (
+                <Button as="a" href={`/catalogo?tipo=${tipoSlug.toLowerCase()}`} variant="secondary" className="mt-5">
+                  Limpar filtros
+                </Button>
+              ) : podeCriar ? (
+                <Button as="a" href={`/catalogo/nova-linha?tipo=${tipoSlug.toLowerCase()}`} className="mt-5">
+                  Nova linha
+                </Button>
+              ) : null}
+            </div>
           )}
-          <span className="px-3 text-sm text-ink-soft">
-            {pagina} / {totalPaginas}
-          </span>
-          {pagina < totalPaginas && (
-            <Link
-              href={buildPageUrl(baseParams, pagina + 1)}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-soft hover:bg-canvas"
-            >
-              Próxima →
-            </Link>
+
+          {totalPaginas > 1 && (
+            <Pagination
+              currentPage={pagina}
+              total={totalProdutos}
+              perPage={PAGE_SIZE}
+              buildUrl={(p) => buildPageUrl(baseParams, p)}
+              className="mt-6 rounded-xl border border-border"
+            />
           )}
-        </div>
-      )}
         </>
       )}
     </div>
@@ -647,17 +588,17 @@ function StatCard({
 }) {
   const inner = (
     <>
-      <p className="text-2xl font-bold tracking-tight text-ink">{value.toLocaleString("pt-BR")}</p>
-      <p className="mt-0.5 text-xs text-ink-soft">
+      <p className="text-2xl font-bold tracking-tight text-text">{value.toLocaleString("pt-BR")}</p>
+      <p className="mt-0.5 text-xs text-text-2">
         {label}
-        {filtered && <span className="ml-1 text-ink-faint">(filtrado)</span>}
+        {filtered && <span className="ml-1 text-text-3">(filtrado)</span>}
       </p>
     </>
   );
   const cls = `rounded-xl border px-4 py-3 transition-colors ${
     active
-      ? "border-steel bg-steel/5"
-      : "border-line bg-surface hover:border-steel/40 hover:bg-canvas"
+      ? "border-primary bg-primary-soft"
+      : "border-border bg-surface hover:border-primary/40 hover:bg-bg"
   }`;
   if (href) {
     return <Link href={href} className={cls}>{inner}</Link>;

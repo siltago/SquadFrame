@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { criarCorRal, editarCor, deletarCor } from "@/app/catalogo/actions";
 import { usePode } from "@/modules/squadframe/components/user-provider";
+import { Button } from "@/ui/components/Button";
 
 type CorRal = { id: string; codigo_ral: string; nome: string | null; hex: string | null; tipos: string[] };
 type TipoLinha = { id: string; nome: string; slug: string };
@@ -40,16 +41,16 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
 
   if (editando) {
     return (
-      <tr className="border-b border-line last:border-0 bg-canvas">
+      <tr className="border-b border-border last:border-0 bg-bg">
         <td colSpan={5} className="px-4 py-3">
           <form onSubmit={handleEditar} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink-faint">Nome</label>
+                <label className="text-[10px] uppercase tracking-wide text-text-3">Nome</label>
                 <input name="nome" defaultValue={cor.nome ?? ""} className="field h-8 text-sm" placeholder="Ex: Branco puro" />
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink-faint">Hex</label>
+                <label className="text-[10px] uppercase tracking-wide text-text-3">Hex</label>
                 <div className="flex items-center gap-2">
                   <input name="hex" defaultValue={cor.hex ?? ""} className="field h-8 text-sm font-mono" placeholder="#F4F4F4" maxLength={7} />
                   <input type="color" defaultValue={cor.hex ?? "#e5e7eb"}
@@ -57,13 +58,13 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
                       const inp = e.currentTarget.closest("div")?.querySelector<HTMLInputElement>("input[name=hex]");
                       if (inp) inp.value = e.currentTarget.value;
                     }}
-                    className="h-8 w-9 cursor-pointer rounded border border-line p-0.5" />
+                    className="h-8 w-9 cursor-pointer rounded border border-border p-0.5" />
                 </div>
               </div>
             </div>
             {tiposLinha.length > 0 && (
               <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink-faint">Aplica-se a</label>
+                <label className="text-[10px] uppercase tracking-wide text-text-3">Aplica-se a</label>
                 <div className="mt-1 flex flex-wrap gap-3">
                   {tiposLinha.map((t) => (
                     <label key={t.slug} className="flex items-center gap-1.5 cursor-pointer text-sm">
@@ -75,13 +76,13 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
                 </div>
               </div>
             )}
-            {erro && <p className="text-xs text-red-500">{erro}</p>}
+            {erro && <p className="text-xs text-danger">{erro}</p>}
             <div className="flex gap-2">
-              <button type="submit" disabled={pending} className="btn-primary text-xs px-3 py-1.5">
+              <Button type="submit" disabled={pending} className="text-xs px-3 py-1.5">
                 {pending ? "Salvando…" : "Salvar"}
-              </button>
-              <button type="button" onClick={() => { setEditando(false); setErro(null); }}
-                className="btn-ghost text-xs px-3 py-1.5">Cancelar</button>
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => { setEditando(false); setErro(null); }}
+                className="text-xs px-3 py-1.5">Cancelar</Button>
             </div>
           </form>
         </td>
@@ -90,19 +91,19 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
   }
 
   return (
-    <tr className="border-b border-line last:border-0 hover:bg-canvas">
+    <tr className="border-b border-border last:border-0 hover:bg-bg">
       <td className="px-4 py-2.5">
-        <span className="inline-block h-5 w-5 rounded border border-line"
+        <span className="inline-block h-5 w-5 rounded border border-border"
           style={{ backgroundColor: cor.hex ?? "#e5e7eb" }} />
       </td>
       <td className="px-4 py-2.5 font-mono text-xs font-medium">{cor.codigo_ral}</td>
-      <td className="px-4 py-2.5 text-ink-soft">{cor.nome ?? "—"}</td>
-      <td className="px-4 py-2.5 font-mono text-xs text-ink-faint">{cor.hex ?? "—"}</td>
+      <td className="px-4 py-2.5 text-text-2">{cor.nome ?? "—"}</td>
+      <td className="px-4 py-2.5 font-mono text-xs text-text-3">{cor.hex ?? "—"}</td>
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-1 justify-end">
           {podeCriar && (
             <button onClick={() => setEditando(true)} disabled={pending}
-              className="rounded p-1.5 text-ink-faint hover:bg-surface hover:text-ink" title="Editar">
+              className="rounded p-1.5 text-text-3 hover:bg-surface hover:text-text" title="Editar">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -111,7 +112,7 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
           )}
           {podeExcluir && (
             <button onClick={handleDeletar} disabled={pending}
-              className="rounded p-1.5 text-ink-faint hover:bg-red-50 hover:text-red-500 disabled:opacity-40" title="Excluir">
+              className="rounded p-1.5 text-text-3 hover:bg-danger-soft hover:text-danger disabled:opacity-40" title="Excluir">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                 <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -143,18 +144,18 @@ function FormNovaCor({ tiposLinha, onDone }: { tiposLinha: TipoLinha[]; onDone: 
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="label">Código RAL <span className="text-red-500">*</span></label>
+          <label className="label">Código RAL <span className="text-danger">*</span></label>
           <input name="codigo_ral" required className="field font-mono" placeholder="RAL9010" />
         </div>
         <div>
-          <label className="label">Nome <span className="font-normal text-ink-soft">(opcional)</span></label>
+          <label className="label">Nome <span className="font-normal text-text-2">(opcional)</span></label>
           <input name="nome" className="field" placeholder="Branco puro" />
         </div>
         <div>
-          <label className="label">Hex <span className="font-normal text-ink-soft">(opcional)</span></label>
+          <label className="label">Hex <span className="font-normal text-text-2">(opcional)</span></label>
           <div className="flex items-center gap-2">
             <input name="hex" className="field font-mono" placeholder="#F4F4F4" maxLength={7} />
-            <input type="color" className="h-9 w-10 cursor-pointer rounded border border-line bg-surface p-1"
+            <input type="color" className="h-9 w-10 cursor-pointer rounded border border-border bg-surface p-1"
               onChange={(e) => {
                 const inp = e.currentTarget.closest("div")?.querySelector<HTMLInputElement>("input[name=hex]");
                 if (inp) inp.value = e.currentTarget.value;
@@ -173,97 +174,50 @@ function FormNovaCor({ tiposLinha, onDone }: { tiposLinha: TipoLinha[]; onDone: 
               </label>
             ))}
           </div>
-          <p className="mt-1 text-xs text-ink-faint">Em quais abas do catálogo esta cor é usada</p>
+          <p className="mt-1 text-xs text-text-3">Em quais abas do catálogo esta cor é usada</p>
         </div>
       )}
-      {erro && <p className="text-xs text-red-500">{erro}</p>}
+      {erro && <p className="text-xs text-danger">{erro}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="btn-primary">
+        <Button type="submit" disabled={pending}>
           {pending ? "Salvando…" : "Cadastrar"}
-        </button>
-        <button type="button" onClick={onDone} disabled={pending} className="btn-ghost">Cancelar</button>
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone} disabled={pending}>Cancelar</Button>
       </div>
     </form>
   );
 }
 
-export function AbaCoresCatalogo({ cores, tiposLinha }: { cores: CorRal[]; tiposLinha: TipoLinha[] }) {
-  const [tipoFiltro, setTipoFiltro] = useState<string | null>(null); // null = todas
+export function AbaCoresCatalogo({
+  cores,
+  tiposLinha,
+  aplicacaoAtiva,
+}: {
+  cores: CorRal[];
+  tiposLinha: TipoLinha[];
+  aplicacaoAtiva?: string | null;
+}) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const podeCriar = usePode("catalogo.criar");
 
-  // Contagens por tipo para o menu
-  const contagemPorTipo = tiposLinha.map(t => ({
-    ...t,
-    count: cores.filter(c => (c.tipos ?? []).includes(t.slug)).length,
-  }));
-  const semAplicacao = cores.filter(c => !(c.tipos ?? []).length);
+  const coresFiltradas = aplicacaoAtiva
+    ? cores.filter(c => (c.tipos ?? []).includes(aplicacaoAtiva))
+    : cores;
 
-  // Cores filtradas pelo item de menu selecionado
-  const coresFiltradas = tipoFiltro === "__sem__"
-    ? semAplicacao
-    : tipoFiltro
-      ? cores.filter(c => (c.tipos ?? []).includes(tipoFiltro))
-      : cores;
-
-  const tituloAtivo = tipoFiltro === "__sem__"
-    ? "Sem aplicação"
-    : tipoFiltro
-      ? tiposLinha.find(t => t.slug === tipoFiltro)?.nome ?? tipoFiltro
-      : "Todas as cores";
+  const tituloAtivo = aplicacaoAtiva
+    ? tiposLinha.find(t => t.slug === aplicacaoAtiva)?.nome ?? aplicacaoAtiva
+    : "Todas as cores";
 
   return (
-    <div className="mt-6 flex gap-6">
-      {/* ── Sidebar ──────────────────────────────────────────── */}
-      <div className="w-44 shrink-0">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Aplicações</p>
-        <nav className="space-y-0.5">
-          <button
-            onClick={() => { setTipoFiltro(null); setMostrarForm(false); }}
-            className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-              tipoFiltro === null ? "bg-steel/10 font-semibold text-steel" : "text-ink-soft hover:bg-canvas hover:text-ink"
-            }`}
-          >
-            <span>Todas</span>
-            <span className={`text-xs ${tipoFiltro === null ? "text-steel" : "text-ink-faint"}`}>{cores.length}</span>
-          </button>
-
-          {contagemPorTipo.map(t => (
-            <button key={t.slug}
-              onClick={() => { setTipoFiltro(t.slug); setMostrarForm(false); }}
-              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                tipoFiltro === t.slug ? "bg-steel/10 font-semibold text-steel" : "text-ink-soft hover:bg-canvas hover:text-ink"
-              }`}
-            >
-              <span>{t.nome}</span>
-              <span className={`text-xs ${tipoFiltro === t.slug ? "text-steel" : "text-ink-faint"}`}>{t.count}</span>
-            </button>
-          ))}
-
-          {semAplicacao.length > 0 && (
-            <button
-              onClick={() => { setTipoFiltro("__sem__"); setMostrarForm(false); }}
-              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                tipoFiltro === "__sem__" ? "bg-steel/10 font-semibold text-steel" : "text-ink-soft hover:bg-canvas hover:text-ink"
-              }`}
-            >
-              <span>Sem aplicação</span>
-              <span className={`text-xs ${tipoFiltro === "__sem__" ? "text-steel" : "text-ink-faint"}`}>{semAplicacao.length}</span>
-            </button>
-          )}
-        </nav>
-      </div>
-
-      {/* ── Conteúdo ─────────────────────────────────────────── */}
-      <div className="min-w-0 flex-1 space-y-4">
-        <div className="flex items-center justify-between">
+    <div className="mt-6 space-y-4">
+      <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">{tituloAtivo}</p>
-            <p className="text-xs text-ink-faint">{coresFiltradas.length} cor(es)</p>
+            <p className="text-sm font-semibold text-text">{tituloAtivo}</p>
+            <p className="text-xs text-text-3">{coresFiltradas.length} cor(es)</p>
           </div>
           {podeCriar && !mostrarForm && (
             <button onClick={() => setMostrarForm(true)}
-              className="flex items-center gap-1.5 text-sm font-medium text-steel hover:underline">
+              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
@@ -274,52 +228,49 @@ export function AbaCoresCatalogo({ cores, tiposLinha }: { cores: CorRal[]; tipos
 
         {mostrarForm && (
           <div className="card p-5">
-            <p className="mb-4 font-display text-sm font-semibold text-ink">Nova cor RAL</p>
+            <p className="mb-4 font-display text-sm font-semibold text-text">Nova cor RAL</p>
             <FormNovaCor tiposLinha={tiposLinha} onDone={() => setMostrarForm(false)} />
           </div>
         )}
 
-        {coresFiltradas.length > 0 ? (
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
-                  <th className="w-10 px-4 py-3" />
-                  <th className="px-4 py-3 font-medium">Código RAL</th>
-                  <th className="px-4 py-3 font-medium">Nome</th>
-                  <th className="px-4 py-3 font-medium">Hex</th>
-                  <th className="w-16 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {coresFiltradas.map((cor) => (
-                  <CorRow key={cor.id} cor={cor} tiposLinha={tiposLinha} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="card p-10 text-center">
-            <p className="text-sm text-ink-faint">
-              {tipoFiltro === "__sem__"
-                ? "Todas as cores têm aplicação definida."
-                : tipoFiltro
-                  ? `Nenhuma cor cadastrada para ${tituloAtivo}.`
-                  : "Nenhuma cor RAL cadastrada."}
-            </p>
-          </div>
-        )}
+      {coresFiltradas.length > 0 ? (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+                <th className="w-10 px-4 py-3" />
+                <th className="px-4 py-3 font-medium">Código RAL</th>
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Hex</th>
+                <th className="w-16 px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {coresFiltradas.map((cor) => (
+                <CorRow key={cor.id} cor={cor} tiposLinha={tiposLinha} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="card p-10 text-center">
+          <p className="text-sm text-text-3">
+            {aplicacaoAtiva
+              ? `Nenhuma cor cadastrada para ${tituloAtivo}.`
+              : "Nenhuma cor RAL cadastrada."}
+          </p>
+        </div>
+      )}
 
-        {!mostrarForm && podeCriar && coresFiltradas.length === 0 && (
-          <button onClick={() => setMostrarForm(true)}
-            className="flex items-center gap-2 rounded-md border border-dashed border-line px-4 py-3 text-sm font-medium text-ink-soft transition-colors hover:border-steel hover:text-steel">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Nova cor RAL
-          </button>
-        )}
-      </div>
+      {!mostrarForm && podeCriar && coresFiltradas.length === 0 && (
+        <button onClick={() => setMostrarForm(true)}
+          className="flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-3 text-sm font-medium text-text-2 transition-colors hover:border-primary hover:text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nova cor RAL
+        </button>
+      )}
     </div>
   );
 }

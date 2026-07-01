@@ -1,19 +1,24 @@
 "use client";
 
-import { forwardRef, ButtonHTMLAttributes } from "react";
+import { forwardRef, ButtonHTMLAttributes, AnchorHTMLAttributes } from "react";
 import { cn } from "@/ui/lib/cn";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "success" | "warning" | "accent";
 export type ButtonSize    = "sm" | "md" | "lg";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+type ButtonBase = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   fullWidth?: boolean;
-  as?: "button" | "a";
-  href?: string;
-}
+  className?: string;
+  children?: React.ReactNode;
+};
+
+type AsButton = ButtonBase & ButtonHTMLAttributes<HTMLButtonElement> & { as?: "button"; href?: never };
+type AsAnchor = ButtonBase & AnchorHTMLAttributes<HTMLAnchorElement> & { as: "a"; href?: string; disabled?: boolean };
+
+export type ButtonProps = AsButton | AsAnchor;
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:   "bg-primary text-white hover:bg-primary-hover border-transparent",
@@ -32,36 +37,44 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: "h-11 px-5   text-base gap-2.5",
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", loading, fullWidth, className, children, disabled, ...props },
+const BASE_CLS = cn(
+  "inline-flex items-center justify-center font-semibold border",
+  "transition-all duration-[120ms] active:scale-[0.97]",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+  "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
+  "whitespace-nowrap select-none rounded-md"
+);
+
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(function Button(
+  { variant = "primary", size = "md", loading, fullWidth, className, children, as, ...props },
   ref
 ) {
+  const cls = cn(BASE_CLS, variantStyles[variant], sizeStyles[size], fullWidth && "w-full", className);
+  const content = loading ? (<><Spinner size={size} />{children}</>) : children;
+
+  if (as === "a") {
+    const { disabled, ...anchorProps } = props as AsAnchor;
+    return (
+      <a
+        ref={ref as React.Ref<HTMLAnchorElement>}
+        className={cn(cls, disabled && "opacity-40 pointer-events-none")}
+        aria-disabled={disabled}
+        {...anchorProps}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  const { disabled, ...btnProps } = props as AsButton;
   return (
     <button
-      ref={ref}
+      ref={ref as React.Ref<HTMLButtonElement>}
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center font-semibold border",
-        "transition-all duration-[120ms] active:scale-[0.97]",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-        "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
-        "whitespace-nowrap select-none",
-        "rounded-md",
-        variantStyles[variant],
-        sizeStyles[size],
-        fullWidth && "w-full",
-        className
-      )}
-      {...props}
+      className={cls}
+      {...btnProps}
     >
-      {loading ? (
-        <>
-          <Spinner size={size} />
-          {children}
-        </>
-      ) : (
-        children
-      )}
+      {content}
     </button>
   );
 });

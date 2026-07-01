@@ -13,25 +13,13 @@ const root = path.resolve(__dirname, "..");
 const INPUT = path.resolve("C:/Users/sms/Downloads/pwa-frame.png");
 const OUT_DIR = path.join(root, "public");
 
-// Gradient colors: #222831 (top-left) → #00A6C0 (bottom-right)
-const FROM = { r: 0x22, g: 0x28, b: 0x31 };
-const TO   = { r: 0x00, g: 0xA6, b: 0xC0 };
+// Fundo sólido #222831
+const BG = { r: 0x22, g: 0x28, b: 0x31 };
 
-async function gradientPng(size) {
-  const channels = 4;
-  const buf = Buffer.alloc(size * size * channels);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      // Diagonal gradient (top-left → bottom-right)
-      const t = (x + y) / (size * 2 - 2);
-      const idx = (y * size + x) * channels;
-      buf[idx + 0] = Math.round(FROM.r + (TO.r - FROM.r) * t);
-      buf[idx + 1] = Math.round(FROM.g + (TO.g - FROM.g) * t);
-      buf[idx + 2] = Math.round(FROM.b + (TO.b - FROM.b) * t);
-      buf[idx + 3] = 255;
-    }
-  }
-  return sharp(buf, { raw: { width: size, height: size, channels } }).png().toBuffer();
+async function solidBg(size) {
+  return sharp({
+    create: { width: size, height: size, channels: 4, background: { ...BG, alpha: 255 } },
+  }).png().toBuffer();
 }
 
 async function makeIcon(size, outFile) {
@@ -46,7 +34,7 @@ async function makeIcon(size, outFile) {
     .png()
     .toBuffer();
 
-  const bg = await gradientPng(size);
+  const bg = await solidBg(size);
 
   await sharp(bg)
     .composite([{ input: logo, top: offset, left: offset, blend: "over" }])

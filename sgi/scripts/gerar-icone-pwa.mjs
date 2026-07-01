@@ -23,8 +23,8 @@ async function solidBg(size) {
 }
 
 async function makeIcon(size, outFile) {
-  // Logo ocupa 70% do ícone, centralizada com padding
-  const logoSize = Math.round(size * 0.70);
+  // Logo ocupa 62% do ícone, centralizada com padding
+  const logoSize = Math.round(size * 0.62);
   const offset   = Math.round((size - logoSize) / 2);
 
   // Apara o espaço em branco da imagem original, depois redimensiona para 80%
@@ -58,9 +58,9 @@ async function main() {
     .toFile(path.join(OUT_DIR, "favicon.png"));
   console.log(`✓ public/favicon.png (fundo transparente)`);
 
-  // Ícones PWA com gradiente
-  await makeIcon(512, path.join(OUT_DIR, "icon.png"));
-  await makeIcon(192, path.join(OUT_DIR, "icon-192.png"));
+  // Ícones PWA — nomes versionados para forçar invalidação de cache
+  await makeIcon(512, path.join(OUT_DIR, "icon-v2.png"));
+  await makeIcon(192, path.join(OUT_DIR, "icon-192-v2.png"));
 
   console.log("\nícones gerados em public/");
 }

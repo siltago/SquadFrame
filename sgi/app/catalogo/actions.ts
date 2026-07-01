@@ -3,7 +3,7 @@
 import { createAdminClient as createClient } from "@/shared/database/supabase-admin";
 import { verificarPermissao } from "@/shared/auth/check-permission";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 // ─── Abas (tipos de linha) ───────────────────────────────────
@@ -648,6 +648,7 @@ export async function deletarCor(corId: string) {
   const supabase = createClient();
   const { error } = await supabase.from("cores_ral").delete().eq("id", corId);
   if (error) throw new Error(error.message);
+  revalidateTag("cores_ral");
   revalidatePath("/catalogo");
 }
 
@@ -664,6 +665,7 @@ export async function criarCorRal(formData: FormData) {
   const { error } = await supabase.from("cores_ral").insert({ codigo_ral, nome, hex, tipos });
   if (error) throw new Error(error.message);
 
+  revalidateTag("cores_ral");
   revalidatePath("/catalogo");
 }
 
@@ -677,6 +679,7 @@ export async function editarCor(id: string, formData: FormData) {
   const { error } = await supabase.from("cores_ral").update({ nome, hex, tipos }).eq("id", id);
   if (error) throw new Error(error.message);
 
+  revalidateTag("cores_ral");
   revalidatePath("/catalogo");
 }
 

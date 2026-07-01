@@ -36,7 +36,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
       .select("*, produto:produtos(codigo_mestre, nome, peso_metro, tamanho_mm)")
       .eq("pedido_id", params.id),
     admin.from("empresa").select("*").eq("id", "default").maybeSingle(),
-    admin.from("cores_ral").select("id, codigo_ral, nome").order("codigo_ral"),
+    admin.from("cores_ral").select("id, codigo_ral, nome, hex").order("codigo_ral"),
   ]);
 
   if (!pedResult.data) notFound();
@@ -114,7 +114,8 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
     const cor = corId ? coresMap[corId] : null;
     const thumb = imagensMap[item.produto_id] ?? null;
     const codigoExibir = item.codigo_fornecedor || aliasMap[item.produto_id] || item.produto?.codigo_mestre || "—";
-    return { ...item, totalItem, totalItemKg, corNome: cor?.nome ?? "Natural", thumb, codigoExibir };
+    const corNome = cor ? (cor.nome ?? cor.codigo_ral ?? "Natural") : "Natural";
+    return { ...item, totalItem, totalItemKg, corNome, thumb, codigoExibir };
   });
 
   const pcNum = ped.numero ?? "—";

@@ -13,7 +13,7 @@ import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa } fro
 const STATUS_PARA_EVENTO: Record<string, string> = {
   AGUARDANDO_APROVACAO:   EVENTS.PURCHASE_ORDER_AWAITING_APPROVAL,
   APROVADO:               EVENTS.PURCHASE_ORDER_APPROVED,
-  REJEITADO:              EVENTS.PURCHASE_ORDER_REJECTED,
+  // REJEITADO: sem notificação — comprador é notificado ao cancelar ou devolver para edição
   EMITIDO:                EVENTS.PURCHASE_ORDER_EMITTED,
   AGUARDANDO_RECEBIMENTO: EVENTS.PURCHASE_ORDER_SENT,
   CANCELADO:              EVENTS.PURCHASE_ORDER_CANCELLED,

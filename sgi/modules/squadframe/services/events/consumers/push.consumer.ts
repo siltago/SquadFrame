@@ -95,13 +95,17 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       const admin = createAdminClient();
       const { data: ped } = await admin
         .from("pedidos_compra")
-        .select("comprador_id, numero")
+        .select("comprador_id, numero, tipo_linha, obras(nome)")
         .eq("id", p.order_id)
         .single();
       if (ped?.comprador_id) {
+        const tipo = (ped?.tipo_linha ?? "compras").toLowerCase();
+        const numero = ped?.numero ?? "";
+        const obra = (ped?.obras as any)?.nome ?? "";
+        const obraLabel = obra ? ` - ${obra}` : "";
         await push([ped.comprador_id], {
-          title: "Pedido cancelado",
-          body: `Pedido ${ped.numero} foi cancelado`,
+          title: `Pedido de ${tipo}${obraLabel} cancelado`,
+          body: `Pedido ${numero} foi cancelado`,
           url: `/compras/pedidos/${p.order_id}`,
           tag: `pedido-cancelado-${p.order_id}`,
         });

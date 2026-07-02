@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { UserProvider } from "@/modules/squadframe/components/user-provider";
@@ -103,6 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </UserProvider>
           </PwaProvider>
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

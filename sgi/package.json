@@ -16,6 +16,7 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
     "@types/web-push": "^3.6.4",
+    "@vercel/speed-insights": "^2.0.0",
     "dxf": "^5.3.1",
     "git": "^0.1.5",
     "html2pdf.js": "^0.14.0",

@@ -37,6 +37,7 @@ function NavLink({ href, children, onClick }: LinkProps & { children: React.Reac
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const ocultarBotao = pathname?.endsWith("/visualizar");
 
   useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
@@ -46,13 +47,15 @@ export function MobileNav() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menu"
-        className="flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors sm:hidden"
-      >
-        <MenuIcon size={22} />
-      </button>
+      {!ocultarBotao && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menu"
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors sm:hidden"
+        >
+          <MenuIcon size={22} />
+        </button>
+      )}
 
       {open && (
         <div

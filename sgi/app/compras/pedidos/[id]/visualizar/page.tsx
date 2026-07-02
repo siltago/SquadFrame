@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { PrintButton } from "./print-button";
-import { Button } from "@/ui/components/Button";
+import { PdfScaleWrapper } from "./pdf-scale-wrapper";
 
 export const dynamic = "force-dynamic";
 
@@ -135,12 +135,19 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
   return (
     <div className="min-h-full bg-gray-100">
       {/* Toolbar — oculta ao imprimir */}
-      <div className="print:hidden sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-surface px-6 py-3 shadow-sm">
-        <Button as="a" variant="ghost" href={`/compras/pedidos/${params.id}`} className="text-sm px-3 py-1.5">
-          ← Voltar ao pedido
-        </Button>
-        <span className="text-sm font-semibold text-text">Visualização — PC {pcNum}</span>
-        <div className="ml-auto">
+      <div className="print:hidden sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-surface px-3 py-3 shadow-sm sm:gap-3 sm:px-6">
+        <Link
+          href={`/compras/pedidos/${params.id}`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-text-2 transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
+          title="Voltar ao pedido"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          <span className="hidden sm:inline">Voltar ao pedido</span>
+        </Link>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">Visualização — PC {pcNum}</span>
+        <div className="shrink-0">
           <PrintButton />
         </div>
       </div>
@@ -175,10 +182,12 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         }
       `}</style>
 
-      {/* Folha A4 — 794px = 210mm a 96dpi */}
+      {/* Folha A4 — 794px = 210mm a 96dpi. Em telas menores, PdfScaleWrapper reduz proporcionalmente. */}
+      <div className="my-8 print:my-0">
+      <PdfScaleWrapper>
       <div
         id="pdf-content"
-        className="mx-auto my-8 bg-white shadow-xl print:my-0 print:shadow-none print:w-full"
+        className="mx-auto bg-white shadow-xl print:shadow-none print:w-full"
         style={{ width: 794, minHeight: 1123, fontFamily: "Arial, Helvetica, sans-serif", fontSize: 12, color: "#1a1a1a" }}
       >
         {/* ── Cabeçalho ─────────────────────────────────────── */}
@@ -335,6 +344,8 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
           <span style={{ fontSize: 9, color: "#888" }}>{pcNum}</span>
           <span style={{ fontSize: 9, color: "#888" }}>Emitido em {dataEmissao}</span>
         </div>
+      </div>
+      </PdfScaleWrapper>
       </div>
     </div>
   );

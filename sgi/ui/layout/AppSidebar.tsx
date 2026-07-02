@@ -28,6 +28,7 @@ interface AppSidebarProps {
   defaultCollapsed?: boolean;
   storageKey?: string;
   className?: string;
+  hideMobileTrigger?: boolean;
 }
 
 export function AppSidebar({
@@ -37,6 +38,7 @@ export function AppSidebar({
   defaultCollapsed = false,
   storageKey = "squad-sidebar",
   className,
+  hideMobileTrigger = false,
 }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -188,23 +190,25 @@ export function AppSidebar({
   const mobileSidebar = (
     <>
       {/* FAB */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Abrir menu"
-        className={cn(
-          "fixed z-40 flex h-14 w-14 items-center justify-center rounded-full",
-          "shadow-xl text-white lg:hidden",
-          "transition-transform active:scale-95"
-        )}
-        style={{
-          bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
-          right: "calc(1.25rem + env(safe-area-inset-right))",
-          backgroundColor: "rgb(var(--color-primary))",
-          boxShadow: "0 4px 20px rgb(var(--color-primary) / 0.4)",
-        }}
-      >
-        <MenuIcon size={22} />
-      </button>
+      {!hideMobileTrigger && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Abrir menu"
+          className={cn(
+            "fixed z-40 flex h-14 w-14 items-center justify-center rounded-full",
+            "shadow-xl text-white lg:hidden",
+            "transition-transform active:scale-95"
+          )}
+          style={{
+            bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
+            right: "calc(1.25rem + env(safe-area-inset-right))",
+            backgroundColor: "rgb(var(--color-primary))",
+            boxShadow: "0 4px 20px rgb(var(--color-primary) / 0.4)",
+          }}
+        >
+          <MenuIcon size={22} />
+        </button>
+      )}
 
       {/* Backdrop */}
       <div

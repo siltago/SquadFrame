@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AppSidebar, SidebarSection } from "@/ui/layout/AppSidebar";
 import { Button } from "@/ui/components/Button";
 import {
@@ -12,6 +13,8 @@ import { usePode } from "@/modules/squadframe/components/user-provider";
 export function ComprasSidebar() {
   const podeCriarPedido      = usePode("compras.pedido.criar");
   const podeCriarSolicitacao = usePode("compras.solicitacao.criar");
+  const pathname = usePathname();
+  const ocultarFabMobile = pathname?.endsWith("/visualizar") ?? false;
 
   const sections: SidebarSection[] = [
     {
@@ -47,5 +50,12 @@ export function ComprasSidebar() {
     </div>
   ) : undefined;
 
-  return <AppSidebar sections={sections} footer={footer} storageKey="squad-compras-sidebar" />;
+  return (
+    <AppSidebar
+      sections={sections}
+      footer={footer}
+      storageKey="squad-compras-sidebar"
+      hideMobileTrigger={ocultarFabMobile}
+    />
+  );
 }

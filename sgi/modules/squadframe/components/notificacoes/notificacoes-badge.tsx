@@ -151,7 +151,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
       {aberto && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-xl border border-border bg-surface shadow-xl overflow-hidden">
+          <div className="fixed inset-x-4 top-16 z-50 mx-auto max-w-sm rounded-xl border border-border bg-surface shadow-xl overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-w-none">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="text-sm font-semibold text-text">Notificações</span>
               {naoLidas > 0 && (

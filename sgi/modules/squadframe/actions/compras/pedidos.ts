@@ -13,7 +13,7 @@ import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa } fro
 const STATUS_PARA_EVENTO: Record<string, string> = {
   AGUARDANDO_APROVACAO:   EVENTS.PURCHASE_ORDER_AWAITING_APPROVAL,
   APROVADO:               EVENTS.PURCHASE_ORDER_APPROVED,
-  REJEITADO:              EVENTS.PURCHASE_ORDER_CANCELLED,
+  REJEITADO:              EVENTS.PURCHASE_ORDER_REJECTED,
   EMITIDO:                EVENTS.PURCHASE_ORDER_EMITTED,
   AGUARDANDO_RECEBIMENTO: EVENTS.PURCHASE_ORDER_SENT,
   CANCELADO:              EVENTS.PURCHASE_ORDER_CANCELLED,
@@ -133,7 +133,12 @@ export async function alterarStatusPedido(
   const { error } = await admin.from("pedidos_compra").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);
 
-  const tipoEvento = STATUS_PARA_EVENTO[status];
+  // Transição de devolver para edição: REJEITADO → RASCUNHO emite evento próprio
+  const tipoEvento =
+    status === "RASCUNHO" && ped.status === "REJEITADO"
+      ? EVENTS.PURCHASE_ORDER_RETURNED_TO_DRAFT
+      : STATUS_PARA_EVENTO[status];
+
   if (tipoEvento) {
     await emitirEvento(tipoEvento, {
       order_id:    id,

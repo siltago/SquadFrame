@@ -91,6 +91,50 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       break;
     }
 
+    case EVENTS.PURCHASE_ORDER_REJECTED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero, tipo_linha, obras(nome)")
+        .eq("id", p.order_id)
+        .single();
+      if (ped?.comprador_id) {
+        const tipo = (ped?.tipo_linha ?? "compras").toLowerCase();
+        const numero = ped?.numero ?? "";
+        const obra = (ped?.obras as any)?.nome ?? "";
+        const obraLabel = obra ? ` - ${obra}` : "";
+        await push([ped.comprador_id], {
+          title: `Pedido de ${tipo}${obraLabel} rejeitado`,
+          body: `Pedido ${numero} foi rejeitado — revise e reenvie ou cancele`,
+          url: `/compras/pedidos/${p.order_id}`,
+          tag: `pedido-rejeitado-${p.order_id}`,
+        });
+      }
+      break;
+    }
+
+    case EVENTS.PURCHASE_ORDER_RETURNED_TO_DRAFT: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero, tipo_linha, obras(nome)")
+        .eq("id", p.order_id)
+        .single();
+      if (ped?.comprador_id) {
+        const tipo = (ped?.tipo_linha ?? "compras").toLowerCase();
+        const numero = ped?.numero ?? "";
+        const obra = (ped?.obras as any)?.nome ?? "";
+        const obraLabel = obra ? ` - ${obra}` : "";
+        await push([ped.comprador_id], {
+          title: `Pedido de ${tipo}${obraLabel} devolvido para edição`,
+          body: `Pedido ${numero} foi devolvido para edição — faça as correções e reenvie`,
+          url: `/compras/pedidos/${p.order_id}`,
+          tag: `pedido-rascunho-${p.order_id}`,
+        });
+      }
+      break;
+    }
+
     case EVENTS.PURCHASE_ORDER_CANCELLED: {
       const admin = createAdminClient();
       const { data: ped } = await admin

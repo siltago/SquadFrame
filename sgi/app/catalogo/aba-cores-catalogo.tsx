@@ -200,12 +200,16 @@ export function AbaCoresCatalogo({
   const [mostrarForm, setMostrarForm] = useState(false);
   const podeCriar = usePode("catalogo.criar");
 
-  const coresFiltradas = aplicacaoAtiva
-    ? cores.filter(c => (c.tipos ?? []).includes(aplicacaoAtiva))
+  // Slugs em tipos_linha podem ter sido cadastrados com case variado (ex: "PERFIL" vs "vidro"),
+  // então a comparação precisa ser case-insensitive.
+  const aplicacaoNorm = aplicacaoAtiva?.toLowerCase() ?? null;
+
+  const coresFiltradas = aplicacaoNorm
+    ? cores.filter(c => (c.tipos ?? []).some(t => t.toLowerCase() === aplicacaoNorm))
     : cores;
 
-  const tituloAtivo = aplicacaoAtiva
-    ? tiposLinha.find(t => t.slug === aplicacaoAtiva)?.nome ?? aplicacaoAtiva
+  const tituloAtivo = aplicacaoNorm
+    ? tiposLinha.find(t => t.slug.toLowerCase() === aplicacaoNorm)?.nome ?? aplicacaoAtiva
     : "Todas as cores";
 
   return (

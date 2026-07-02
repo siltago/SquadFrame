@@ -22,12 +22,12 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
 export default async function VisualizarPedidoPage({ params }: { params: { id: string } }) {
   const admin = createAdminClient();
 
-  const [pedResult, itensResult, empResult, coresResult] = await Promise.all([
+  const [pedResult, itensResult, empResult, coresResult, aprovResult] = await Promise.all([
     admin.from("pedidos_compra")
       .select(`*,
         obra:obras(id, nome, codigo, numero),
         fornecedor:fornecedores(nome, razao_social, cnpj, telefone, email),
-        comprador:usuarios(nome),
+        comprador:usuarios(nome, cargo:cargos(nome)),
         forma_pagamento:formas_pagamento(nome)
       `)
       .eq("id", params.id)
@@ -37,6 +37,14 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
       .eq("pedido_id", params.id),
     admin.from("empresa").select("*").eq("id", "default").maybeSingle(),
     admin.from("cores_ral").select("id, codigo_ral, nome, hex").order("codigo_ral"),
+    admin.from("compra_historico")
+      .select("usuario_id, criado_em, usuario:usuarios(nome, cargo:cargos(nome))")
+      .eq("entidade", "pedido")
+      .eq("entidade_id", params.id)
+      .eq("acao", "STATUS_APROVADO")
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!pedResult.data) notFound();
@@ -76,8 +84,24 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
   const forn = (ped.fornecedor as any) ?? {};
   const obra = (ped.obra as any) ?? {};
   const comprador = (ped.comprador as any) ?? {};
+  const compradorCargo = (comprador.cargo as any)?.nome ?? null;
   const formaPgto = (ped.forma_pagamento as any) ?? {};
   const coresMap = Object.fromEntries((coresRaw ?? []).map((c: any) => [c.id, c]));
+
+  const aprov = aprovResult.data as any;
+  const aprovador = (aprov?.usuario as any) ?? {};
+  const aprovadorCargo = (aprovador.cargo as any)?.nome ?? null;
+  const aprovadoEm = aprov?.criado_em ? new Date(aprov.criado_em) : null;
+  const elaboradoEm = ped.criado_em ? new Date(ped.criado_em) : null;
+
+  function assinadoEm(d: Date | null) {
+    return d
+      ? d.toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit",
+        })
+      : null;
+  }
 
   function endereco(e: any) {
     const partes = [
@@ -90,6 +114,14 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
   let totalProduto = 0;
   let totalKg = 0;
+
+  const isVidro = (ped.tipo_linha ?? "").toUpperCase().includes("VIDRO");
+  // Para pedidos de vidro, o pedido já enriquece descricao_snapshot com "— NxL×A mm" (enriquecerItensChapa).
+  // Como o PDF de vidro tem coluna própria "Larg x Alt", removemos esse sufixo redundante só na exibição.
+  const SUFIXO_DIMENSOES = /\s*—\s*\d+\s*×\s*\d+L\s*×\s*\d+A\s*mm\s*$/;
+  function descricaoExibir(desc: string) {
+    return isVidro ? desc.replace(SUFIXO_DIMENSOES, "") : desc;
+  }
 
   const FATOR_MASSA_CHAPA = 0.0000025;
   const linhas = itens.map((item: any) => {
@@ -114,12 +146,17 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
     const cor = corId ? coresMap[corId] : null;
     const thumb = imagensMap[item.produto_id] ?? null;
     const codigoExibir = item.codigo_fornecedor || aliasMap[item.produto_id] || item.produto?.codigo_mestre || "—";
-    const corNome = cor ? (cor.nome ?? cor.codigo_ral ?? "Natural") : "Natural";
+    const corNome = cor ? (cor.nome ? `${cor.codigo_ral} - ${cor.nome}` : cor.codigo_ral) : "Natural";
     return { ...item, totalItem, totalItemKg, corNome, thumb, codigoExibir };
   });
 
   const pcNum = ped.numero ?? "—";
   const dataEmissao = new Date().toLocaleDateString("pt-BR");
+
+  function largAlt(item: any) {
+    if (item.largura_m == null || item.altura_m == null) return "—";
+    return `${Math.round(item.largura_m * 1000)} x ${Math.round(item.altura_m * 1000)}`;
+  }
 
   // Estilos inline para fidelidade ao PDF
   const azul = "#1e3a5f";
@@ -252,11 +289,16 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
             <tr>
               <th style={{ ...thStyle, width: "5%" }}>FOTO</th>
               <th style={{ ...thStyle, textAlign: "left", width: "10%" }}>CÓDIGO{"\n"}DO ITEM</th>
-              <th style={{ ...thStyle, textAlign: "left", width: "24%" }}>DESCRIÇÃO DO ITEM</th>
-              <th style={{ ...thStyle, width: "13%" }}>COR /{"\n"}ACABAMENTO</th>
-              <th style={{ ...thStyle, width: "10%" }}>QTD</th>
+              <th style={{ ...thStyle, textAlign: "left", width: isVidro ? "20%" : "24%" }}>DESCRIÇÃO DO ITEM</th>
+              <th style={{ ...thStyle, width: "12%" }}>COR /{"\n"}ACABAMENTO</th>
+              {isVidro && (
+                <th style={{ ...thStyle, width: "11%" }}>LARG X ALT{"\n"}(mm)</th>
+              )}
+              <th style={{ ...thStyle, width: "9%" }}>QTD</th>
               <th style={{ ...thStyle, width: "11%" }}>VLR UNIT{"\n"}(R$/m)</th>
-              <th style={{ ...thStyle, width: "10%" }}>PESO UNIT{"\n"}kg/m</th>
+              {!isVidro && (
+                <th style={{ ...thStyle, width: "10%" }}>PESO UNIT{"\n"}kg/m</th>
+              )}
               <th style={{ ...thStyle, width: "11%" }}>TOTAL ITEM{"\n"}(R$)</th>
               <th style={{ ...thStyle, width: "9%" }}>TOTAL{"\n"}KG</th>
             </tr>
@@ -281,15 +323,20 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
                   ) : null}
                 </td>
                 <td style={{ ...tdStyle, fontFamily: "monospace" }}>{item.codigoExibir}</td>
-                <td style={{ ...tdStyle, fontStyle: "italic" }}>{item.descricao_snapshot}</td>
+                <td style={{ ...tdStyle, fontStyle: "italic" }}>{descricaoExibir(item.descricao_snapshot)}</td>
                 <td style={{ ...tdStyle, textAlign: "center" }}>{item.corNome}</td>
+                {isVidro && (
+                  <td style={{ ...tdStyle, textAlign: "center", fontFamily: "monospace" }}>{largAlt(item)}</td>
+                )}
                 <td style={{ ...tdStyle, textAlign: "center" }}>{fmt(item.quantidade_pedida)}</td>
                 <td style={{ ...tdStyle, textAlign: "center" }}>R$ {fmt(item.preco_unitario ?? 0, 2)}</td>
-                <td style={{ ...tdStyle, textAlign: "center" }}>
-                  {["CHAPA","M²","M2"].includes((item.unidade ?? "").toUpperCase())
-                    ? (item.produto?.tamanho_mm ? `${item.produto.tamanho_mm} mm` : "—")
-                    : fmt(item.produto?.peso_metro ?? 0, 3)}
-                </td>
+                {!isVidro && (
+                  <td style={{ ...tdStyle, textAlign: "center" }}>
+                    {["CHAPA","M²","M2"].includes((item.unidade ?? "").toUpperCase())
+                      ? (item.produto?.tamanho_mm ? `${item.produto.tamanho_mm} mm` : "—")
+                      : fmt(item.produto?.peso_metro ?? 0, 3)}
+                  </td>
+                )}
                 <td style={{ ...tdStyle, textAlign: "right" }}>R$ {fmt(item.totalItem, 2)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{fmt(item.totalItemKg, 3)}</td>
               </tr>
@@ -331,11 +378,29 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
         <div className="pdf-no-break" style={{ borderTop: `1px solid ${cinzaLinha}`, marginTop: 48, padding: "16px 28px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 32 }}>Elaborador</div>
-            <div style={{ borderTop: `1px solid #aaa`, paddingTop: 6, fontSize: 11 }}>{comprador.nome ?? ""}</div>
+            <div style={{ borderTop: `1px solid #aaa`, paddingTop: 6 }}>
+              {assinadoEm(elaboradoEm) && (
+                <div style={{ fontSize: 9, color: "#888" }}>Assinado digitalmente: {assinadoEm(elaboradoEm)}</div>
+              )}
+              <div style={{ fontSize: 11, marginTop: 2 }}>
+                Elaborador: {comprador.nome ?? "—"}{compradorCargo ? ` - ${compradorCargo}` : ""}
+              </div>
+            </div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#888", marginBottom: 32 }}>Finalizador</div>
-            <div style={{ borderTop: `1px solid #aaa`, paddingTop: 6, fontSize: 11 }}>&nbsp;</div>
+            <div style={{ fontSize: 10, color: "#888", marginBottom: 32 }}>Aprovador</div>
+            <div style={{ borderTop: `1px solid #aaa`, paddingTop: 6 }}>
+              {aprovadoEm ? (
+                <>
+                  <div style={{ fontSize: 9, color: "#888" }}>Assinado digitalmente: {assinadoEm(aprovadoEm)}</div>
+                  <div style={{ fontSize: 11, marginTop: 2 }}>
+                    Aprovador: {aprovador.nome ?? "—"}{aprovadorCargo ? ` - ${aprovadorCargo}` : ""}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11 }}>&nbsp;</div>
+              )}
+            </div>
           </div>
         </div>
 

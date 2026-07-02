@@ -20,6 +20,11 @@ export default async function HomePage() {
     etiquetas:tarefa_etiquetas(etiqueta:etiquetas(id, nome, cor, setor_id))
   `;
 
+  const podeAprovarPedido =
+    usuario.permissoes?.includes("*") ||
+    usuario.permissoes?.includes("compras.pedido.aprovar") ||
+    false;
+
   const STATUS_EXCLUIR = '("CONCLUIDA","CANCELADA")';
 
   // Tarefas onde sou responsável
@@ -31,6 +36,17 @@ export default async function HomePage() {
     .not("status", "in", STATUS_EXCLUIR)
     .order("prioridade", { ascending: false })
     .order("data_limite", { ascending: true, nullsFirst: false });
+
+  // Pedidos aguardando aprovação (apenas para quem pode aprovar)
+  let pedidosParaAprovarRaw: any[] = [];
+  if (podeAprovarPedido) {
+    const { data } = await admin
+      .from("pedidos_compra")
+      .select("id, numero, tipo_linha, criado_em, fornecedor:fornecedores(nome), obra:obras(nome)")
+      .eq("status", "AGUARDANDO_APROVACAO")
+      .order("criado_em", { ascending: true });
+    pedidosParaAprovarRaw = data ?? [];
+  }
 
   // Tarefas sem dono do meu setor (para facilitar aceitar)
   let setorTarefasRaw: any[] = [];
@@ -60,6 +76,7 @@ export default async function HomePage() {
       <MinhaCentral
         minhasTarefas={(minhasTarefasRaw ?? []) as any}
         setorTarefas={setorTarefasRaw as any}
+        pedidosParaAprovar={pedidosParaAprovarRaw as any}
         usuarioId={usuario.id}
         usuarioNome={usuario.nome}
       />

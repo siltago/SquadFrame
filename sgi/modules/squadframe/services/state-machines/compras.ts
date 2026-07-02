@@ -60,7 +60,7 @@ export type StatusPedido =
   | "CANCELADO";
 
 const TRANSICOES_PEDIDO: Record<StatusPedido, StatusPedido[]> = {
-  RASCUNHO:               ["AGUARDANDO_APROVACAO"],
+  RASCUNHO:               ["AGUARDANDO_APROVACAO", "CANCELADO"],
   AGUARDANDO_APROVACAO:   ["APROVADO", "REJEITADO", "CANCELADO"],
   REJEITADO:              ["RASCUNHO", "CANCELADO"], // comprador edita ou cancela
   APROVADO:               ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "CANCELADO"],

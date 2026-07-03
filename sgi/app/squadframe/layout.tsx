@@ -41,6 +41,7 @@ export default async function SquadFrameLayout({ children }: { children: React.R
       <AppHeader
         logoAlt="SquadFrame"
         appName="SquadFrame"
+        homeHref="/squadframe"
         navItems={NAV_ITEMS}
         mobileNavSlot={<MobileNav />}
         rightSlot={

@@ -16,6 +16,7 @@ interface AppHeaderProps {
   logoSrc?: string;
   logoAlt?: string;
   appName?: string;
+  homeHref?: string;
   navItems?: NavItem[];
   rightSlot?: ReactNode;
   mobileNavSlot?: ReactNode;
@@ -27,6 +28,7 @@ export function AppHeader({
   logoSrc = "/favicon.png",
   logoAlt = "Logo",
   appName = "SquadFrame",
+  homeHref = "/",
   navItems = [],
   rightSlot,
   mobileNavSlot,
@@ -55,7 +57,7 @@ export function AppHeader({
       {mobileNavSlot && <div className="sm:hidden shrink-0">{mobileNavSlot}</div>}
 
       {/* Logo */}
-      <Link href="/" className="flex shrink-0 items-center gap-2.5 py-1">
+      <Link href={homeHref} className="flex shrink-0 items-center gap-2.5 py-1">
         {logoSrc && (
           <Image
             src={logoSrc}

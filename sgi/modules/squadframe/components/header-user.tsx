@@ -124,6 +124,16 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
               )}
             </div>
 
+            {/* Voltar ao hub do SquadSystem */}
+            <Link
+              href="/"
+              onClick={() => setAberto(false)}
+              className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-sm font-medium text-text-2 hover:bg-bg hover:text-text"
+            >
+              <img src="/logo-system.png" alt="" className="h-4 w-4 shrink-0 object-contain" />
+              SquadSystem
+            </Link>
+
             {/* Ações */}
             <div className="py-1">
               {/* Status de conexão */}

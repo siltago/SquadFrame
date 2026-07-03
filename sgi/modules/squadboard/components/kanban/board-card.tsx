@@ -3,13 +3,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/ui/lib/cn";
-import { Badge } from "@/ui/components/Badge";
-import { AvatarGroup } from "@/ui/components/Avatar";
-import { AttachmentIcon, CheckSquareIcon, ClockIcon } from "@/ui/icons";
+import { Avatar } from "@/ui/components/Avatar";
+import { LayersIcon, DocumentIcon, CartIcon, ClockIcon } from "@/ui/icons";
 import { PriorityDot } from "./priority-dot";
-import type { BoardCard } from "@/modules/squadboard/types/board";
+import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
 
-function formatarPrazo(iso?: string) {
+function formatarPrazo(iso: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
   const hoje = new Date();
@@ -18,7 +17,7 @@ function formatarPrazo(iso?: string) {
   return { label, atrasado };
 }
 
-export function BoardCardItem({ card, onOpen }: { card: BoardCard; onOpen: () => void }) {
+export function BoardCardItem({ card, onOpen }: { card: BoardWorkPackageCard; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { card },
@@ -30,8 +29,6 @@ export function BoardCardItem({ card, onOpen }: { card: BoardCard; onOpen: () =>
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const checklistTotal = card.checklist.length;
-  const checklistFeito = card.checklist.filter((i) => i.feito).length;
   const prazo = formatarPrazo(card.prazo);
 
   return (
@@ -47,39 +44,26 @@ export function BoardCardItem({ card, onOpen }: { card: BoardCard; onOpen: () =>
         "flex flex-col gap-2.5"
       )}
     >
-      {/* Etiquetas */}
-      {card.etiquetas.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {card.etiquetas.map((e) => (
-            <Badge key={e.id} variant={e.cor} size="sm">
-              {e.nome}
-            </Badge>
-          ))}
-        </div>
-      )}
+      {/* Nome do pacote */}
+      <p className="text-sm font-medium leading-snug text-text">{card.nome}</p>
 
-      {/* Título */}
-      <p className="text-sm font-medium leading-snug text-text">{card.titulo}</p>
+      {/* Obra */}
+      <p className="truncate text-xs text-text-3">{card.obraNome}</p>
 
-      {/* Cliente */}
-      {card.cliente && (
-        <p className="text-xs text-text-3">{card.cliente}</p>
-      )}
-
-      {/* Checklist progress */}
-      {checklistTotal > 0 && (
+      {/* Progresso das tipologias */}
+      {card.contadores.tipologias > 0 && (
         <div className="flex items-center gap-1.5">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3">
             <div
               className="h-full rounded-full bg-text-3 transition-all duration-[180ms]"
-              style={{ width: `${(checklistFeito / checklistTotal) * 100}%` }}
+              style={{ width: `${card.progresso}%` }}
             />
           </div>
-          <span className="shrink-0 text-[11px] text-text-3">{checklistFeito}/{checklistTotal}</span>
+          <span className="shrink-0 text-[11px] text-text-3">{card.progresso}%</span>
         </div>
       )}
 
-      {/* Rodapé: prioridade, prazo, indicadores, responsáveis */}
+      {/* Rodapé: prioridade, prazo, contadores, responsável */}
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <div className="flex items-center gap-2.5 text-text-3">
           <PriorityDot prioridade={card.prioridade} />
@@ -89,23 +73,21 @@ export function BoardCardItem({ card, onOpen }: { card: BoardCard; onOpen: () =>
               {prazo.label}
             </span>
           )}
-          {card.anexos.length > 0 && (
-            <span className="flex items-center gap-1 text-[11px]">
-              <AttachmentIcon size={11} />
-              {card.anexos.length}
-            </span>
-          )}
-          {checklistTotal > 0 && (
-            <span className="flex items-center gap-1 text-[11px]">
-              <CheckSquareIcon size={11} />
-              {checklistFeito}/{checklistTotal}
-            </span>
-          )}
+          <span className="flex items-center gap-1 text-[11px]" title="Tipologias">
+            <LayersIcon size={11} />
+            {card.contadores.tipologias}
+          </span>
+          <span className="flex items-center gap-1 text-[11px]" title="Solicitações de compra">
+            <DocumentIcon size={11} />
+            {card.contadores.solicitacoes}
+          </span>
+          <span className="flex items-center gap-1 text-[11px]" title="Pedidos de compra">
+            <CartIcon size={11} />
+            {card.contadores.pedidos}
+          </span>
         </div>
 
-        {card.responsaveis.length > 0 && (
-          <AvatarGroup items={card.responsaveis.map((m) => ({ name: m.nome, src: m.avatarUrl ?? undefined }))} max={3} />
-        )}
+        {card.responsavel && <Avatar name={card.responsavel} size="sm" />}
       </div>
     </div>
   );

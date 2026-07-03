@@ -33,6 +33,11 @@ export async function criarPedido(formData: FormData) {
   const observacoes        = (formData.get("observacoes") as string | null) || null;
   const tipo_linha         = (formData.get("tipo_linha") as string | null) || null;
   const itensJson          = formData.get("itens") as string;
+  // Vínculo opcional com Pacote de Trabalho — direto (form) ou herdado da
+  // solicitação de origem (ver bloco abaixo). Ausente = comportamento
+  // idêntico ao fluxo normal de Compras.
+  let lote_id              = (formData.get("lote_id") as string | null) || null;
+  let origem_contexto      = (formData.get("origem_contexto") as string | null) || null;
 
   if (!fornecedor_id) throw new Error("Selecione um fornecedor.");
   if (!obra_id) throw new Error("Selecione uma obra.");
@@ -45,6 +50,29 @@ export async function criarPedido(formData: FormData) {
     cor_id?: string | null;
   }[] = JSON.parse(itensJson);
   if (!itens.length) throw new Error("Adicione ao menos um item.");
+
+  // Herda lote_id/origem_contexto da solicitação de origem, se o pedido não
+  // veio já com um lote_id explícito (fluxo "pedido direto a partir do pacote").
+  if (!lote_id) {
+    const itemComSolicitacao = itens.find((i) => i.solicitacao_item_id);
+    if (itemComSolicitacao?.solicitacao_item_id) {
+      const { data: itemSol } = await admin
+        .from("solicitacao_itens")
+        .select("solicitacao:solicitacoes_compra(lote_id, origem_contexto)")
+        .eq("id", itemComSolicitacao.solicitacao_item_id)
+        .maybeSingle();
+      // O PostgREST não expõe pro TS a cardinalidade real do join — pra uma FK
+      // simples (solicitacao_id) ele sempre volta 1 objeto, mas o tipo inferido
+      // é array. Normaliza sem `any` (mesmo padrão já usado em obras/[id]/page.tsx).
+      type SolicitacaoRaw = { lote_id: string | null; origem_contexto: string | null };
+      const raw = itemSol as unknown as { solicitacao: SolicitacaoRaw[] | SolicitacaoRaw | null } | null;
+      const solicitacao = Array.isArray(raw?.solicitacao) ? raw?.solicitacao[0] ?? null : raw?.solicitacao ?? null;
+      if (solicitacao?.lote_id) {
+        lote_id = solicitacao.lote_id;
+        origem_contexto = solicitacao.origem_contexto;
+      }
+    }
+  }
 
   const produtoIds = itens.map((i) => i.produto_id).filter(Boolean);
   if (produtoIds.length > 0) {
@@ -73,6 +101,8 @@ export async function criarPedido(formData: FormData) {
     p_tipo_linha:         tipo_linha,
     p_cor_id:             cor_id,
     p_itens:              itensProcessados,
+    p_lote_id:            lote_id,
+    p_origem_contexto:    origem_contexto,
   });
   if (error) throw new Error(error.message);
 

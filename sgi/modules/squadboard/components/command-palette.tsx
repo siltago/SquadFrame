@@ -4,14 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchIcon, KanbanIcon } from "@/ui/icons";
 import { EmptyState } from "@/ui/components/EmptyState";
 import { PriorityDot } from "./kanban/priority-dot";
-import type { BoardCard } from "@/modules/squadboard/types/board";
+import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
 
 export function CommandPalette({
   open, onClose, cards, onSelectCard,
 }: {
   open: boolean;
   onClose: () => void;
-  cards: BoardCard[];
+  cards: BoardWorkPackageCard[];
   onSelectCard: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -22,7 +22,7 @@ export function CommandPalette({
     const q = query.trim().toLowerCase();
     if (!q) return cards.slice(0, 8);
     return cards.filter((c) =>
-      c.titulo.toLowerCase().includes(q) || c.cliente?.toLowerCase().includes(q)
+      c.nome.toLowerCase().includes(q) || c.obraNome.toLowerCase().includes(q)
     ).slice(0, 8);
   }, [query, cards]);
 
@@ -65,7 +65,7 @@ export function CommandPalette({
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setAtivo(0); }}
-            placeholder="Buscar cards por título ou cliente…"
+            placeholder="Buscar pacotes por nome ou obra…"
             className="w-full bg-transparent text-sm text-text placeholder:text-text-3 focus:outline-none"
           />
           <kbd className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] font-semibold text-text-3">esc</kbd>
@@ -73,7 +73,7 @@ export function CommandPalette({
 
         <div className="max-h-80 overflow-y-auto p-1.5 scrollbar-thin">
           {resultados.length === 0 ? (
-            <EmptyState size="sm" title="Nenhum card encontrado" />
+            <EmptyState size="sm" title="Nenhum pacote encontrado" />
           ) : (
             resultados.map((c, i) => (
               <button
@@ -85,7 +85,7 @@ export function CommandPalette({
                 }`}
               >
                 <KanbanIcon size={14} className="shrink-0 text-text-3" />
-                <span className="min-w-0 flex-1 truncate text-sm text-text">{c.titulo}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-text">{c.nome}</span>
                 <PriorityDot prioridade={c.prioridade} />
               </button>
             ))

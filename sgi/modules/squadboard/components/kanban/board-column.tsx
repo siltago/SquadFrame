@@ -3,37 +3,25 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/ui/lib/cn";
-import { PlusIcon } from "@/ui/icons";
+import { EmptyState } from "@/ui/components/EmptyState";
 import { BoardCardItem } from "./board-card";
-import type { BoardCard, BoardColuna } from "@/modules/squadboard/types/board";
+import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
+import type { PipelineColuna } from "@/modules/squadboard/types/pipeline";
 
 export function BoardColumn({
-  coluna, cards, onOpenCard, onAddCard,
+  coluna, cards, onOpenCard,
 }: {
-  coluna: BoardColuna;
-  cards: BoardCard[];
+  coluna: PipelineColuna;
+  cards: BoardWorkPackageCard[];
   onOpenCard: (id: string) => void;
-  onAddCard: (colunaId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id, data: { colunaId: coluna.id } });
-  const acimaDoLimite = coluna.limiteWip != null && cards.length > coluna.limiteWip;
 
   return (
     <div className="flex w-[300px] shrink-0 flex-col">
-      <div className="mb-2.5 flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-text">{coluna.nome}</h3>
-          <span className={cn("text-xs", acimaDoLimite ? "font-semibold text-warning" : "text-text-3")}>
-            {cards.length}{coluna.limiteWip ? ` / ${coluna.limiteWip}` : ""}
-          </span>
-        </div>
-        <button
-          onClick={() => onAddCard(coluna.id)}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
-          aria-label="Adicionar card"
-        >
-          <PlusIcon size={14} />
-        </button>
+      <div className="mb-2.5 flex items-center gap-2 px-1">
+        <h3 className="text-sm font-semibold text-text">{coluna.nome}</h3>
+        <span className="text-xs text-text-3">{cards.length}</span>
       </div>
 
       <div
@@ -49,6 +37,9 @@ export function BoardColumn({
             <BoardCardItem key={card.id} card={card} onOpen={() => onOpenCard(card.id)} />
           ))}
         </SortableContext>
+        {cards.length === 0 && (
+          <EmptyState size="sm" title="Nenhum pacote" />
+        )}
       </div>
     </div>
   );

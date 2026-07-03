@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function NovoPedidoPage({
   searchParams,
 }: {
-  searchParams: { from?: string; obra_id?: string };
+  searchParams: { from?: string; obra_id?: string; lote_id?: string; origem_contexto?: string };
 }) {
   const usuario = await getUsuarioAtual();
   const podeCriar =
@@ -59,6 +59,8 @@ export default async function NovoPedidoPage({
           coresRal={coresRal}
           fromSolicitacao={(fromSolicitacao ?? null) as any}
           fromObraId={fromObraId}
+          loteId={searchParams.lote_id ?? null}
+          origemContexto={searchParams.origem_contexto ?? null}
         />
       </div>
     </div>

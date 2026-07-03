@@ -205,10 +205,12 @@ function CodigoFornecedorModal({ produto, nomeFornecedor, onUsar, onSemCodigo, o
 // ── Componente principal ──────────────────────────────────────────
 export function NovoPedidoCliente({
   obras, fornecedores, solicitacoesAprovadas, tiposLinha, formasPagamento, coresRal, fromSolicitacao, fromObraId,
+  loteId, origemContexto,
 }: {
   obras: Obra[]; fornecedores: Fornecedor[]; solicitacoesAprovadas: Solicitacao[];
   tiposLinha: TipoLinha[]; formasPagamento: FormaPagamento[]; coresRal: CorRal[];
   fromSolicitacao?: Solicitacao | null; fromObraId?: string | null;
+  loteId?: string | null; origemContexto?: string | null;
 }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [showSols, setShowSols] = useState(false);
@@ -393,6 +395,8 @@ export function NovoPedidoCliente({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {loteId && <input type="hidden" name="lote_id" value={loteId} />}
+        {origemContexto && <input type="hidden" name="origem_contexto" value={origemContexto} />}
         {/* Tipo de pedido */}
         {tiposLinha.length > 0 && (
           <div className="card p-4">

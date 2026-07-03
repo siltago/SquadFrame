@@ -151,7 +151,21 @@ function FormItemExterno({ onAdd }: { onAdd: (item: ItemExterno) => void }) {
   );
 }
 
-export function NovaSolicitacaoCliente({ obras, coresRal }: { obras: Obra[]; coresRal: CorRal[] }) {
+export function NovaSolicitacaoCliente({
+  obras,
+  coresRal,
+  defaultObraId,
+  loteId,
+  loteNome,
+  origemContexto,
+}: {
+  obras: Obra[];
+  coresRal: CorRal[];
+  defaultObraId?: string | null;
+  loteId?: string | null;
+  loteNome?: string | null;
+  origemContexto?: string | null;
+}) {
   const [itens, setItens] = useState<Item[]>([]);
   const [modoAdd, setModoAdd] = useState<"catalogo" | "externo">("catalogo");
   const [erro, setErro] = useState<string | null>(null);
@@ -206,11 +220,22 @@ export function NovaSolicitacaoCliente({ obras, coresRal }: { obras: Obra[]; cor
         />
       )}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {loteId && (
+          <input type="hidden" name="lote_id" value={loteId} />
+        )}
+        {origemContexto && (
+          <input type="hidden" name="origem_contexto" value={origemContexto} />
+        )}
+        {loteNome && (
+          <div className="rounded-lg border border-primary/30 bg-primary-soft px-4 py-2.5 text-sm text-text">
+            Vinculada ao pacote de trabalho <strong>{loteNome}</strong>
+          </div>
+        )}
         <div className="card p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <label className="label">Obra <span className="text-text-3 font-normal">(opcional)</span></label>
-              <select name="obra_id" className="field">
+              <select name="obra_id" className="field" defaultValue={defaultObraId ?? ""}>
                 <option value="">Sem obra vinculada</option>
                 {obras.map((o) => (
                   <option key={o.id} value={o.id}>{o.codigo} — {o.nome}</option>

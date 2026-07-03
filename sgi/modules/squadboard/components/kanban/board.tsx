@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners,
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
@@ -8,35 +8,39 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 import { BoardColumn } from "./board-column";
 import { BoardCardItem } from "./board-card";
-import type { Board, BoardCard } from "@/modules/squadboard/types/board";
+import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
+import type { PipelineColuna } from "@/modules/squadboard/types/pipeline";
 
+// Drag-and-drop persiste apenas dentro do pipeline sendo exibido: mover um
+// card muda `coluna` localmente (feedback imediato) e, ao soltar, dispara
+// `onColunaChange` só se a coluna final for diferente da inicial — quem
+// decide como persistir (e em qual pipeline) é o chamador (SquadBoardView),
+// este componente não sabe nada sobre pipelines além da lista de colunas.
 export function KanbanBoard({
-  board, cards, onCardsChange, onOpenCard, onAddCard,
+  colunas, cards, onCardsChange, onOpenCard, onColunaChange,
 }: {
-  board: Board;
-  cards: BoardCard[];
-  onCardsChange: (updater: (prev: BoardCard[]) => BoardCard[]) => void;
+  colunas: PipelineColuna[];
+  cards: BoardWorkPackageCard[];
+  onCardsChange: (updater: (prev: BoardWorkPackageCard[]) => BoardWorkPackageCard[]) => void;
   onOpenCard: (id: string) => void;
-  onAddCard: (colunaId: string) => void;
+  onColunaChange: (cardId: string, novaColuna: string) => void;
 }) {
   const setCards = onCardsChange;
-  const [activeCard, setActiveCard] = useState<BoardCard | null>(null);
+  const [activeCard, setActiveCard] = useState<BoardWorkPackageCard | null>(null);
+  const colunaInicioRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const colunasOrdenadas = [...board.colunas].sort((a, b) => a.ordem - b.ordem);
-
   function cardsDaColuna(colunaId: string) {
-    return cards
-      .filter((c) => c.colunaId === colunaId)
-      .sort((a, b) => a.ordem - b.ordem);
+    return cards.filter((c) => c.coluna === colunaId);
   }
 
   function handleDragStart(e: DragStartEvent) {
     const card = cards.find((c) => c.id === e.active.id);
     setActiveCard(card ?? null);
+    colunaInicioRef.current = card?.coluna ?? null;
   }
 
   function handleDragOver(e: DragOverEvent) {
@@ -51,27 +55,40 @@ export function KanbanBoard({
       if (!activeCardData) return prev;
 
       const overCard = prev.find((c) => c.id === overId);
-      const overColunaId = overCard ? overCard.colunaId : overId; // overId pode ser o id de uma coluna vazia
+      const overColunaId = overCard ? overCard.coluna : overId; // overId pode ser o id de uma coluna vazia
 
-      if (activeCardData.colunaId === overColunaId) return prev;
+      if (activeCardData.coluna === overColunaId) return prev;
 
-      return prev.map((c) => (c.id === activeId ? { ...c, colunaId: overColunaId } : c));
+      return prev.map((c) => (c.id === activeId ? { ...c, coluna: overColunaId } : c));
     });
   }
 
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     setActiveCard(null);
-    if (!over) return;
+    if (!over) {
+      colunaInicioRef.current = null;
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    const colunaInicio = colunaInicioRef.current;
+    colunaInicioRef.current = null;
 
     setCards((prev) => {
       const activeIdx = prev.findIndex((c) => c.id === activeId);
       const overIdx = prev.findIndex((c) => c.id === overId);
-      if (activeIdx === -1 || overIdx === -1 || activeIdx === overIdx) return prev;
-      return arrayMove(prev, activeIdx, overIdx).map((c, i) => ({ ...c, ordem: i }));
+      const reordenado = activeIdx !== -1 && overIdx !== -1 && activeIdx !== overIdx
+        ? arrayMove(prev, activeIdx, overIdx)
+        : prev;
+
+      const cardFinal = reordenado.find((c) => c.id === activeId);
+      if (cardFinal && colunaInicio !== null && cardFinal.coluna !== colunaInicio) {
+        onColunaChange(activeId, cardFinal.coluna);
+      }
+
+      return reordenado;
     });
   }
 
@@ -84,13 +101,12 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-4 overflow-x-auto px-4 pb-4 pt-1 sm:px-6 scrollbar-thin">
-        {colunasOrdenadas.map((coluna) => (
+        {colunas.map((coluna) => (
           <BoardColumn
             key={coluna.id}
             coluna={coluna}
             cards={cardsDaColuna(coluna.id)}
             onOpenCard={onOpenCard}
-            onAddCard={onAddCard}
           />
         ))}
       </div>

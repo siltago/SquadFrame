@@ -12,6 +12,7 @@ import { WorkspaceTab } from "@/modules/squadframe/components/obras/workspace-ta
 import { TimelineTab } from "@/modules/squadframe/components/obras/timeline-tab";
 import { ConfigTab } from "@/modules/squadframe/components/obras/config-tab";
 import { FinanceiroTab } from "@/modules/squadframe/components/obras/financeiro-tab";
+import { buscarUsuarios } from "@/modules/squadframe/actions/tarefas/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -195,16 +196,39 @@ async function AbaProducaoWrapper({
     tratamento?: string | null; descricao?: string | null;
     peso_unit?: number | null; preco_unit?: number | null;
   };
-  type Lote = { id: string; nome: string; criado_em: string; tipologias: Tipologia[] };
+  type SolicitacaoResumo = {
+    id: string; numero: string; status: string; prioridade: string; criado_em: string;
+    solicitante?: { nome: string } | null;
+  };
+  type PedidoResumo = {
+    id: string; numero: string; status: string; criado_em: string; valor_final?: number | null;
+    fornecedor?: { nome: string } | null; comprador?: { nome: string } | null;
+  };
+  type Lote = {
+    id: string; nome: string; criado_em: string;
+    descricao?: string | null; prioridade?: string | null; prazo?: string | null;
+    responsavel_id?: string | null; responsavel?: { nome: string } | null;
+    tipologias: Tipologia[];
+    solicitacoes: SolicitacaoResumo[];
+    pedidos: PedidoResumo[];
+  };
+  // O PostgREST não expõe pro TS a cardinalidade real do join — para uma FK
+  // simples (responsavel_id) ele sempre volta 1 objeto, mas o tipo inferido
+  // é array. *Raw modela o shape real da resposta pra normalizar sem `any`.
+  type LoteRaw = Omit<Lote, "responsavel" | "solicitacoes" | "pedidos"> & { responsavel: { nome: string }[] | null };
+  type SolicitacaoRaw = Omit<SolicitacaoResumo, "solicitante"> & { lote_id: string | null; solicitante: { nome: string }[] | null };
+  type PedidoRaw = Omit<PedidoResumo, "fornecedor" | "comprador"> & {
+    lote_id: string | null; fornecedor: { nome: string }[] | null; comprador: { nome: string }[] | null;
+  };
 
   let lotes: Lote[] = [];
   let semLote: Array<{ id: string; nome: string; quantidade: number }> = [];
   let migracaoPendente = false;
 
-  const [resLotes, resSemLote] = await Promise.all([
+  const [resLotes, resSemLote, usuarios] = await Promise.all([
     supabase
       .from("lotes_obra")
-      .select("id, nome, criado_em, tipologias:tipologias_obra(id, nome, quantidade, status, codigo_esquadria, tipo, largura_mm, altura_mm, tratamento, descricao, peso_unit, preco_unit)")
+      .select("id, nome, criado_em, descricao, prioridade, prazo, responsavel_id, responsavel:usuarios(nome), tipologias:tipologias_obra(id, nome, quantidade, status, codigo_esquadria, tipo, largura_mm, altura_mm, tratamento, descricao, peso_unit, preco_unit)")
       .eq("obra_id", obraId)
       .order("criado_em", { ascending: true }),
     supabase
@@ -213,12 +237,46 @@ async function AbaProducaoWrapper({
       .eq("obra_id", obraId)
       .is("lote_id", null)
       .order("criado_em", { ascending: true }),
+    buscarUsuarios(),
   ]);
 
   if (resLotes.error) {
     migracaoPendente = true;
   } else {
-    lotes = (resLotes.data ?? []) as Lote[];
+    const raw = (resLotes.data ?? []) as unknown as LoteRaw[];
+    const loteIds = raw.map((l) => l.id);
+
+    // Solicitações/pedidos vinculados a algum Pacote de Trabalho desta obra
+    // (Fase 3 — rastreabilidade Produção → Compras). lote_id é opcional, então
+    // isso não afeta solicitações/pedidos criados pelo fluxo normal de Compras.
+    const [resSolicitacoes, resPedidos] = loteIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("solicitacoes_compra")
+            .select("id, numero, status, prioridade, criado_em, lote_id, solicitante:usuarios(nome)")
+            .in("lote_id", loteIds)
+            .order("criado_em", { ascending: false }),
+          supabase
+            .from("pedidos_compra")
+            .select("id, numero, status, criado_em, valor_final, lote_id, fornecedor:fornecedores(nome), comprador:usuarios(nome)")
+            .in("lote_id", loteIds)
+            .order("criado_em", { ascending: false }),
+        ])
+      : [{ data: [] as SolicitacaoRaw[] }, { data: [] as PedidoRaw[] }];
+
+    const solicitacoesRaw = (resSolicitacoes.data ?? []) as unknown as SolicitacaoRaw[];
+    const pedidosRaw = (resPedidos.data ?? []) as unknown as PedidoRaw[];
+
+    lotes = raw.map((l) => ({
+      ...l,
+      responsavel: l.responsavel?.[0] ?? null,
+      solicitacoes: solicitacoesRaw
+        .filter((s) => s.lote_id === l.id)
+        .map((s) => ({ ...s, solicitante: s.solicitante?.[0] ?? null })),
+      pedidos: pedidosRaw
+        .filter((p) => p.lote_id === l.id)
+        .map((p) => ({ ...p, fornecedor: p.fornecedor?.[0] ?? null, comprador: p.comprador?.[0] ?? null })),
+    }));
   }
 
   if (resSemLote.error) {
@@ -232,5 +290,13 @@ async function AbaProducaoWrapper({
     semLote = resSemLote.data ?? [];
   }
 
-  return <AbaProducao obraId={obraId} lotes={lotes} semLote={semLote} migracaoPendente={migracaoPendente} />;
+  return (
+    <AbaProducao
+      obraId={obraId}
+      lotes={lotes}
+      semLote={semLote}
+      migracaoPendente={migracaoPendente}
+      usuarios={usuarios}
+    />
+  );
 }

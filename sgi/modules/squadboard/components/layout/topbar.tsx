@@ -1,18 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useTheme } from "@/ui/theme/ThemeProvider";
 import { useUsuario } from "@/modules/squadframe/components/user-provider";
 import { Avatar } from "@/ui/components/Avatar";
-import { Button } from "@/ui/components/Button";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/ui/components/Dropdown";
-import { SearchIcon, PlusIcon, BellIcon, SunIcon, MoonIcon, LogoutIcon, UserIcon } from "@/ui/icons";
+import { SearchIcon, BellIcon, SunIcon, MoonIcon, LogoutIcon, UserIcon } from "@/ui/icons";
 
+// Fase 4: SquadBoard é somente leitura (Pacotes de Trabalho reais). Criação
+// de pacote continua exclusivamente pela aba Produção — por isso não há mais
+// botão "Novo card" aqui.
 export function SquadBoardTopbar({
   onOpenSearch,
-  onNovoCard,
 }: {
   onOpenSearch: () => void;
-  onNovoCard: () => void;
 }) {
   const { resolvedTheme, toggle } = useTheme();
   const usuario = useUsuario();
@@ -26,18 +27,13 @@ export function SquadBoardTopbar({
         className="flex h-9 w-full max-w-xs items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-sm text-text-3 transition-colors hover:border-text-3 sm:max-w-sm"
       >
         <SearchIcon size={15} />
-        <span className="flex-1 text-left">Buscar cards…</span>
+        <span className="flex-1 text-left">Buscar pacotes…</span>
         <kbd className="hidden rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-text-3 sm:inline">
           ⌘K
         </kbd>
       </button>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <Button size="sm" onClick={onNovoCard} className="gap-1.5">
-          <PlusIcon size={15} />
-          <span className="hidden sm:inline">Novo</span>
-        </Button>
-
         <button
           aria-label="Notificações"
           className="flex h-8 w-8 items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
@@ -66,6 +62,13 @@ export function SquadBoardTopbar({
             <p className="truncate text-sm font-medium text-text">{usuario?.nome ?? "Usuário"}</p>
             <p className="truncate text-xs text-text-3">{usuario?.email ?? ""}</p>
           </div>
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 border-b border-border px-3 py-2.5 text-sm font-medium text-text-2 transition-colors duration-[80ms] hover:bg-surface-2 hover:text-text"
+          >
+            <img src="/logo-system.png" alt="" className="h-4 w-4 shrink-0 object-contain" />
+            SquadSystem
+          </Link>
           <DropdownItem icon={<UserIcon size={14} />}>Meu perfil</DropdownItem>
           <DropdownSeparator />
           <DropdownItem icon={<LogoutIcon size={14} />} variant="danger">Sair</DropdownItem>

@@ -184,6 +184,35 @@ export async function importarTipologias(
   return { ok: true, importadas: rows.length, loteId: lote.id };
 }
 
+export async function criarPacoteTrabalho(obraId: string, formData: FormData) {
+  await verificarPermissao("obras.criar", "obras.editar");
+  const supabase = createClient();
+
+  const nome          = String(formData.get("nome") || "").trim();
+  const descricao     = String(formData.get("descricao") || "").trim() || null;
+  const responsavel_id = String(formData.get("responsavel_id") || "") || null;
+  const prioridade    = String(formData.get("prioridade") || "") || null;
+  const prazo         = String(formData.get("prazo") || "") || null;
+
+  if (!nome) throw new Error("Nome é obrigatório.");
+
+  const { data, error } = await supabase
+    .from("lotes_obra")
+    .insert({ obra_id: obraId, nome, descricao, responsavel_id, prioridade, prazo })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  await supabase.from("obra_historico").insert({
+    obra_id: obraId,
+    acao: "PACOTE_CRIADO",
+    valor_novo: { nome, lote_id: data.id },
+  });
+
+  revalidatePath(`/squadframe/obras/${obraId}`);
+  return { id: data.id };
+}
+
 export async function excluirLote(loteId: string, obraId: string) {
   await verificarPermissao("obras.editar");
   const supabase = createClient();

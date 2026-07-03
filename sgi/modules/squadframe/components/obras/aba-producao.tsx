@@ -2,9 +2,17 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { adicionarTipologia, importarTipologias, excluirLote, editarTipologia } from "@/modules/squadframe/actions/obras/actions";
+import Link from "next/link";
+import { adicionarTipologia, importarTipologias, excluirLote, editarTipologia, criarPacoteTrabalho } from "@/modules/squadframe/actions/obras/actions";
 import { Button } from "@/ui/components/Button";
 import { Alert } from "@/ui/components/Alert";
+import { Modal } from "@/ui/components/Modal";
+import { Input, Textarea } from "@/ui/components/Input";
+import { Badge } from "@/ui/components/Badge";
+import { Avatar } from "@/ui/components/Avatar";
+import { Tabs, TabList, Tab, TabPanel } from "@/ui/components/Tabs";
+import { EmptyState } from "@/ui/components/EmptyState";
+import { STATUS_PED_COR, STATUS_PED_LABEL, STATUS_SOL_COR, STATUS_SOL_LABEL } from "@/modules/squadframe/types/compras";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 
@@ -32,12 +40,50 @@ type Tipologia = {
   preco_unit?: number | null;
 };
 
+const PRIORIDADE_PACOTE = {
+  BAIXA:    { label: "Baixa",    cor: "#94a3b8" },
+  MEDIA:    { label: "Média",    cor: "#3b82f6" },
+  ALTA:     { label: "Alta",     cor: "#f59e0b" },
+  CRITICA:  { label: "Crítica",  cor: "#ef4444" },
+} as const;
+type PrioridadeKey = keyof typeof PRIORIDADE_PACOTE;
+
+type SolicitacaoResumo = {
+  id: string;
+  numero: string;
+  status: string;
+  prioridade: string;
+  criado_em: string;
+  solicitante?: { nome: string } | null;
+};
+
+type PedidoResumo = {
+  id: string;
+  numero: string;
+  status: string;
+  criado_em: string;
+  valor_final?: number | null;
+  fornecedor?: { nome: string } | null;
+  comprador?: { nome: string } | null;
+};
+
+// "Lote" (nome interno/tabela) é exibido para o usuário como "Pacote de
+// Trabalho" — a tabela lotes_obra não muda, só a linguagem da UI.
 type Lote = {
   id: string;
   nome: string;
   criado_em: string;
+  descricao?: string | null;
+  prioridade?: string | null;
+  prazo?: string | null;
+  responsavel_id?: string | null;
+  responsavel?: { nome: string } | null;
   tipologias: Tipologia[];
+  solicitacoes: SolicitacaoResumo[];
+  pedidos: PedidoResumo[];
 };
+
+type Usuario = { id: string; nome: string };
 
 type Rascunho = Omit<Tipologia, "id"> & { _key: number };
 
@@ -257,16 +303,30 @@ function TipologiaCard({ t, obraId }: { t: Tipologia; obraId: string }) {
   );
 }
 
-function LoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string; defaultOpen: boolean }) {
+// Abas do detalhe do pacote que ainda não têm dado/funcionalidade real —
+// existem só como estrutura visual preparada para integrações futuras
+// (Compras, Produção de chão de fábrica, SquadBoard). Nenhuma é implementada
+// nesta fase.
+const ABAS_FUTURAS: { id: string; label: string }[] = [
+  { id: "producao",     label: "Produção" },
+  { id: "arquivos",     label: "Arquivos" },
+  { id: "comentarios",  label: "Comentários" },
+  { id: "timeline",     label: "Timeline" },
+];
+
+function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [confirmarExcluir, setConfirmarExcluir] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
   const total = lote.tipologias.length;
+  const concluidas = lote.tipologias.filter((t) => t.status === "pronto" || t.status === "entregue").length;
   const totalPeso = lote.tipologias.reduce((s, t) => s + (t.peso_unit ?? 0) * t.quantidade, 0);
   const totalPreco = lote.tipologias.reduce((s, t) => s + (t.preco_unit ?? 0) * t.quantidade, 0);
   const data = new Date(lote.criado_em).toLocaleDateString("pt-BR");
+  const prioridade = lote.prioridade ? PRIORIDADE_PACOTE[lote.prioridade as PrioridadeKey] : null;
+  const prazoAtrasado = !!lote.prazo && new Date(lote.prazo) < new Date() && concluidas < total;
 
   function handleExcluir() {
     startTransition(async () => {
@@ -277,84 +337,189 @@ function LoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string; d
 
   return (
     <div className="rounded-xl border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 bg-bg/60">
-        <button
-          onClick={() => setOpen((p) => !p)}
-          className="flex flex-1 items-center gap-2 text-left min-w-0"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="shrink-0 text-text-3"
-          >
-            <path d="M20 6H12l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z" />
-          </svg>
-          <span className="font-medium text-sm text-text truncate">{lote.nome}</span>
-          <span className="shrink-0 rounded-full bg-border px-2 py-0.5 text-[10px] font-semibold text-text-3">
-            {total}
-          </span>
-          {totalPeso > 0 && (
-            <span className="hidden sm:inline shrink-0 text-xs text-text-3">{totalPeso.toFixed(1)} kg</span>
-          )}
-          {totalPreco > 0 && (
-            <span className="hidden sm:inline shrink-0 text-xs font-medium text-text">
-              {totalPreco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </span>
-          )}
-          <span className="shrink-0 text-xs text-text-3 ml-auto">{data}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`shrink-0 text-text-3 transition-transform ${open ? "rotate-180" : ""}`}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-
-        {confirmarExcluir ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleExcluir}
-              disabled={pending}
-              className="px-2"
-            >
-              {pending ? "…" : "Excluir tudo"}
-            </Button>
-            <button
-              onClick={() => setConfirmarExcluir(false)}
-              className="rounded-md px-2 py-1 text-xs text-text-3 hover:bg-bg"
-            >
-              Cancelar
-            </button>
-          </div>
-        ) : (
+      <div className="flex flex-col gap-1.5 px-4 py-3 bg-bg/60">
+        <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); setConfirmarExcluir(true); }}
-            className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-danger-soft hover:text-danger transition-colors"
-            title="Excluir lote"
+            onClick={() => setOpen((p) => !p)}
+            className="flex flex-1 items-center gap-2 text-left min-w-0"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-text-3">
+              <path d="M20 6H12l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z" />
+            </svg>
+            <span className="font-medium text-sm text-text truncate">{lote.nome}</span>
+            {prioridade && (
+              <span
+                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ backgroundColor: prioridade.cor + "22", color: prioridade.cor }}
+              >
+                {prioridade.label}
+              </span>
+            )}
+            {total > 0 && (
+              <span className="shrink-0 rounded-full bg-border px-2 py-0.5 text-[10px] font-semibold text-text-3">
+                {concluidas}/{total}
+              </span>
+            )}
+            <span className="shrink-0 text-xs text-text-3 ml-auto">{data}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`shrink-0 text-text-3 transition-transform ${open ? "rotate-180" : ""}`}>
+              <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
+
+          {confirmarExcluir ? (
+            <div className="flex shrink-0 items-center gap-1">
+              <Button variant="danger" size="sm" onClick={handleExcluir} disabled={pending} className="px-2">
+                {pending ? "…" : "Excluir tudo"}
+              </Button>
+              <button onClick={() => setConfirmarExcluir(false)} className="rounded-md px-2 py-1 text-xs text-text-3 hover:bg-bg">
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmarExcluir(true); }}
+              className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-danger-soft hover:text-danger transition-colors"
+              title="Excluir pacote de trabalho"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {(lote.descricao || lote.responsavel || lote.prazo || totalPeso > 0 || totalPreco > 0) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-[23px] text-xs text-text-3">
+            {lote.descricao && <span className="truncate max-w-[320px]">{lote.descricao}</span>}
+            {lote.responsavel && (
+              <span className="inline-flex items-center gap-1.5">
+                <Avatar name={lote.responsavel.nome} size="xs" />
+                {lote.responsavel.nome}
+              </span>
+            )}
+            {lote.prazo && (
+              <span className={prazoAtrasado ? "font-medium text-danger" : ""}>
+                Prazo: {new Date(lote.prazo).toLocaleDateString("pt-BR")}
+              </span>
+            )}
+            {totalPeso > 0 && <span>{totalPeso.toFixed(1)} kg</span>}
+            {totalPreco > 0 && (
+              <span className="font-medium text-text">
+                {totalPreco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
       {open && (
-        <div className="p-3 space-y-2">
-          {lote.tipologias.map((t) => (
-            <TipologiaCard key={t.id} t={t} obraId={obraId} />
-          ))}
+        <div className="p-3">
+          <Tabs defaultTab="tipologias">
+            <TabList variant="underline">
+              <Tab id="tipologias">Tipologias</Tab>
+              <Tab id="solicitacoes" badge={lote.solicitacoes.length || undefined}>Solicitações</Tab>
+              <Tab id="pedidos" badge={lote.pedidos.length || undefined}>Pedidos</Tab>
+              {ABAS_FUTURAS.map((a) => <Tab id={a.id} key={a.id}>{a.label}</Tab>)}
+            </TabList>
+
+            <TabPanel id="tipologias" className="pt-3 space-y-2">
+              {lote.tipologias.length === 0 ? (
+                <EmptyState size="sm" title="Nenhuma tipologia neste pacote" />
+              ) : (
+                lote.tipologias.map((t) => <TipologiaCard key={t.id} t={t} obraId={obraId} />)
+              )}
+            </TabPanel>
+
+            <TabPanel id="solicitacoes" className="pt-3 space-y-2">
+              <div className="flex justify-end">
+                <Button
+                  as="a"
+                  href={`/squadframe/compras/solicitacoes/nova?obra_id=${obraId}&lote_id=${lote.id}&origem_contexto=PRODUCAO_PACOTE`}
+                  className="text-sm"
+                >
+                  Nova Solicitação de Compra
+                </Button>
+              </div>
+              {lote.solicitacoes.length === 0 ? (
+                <EmptyState size="sm" title="Nenhuma solicitação vinculada a este pacote" />
+              ) : (
+                lote.solicitacoes.map((s) => {
+                  const cor   = STATUS_SOL_COR[s.status as keyof typeof STATUS_SOL_COR] ?? "#94a3b8";
+                  const label = STATUS_SOL_LABEL[s.status as keyof typeof STATUS_SOL_LABEL] ?? s.status;
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/squadframe/compras/solicitacoes/${s.id}`}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-bg/40 px-3 py-2.5 text-sm hover:bg-bg transition-colors"
+                    >
+                      <span className="font-mono font-bold text-primary">{s.numero}</span>
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        style={{ backgroundColor: cor + "20", color: cor }}
+                      >
+                        {label}
+                      </span>
+                      <span className="text-xs text-text-3">{s.prioridade}</span>
+                      {s.solicitante?.nome && <span className="text-text-2">{s.solicitante.nome}</span>}
+                      <span className="ml-auto shrink-0 text-xs text-text-3">
+                        {new Date(s.criado_em).toLocaleDateString("pt-BR")}
+                      </span>
+                    </Link>
+                  );
+                })
+              )}
+            </TabPanel>
+
+            <TabPanel id="pedidos" className="pt-3 space-y-2">
+              <div className="flex justify-end">
+                <Button
+                  as="a"
+                  href={`/squadframe/compras/pedidos/novo?obra_id=${obraId}&lote_id=${lote.id}&origem_contexto=PRODUCAO_PACOTE`}
+                  className="text-sm"
+                >
+                  Novo Pedido de Compra
+                </Button>
+              </div>
+              {lote.pedidos.length === 0 ? (
+                <EmptyState size="sm" title="Nenhum pedido vinculado a este pacote" />
+              ) : (
+                lote.pedidos.map((p) => {
+                  const cor   = STATUS_PED_COR[p.status as keyof typeof STATUS_PED_COR] ?? "#94a3b8";
+                  const label = STATUS_PED_LABEL[p.status as keyof typeof STATUS_PED_LABEL] ?? p.status;
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/squadframe/compras/pedidos/${p.id}`}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-bg/40 px-3 py-2.5 text-sm hover:bg-bg transition-colors"
+                    >
+                      <span className="font-mono font-bold text-primary">{p.numero}</span>
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        style={{ backgroundColor: cor + "20", color: cor }}
+                      >
+                        {label}
+                      </span>
+                      {p.fornecedor?.nome && <span className="text-text-2">{p.fornecedor.nome}</span>}
+                      {p.valor_final != null && (
+                        <span className="font-medium text-text">
+                          {p.valor_final.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                      )}
+                      <span className="ml-auto shrink-0 text-xs text-text-3">
+                        {new Date(p.criado_em).toLocaleDateString("pt-BR")}
+                      </span>
+                    </Link>
+                  );
+                })
+              )}
+            </TabPanel>
+
+            {ABAS_FUTURAS.map((a) => (
+              <TabPanel id={a.id} key={a.id} className="pt-3">
+                <EmptyState size="sm" title={`${a.label} — em breve`} description="Essa seção ainda não está conectada a nenhum módulo." />
+              </TabPanel>
+            ))}
+          </Tabs>
         </div>
       )}
     </div>
@@ -479,13 +644,16 @@ export function AbaProducao({
   lotes,
   semLote,
   migracaoPendente,
+  usuarios,
 }: {
   obraId: string;
   lotes: Lote[];
   semLote: Array<{ id: string; nome: string; quantidade: number }>;
   migracaoPendente?: boolean;
+  usuarios: Usuario[];
 }) {
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [mostrarFormPacote, setMostrarFormPacote] = useState(false);
   const [rascunhos, setRascunhos] = useState<Rascunho[] | null>(null);
   const [loteNome, setLoteNome] = useState("");
   const [localLote, setLocalLote] = useState<Lote | null>(null);
@@ -534,7 +702,7 @@ export function AbaProducao({
   function handleConfirmar() {
     if (!rascunhos?.length) return;
     const snapshot = rascunhos;
-    const nome = loteNome || `Importação ${new Date().toLocaleDateString("pt-BR")}`;
+    const nome = loteNome || "Novo pacote de trabalho";
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const payload = snapshot.map(({ _key, nome: _n, ...rest }) => ({
       nome: rest.tipo || _n,
@@ -548,6 +716,8 @@ export function AbaProducao({
           nome,
           criado_em: new Date().toISOString(),
           tipologias: payload.map((t, i) => ({ ...t, id: `local-${i}` })),
+          solicitacoes: [],
+          pedidos: [],
         });
         setRascunhos(null);
         setResultado(`${res.importadas} tipologia${res.importadas !== 1 ? "s" : ""} importada${res.importadas !== 1 ? "s" : ""}.`);
@@ -569,6 +739,16 @@ export function AbaProducao({
     });
   }
 
+  function handleSubmitPacote(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startTransition(async () => {
+      await criarPacoteTrabalho(obraId, fd);
+      setMostrarFormPacote(false);
+      router.refresh();
+    });
+  }
+
   const todosLotes = localLote ? [...lotes, localLote] : lotes;
 
   // ── Painel de revisão do XML ──────────────────────────────────
@@ -581,11 +761,11 @@ export function AbaProducao({
               Revisão do XML — {rascunhos.length} tipologia{rascunhos.length !== 1 ? "s" : ""}
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <label className="shrink-0 text-xs text-text-3">Nome da pasta:</label>
+              <label className="shrink-0 text-xs text-text-3">Nome do Pacote de Trabalho:</label>
               <input
                 value={loteNome}
                 onChange={(e) => setLoteNome(e.target.value)}
-                placeholder="Ex: Lote 01 – Janelas"
+                placeholder="Ex: Fachada Norte"
                 className="field text-sm flex-1"
               />
             </div>
@@ -629,6 +809,14 @@ export function AbaProducao({
       {/* Barra de ações */}
       <div className="flex flex-wrap items-center gap-2">
         <button
+          onClick={() => setMostrarFormPacote(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo pacote de trabalho
+        </button>
+
+        <button
           onClick={() => setMostrarForm(true)}
           className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
         >
@@ -651,14 +839,14 @@ export function AbaProducao({
 
       {todosLotes.length === 0 && semLote.length === 0 && !mostrarForm && (
         <div className="card p-10 text-center text-sm text-text-3">
-          Nenhuma tipologia cadastrada. Importe um XML ou adicione manualmente.
+          Nenhum pacote de trabalho criado ainda. Importe um XML, crie um pacote manualmente, ou adicione uma tipologia avulsa.
         </div>
       )}
 
       {todosLotes.length > 0 && (
         <div className="space-y-2">
           {todosLotes.map((lote, i) => (
-            <LoteCard
+            <PacoteCard
               key={lote.id}
               lote={lote}
               obraId={obraId}
@@ -701,6 +889,52 @@ export function AbaProducao({
           </div>
         </form>
       )}
+
+      <Modal
+        open={mostrarFormPacote}
+        onClose={() => setMostrarFormPacote(false)}
+        title="Novo pacote de trabalho"
+        size="sm"
+      >
+        <form onSubmit={handleSubmitPacote} className="flex flex-col gap-4">
+          <Input
+            label="Nome"
+            name="nome"
+            required
+            placeholder="Ex: Fachada Norte"
+          />
+          <Textarea
+            label="Descrição"
+            name="descricao"
+            placeholder="Escopo deste pacote (opcional)"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="responsavel_id" className="label">Responsável</label>
+              <select id="responsavel_id" name="responsavel_id" className="field" defaultValue="">
+                <option value="">Sem responsável</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="prioridade" className="label">Prioridade</label>
+              <select id="prioridade" name="prioridade" className="field" defaultValue="">
+                <option value="">Sem prioridade</option>
+                {(Object.entries(PRIORIDADE_PACOTE) as [PrioridadeKey, { label: string }][]).map(([key, p]) => (
+                  <option key={key} value={key}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Input label="Prazo" name="prazo" type="date" />
+          <div className="flex justify-end gap-2">
+            <Button type="button" onClick={() => setMostrarFormPacote(false)} disabled={pending} variant="ghost">Cancelar</Button>
+            <Button type="submit" disabled={pending}>{pending ? "Criando…" : "Criar pacote"}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

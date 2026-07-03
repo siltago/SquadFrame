@@ -10,8 +10,26 @@ import { Badge } from "@/ui/components/Badge";
 import { Avatar, AvatarGroup } from "@/ui/components/Avatar";
 import { EmptyState } from "@/ui/components/EmptyState";
 import { AttachmentIcon, ClockIcon, CheckSquareIcon, ImageIcon, FileIcon, LinkIcon, SendIcon } from "@/ui/icons";
-import { PriorityDot } from "./priority-dot";
-import type { BoardCard } from "@/modules/squadboard/types/board";
+import { cn } from "@/ui/lib/cn";
+import type { BoardCard, Prioridade } from "@/modules/squadboard/types/board";
+
+// Não reaproveita o PriorityDot compartilhado: este drawer é o card
+// genérico do mock (Trello-like) e ainda usa o enum de prioridade antigo
+// (Prioridade), diferente do PrioridadePacote real do board de produção.
+const PRIORIDADE_STYLES: Record<Prioridade, string> = {
+  baixa: "bg-text-3", media: "bg-info", alta: "bg-warning", urgente: "bg-danger",
+};
+const PRIORIDADE_LABELS: Record<Prioridade, string> = {
+  baixa: "Baixa", media: "Média", alta: "Alta", urgente: "Urgente",
+};
+function PriorityDot({ prioridade, showLabel }: { prioridade: Prioridade; showLabel?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", PRIORIDADE_STYLES[prioridade])} />
+      {showLabel && <span className="text-xs text-text-3">{PRIORIDADE_LABELS[prioridade]}</span>}
+    </span>
+  );
+}
 
 function CommentIcon({ size = 14 }: { size?: number }) {
   return (

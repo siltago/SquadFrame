@@ -15,12 +15,16 @@ export async function criarSolicitacao(formData: FormData) {
   const admin = createAdminClient();
   const usuario = await getUsuario();
 
-  const obra_id       = (formData.get("obra_id") as string | null) || null;
-  const origem        = formData.get("origem") as string;
-  const prioridade    = formData.get("prioridade") as string;
-  const justificativa = (formData.get("justificativa") as string | null) || null;
-  const observacoes   = (formData.get("observacoes") as string | null) || null;
-  const itensJson     = formData.get("itens") as string;
+  const obra_id         = (formData.get("obra_id") as string | null) || null;
+  const origem          = formData.get("origem") as string;
+  const prioridade      = formData.get("prioridade") as string;
+  const justificativa   = (formData.get("justificativa") as string | null) || null;
+  const observacoes     = (formData.get("observacoes") as string | null) || null;
+  const itensJson       = formData.get("itens") as string;
+  // Vínculo opcional com Pacote de Trabalho (lotes_obra) — Fase 3 da evolução
+  // da aba Produção. Ausente = comportamento idêntico ao fluxo normal de Compras.
+  const lote_id          = (formData.get("lote_id") as string | null) || null;
+  const origem_contexto  = (formData.get("origem_contexto") as string | null) || null;
 
   if (!itensJson) throw new Error("Adicione ao menos um item.");
   const itens: {
@@ -48,13 +52,15 @@ export async function criarSolicitacao(formData: FormData) {
 
   // RPC atômica: solicitacoes_compra + solicitacao_itens em uma única transação
   const { data: result, error } = await admin.rpc("criar_solicitacao", {
-    p_obra_id:        obra_id,
-    p_origem:         origem,
-    p_prioridade:     prioridade,
-    p_justificativa:  justificativa,
-    p_observacoes:    observacoes,
-    p_solicitante_id: usuario.id,
-    p_itens:          JSON.stringify(itens),
+    p_obra_id:          obra_id,
+    p_origem:           origem,
+    p_prioridade:       prioridade,
+    p_justificativa:    justificativa,
+    p_observacoes:      observacoes,
+    p_solicitante_id:   usuario.id,
+    p_itens:            JSON.stringify(itens),
+    p_lote_id:          lote_id,
+    p_origem_contexto:  origem_contexto,
   });
   if (error) throw new Error(error.message);
 

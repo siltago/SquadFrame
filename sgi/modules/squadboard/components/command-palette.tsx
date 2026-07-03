@@ -3,8 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchIcon, KanbanIcon } from "@/ui/icons";
 import { EmptyState } from "@/ui/components/EmptyState";
-import { PriorityDot } from "./kanban/priority-dot";
-import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
+import { PriorityIndicator } from "@/ui/components/kanban";
+import type { PriorityLevel } from "@/ui/components/kanban";
+import type { BoardWorkPackageCard, PrioridadePacote } from "@/modules/squadboard/types/work-package";
+
+const PRIORITY_MAP: Record<PrioridadePacote, PriorityLevel> = {
+  baixa: "low", media: "medium", alta: "high", critica: "critical",
+};
 
 export function CommandPalette({
   open, onClose, cards, onSelectCard,
@@ -86,7 +91,7 @@ export function CommandPalette({
               >
                 <KanbanIcon size={14} className="shrink-0 text-text-3" />
                 <span className="min-w-0 flex-1 truncate text-sm text-text">{c.nome}</span>
-                <PriorityDot prioridade={c.prioridade} />
+                <PriorityIndicator level={c.prioridade ? PRIORITY_MAP[c.prioridade] : "none"} />
               </button>
             ))
           )}

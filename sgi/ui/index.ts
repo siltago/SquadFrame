@@ -69,6 +69,18 @@ export type { BreadcrumbItem }     from "./components/Breadcrumb";
 /* ── Page structure ───────────────────────────────────── */
 export { PageHeader, Section, Container } from "./components/PageHeader";
 
+/* ── Kanban ──────────────────────────────────────────── */
+export { BoardCard }               from "./components/kanban/BoardCard";
+export { CardMenu }                from "./components/kanban/CardMenu";
+export type { CardMenuItem }       from "./components/kanban/CardMenu";
+export { CardSkeleton, CardSkeletonList } from "./components/kanban/CardSkeleton";
+export { ColumnHeader }            from "./components/kanban/ColumnHeader";
+export { DragHandle }              from "./components/kanban/DragHandle";
+export { PipelineStepper }         from "./components/kanban/PipelineStepper";
+export type { PipelineStep }       from "./components/kanban/PipelineStepper";
+export { PriorityIndicator }       from "./components/kanban/PriorityIndicator";
+export type { PriorityLevel }      from "./components/kanban/PriorityIndicator";
+
 /* ── Layout ──────────────────────────────────────────── */
 export { AppHeader }               from "./layout/AppHeader";
 export type { NavItem }            from "./layout/AppHeader";

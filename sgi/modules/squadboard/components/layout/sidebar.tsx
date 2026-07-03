@@ -89,7 +89,7 @@ export function SquadBoardSidebar({ boardNome }: { boardNome: string }) {
           "hidden lg:flex flex-col shrink-0 bg-sidebar border-r border-sidebar-border",
           "transition-[width] ease-out"
         )}
-        style={{ width: collapsed ? 64 : 232, transitionDuration: "var(--motion-sidebar)" }}
+        style={{ width: collapsed ? 72 : 260, transitionDuration: "var(--motion-sidebar)" }}
       >
         <div className={cn("flex shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4 py-4", collapsed && "justify-center px-2")}>
           <img src="/logo-board.png" alt="SquadBoard" className="h-6 w-6 shrink-0 object-contain" />

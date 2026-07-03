@@ -3,9 +3,9 @@
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { revalidatePath } from "next/cache";
-import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
+import type { BoardWorkPackageCard, PrioridadePacote } from "@/modules/squadboard/types/work-package";
 import { mapLoteParaBoardCard, type LoteBoardRaw } from "@/modules/squadboard/utils/map-pacote-to-card";
-import { colunaValida, type PipelineId } from "@/modules/squadboard/types/pipeline";
+import { colunaValida, colunaPadrao, PIPELINES, type PipelineId } from "@/modules/squadboard/types/pipeline";
 
 // Busca os Pacotes de Trabalho (lotes_obra) reais para um Pipeline do
 // SquadBoard. Cada Pacote aparece com sua posição (`coluna`) dentro DESSE
@@ -69,6 +69,56 @@ export async function moverPacotePipeline(
       { lote_id: loteId, pipeline, coluna, ordem: 0, atualizado_em: new Date().toISOString() },
       { onConflict: "lote_id,pipeline" },
     );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/squadboard");
+}
+
+// Retorna a coluna atual do pacote em CADA um dos 3 pipelines.
+// Usado pelo modal de detalhe para mostrar o progresso multi-pipeline.
+export async function buscarStatusPipelines(
+  loteId: string,
+): Promise<Record<PipelineId, string>> {
+  const usuario = await getUsuarioAtual();
+  if (!usuario) throw new Error("Não autenticado.");
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("pacote_pipeline_status")
+    .select("pipeline, coluna")
+    .eq("lote_id", loteId);
+
+  if (error) throw new Error(error.message);
+
+  const resultado = Object.fromEntries(
+    PIPELINES.map((p) => [p.id, colunaPadrao(p.id)]),
+  ) as Record<PipelineId, string>;
+
+  for (const row of data ?? []) {
+    resultado[row.pipeline as PipelineId] = row.coluna;
+  }
+
+  return resultado;
+}
+
+// Atualiza campos editáveis de um pacote (nome, prioridade, prazo).
+// Prioridade é armazenada em UPPERCASE no banco ('BAIXA','MEDIA','ALTA','CRITICA').
+export async function atualizarPacote(
+  id: string,
+  campos: { nome?: string; prioridade?: PrioridadePacote | null; prazo?: string | null },
+): Promise<void> {
+  const usuario = await getUsuarioAtual();
+  if (!usuario) throw new Error("Não autenticado.");
+
+  const payload: Record<string, unknown> = {};
+  if (campos.nome !== undefined) payload.nome = campos.nome;
+  if (campos.prazo !== undefined) payload.prazo = campos.prazo;
+  if ("prioridade" in campos) {
+    payload.prioridade = campos.prioridade ? campos.prioridade.toUpperCase() : null;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("lotes_obra").update(payload).eq("id", id);
   if (error) throw new Error(error.message);
 
   revalidatePath("/squadboard");

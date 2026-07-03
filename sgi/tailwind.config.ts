@@ -59,6 +59,14 @@ const config: Config = {
           soft:    "rgb(var(--color-info-soft) / <alpha-value>)",
         },
 
+        sidebar: {
+          DEFAULT: "rgb(var(--color-sidebar-bg)         / <alpha-value>)",
+          surface: "rgb(var(--color-sidebar-surface)    / <alpha-value>)",
+          text:    "rgb(var(--color-sidebar-text)       / <alpha-value>)",
+          muted:   "rgb(var(--color-sidebar-text-muted) / <alpha-value>)",
+          border:  "rgb(var(--color-sidebar-border)     / <alpha-value>)",
+        },
+
         /* ── Aliases legados ── */
         canvas: "rgb(var(--color-bg)      / <alpha-value>)",
         ink: {

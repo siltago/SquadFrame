@@ -4,10 +4,10 @@ import { MODULOS } from "@/modules/home/data/modules";
 
 export function SquadSystemHome({ nomeUsuario }: { nomeUsuario: string }) {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="squadsystem min-h-screen bg-bg">
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <div className="flex items-center gap-2.5">
-          <img src="/icon.png" alt="SquadSystem" className="h-8 w-8 rounded-lg object-cover" />
+          <img src="/logo-system.png" alt="SquadSystem" className="h-[42px] w-[42px] rounded-lg object-contain" />
           <span className="text-base font-bold text-text">SquadSystem</span>
         </div>
         <LogoutButton nome={nomeUsuario} />

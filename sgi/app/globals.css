@@ -151,6 +151,122 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SQUADSYSTEM THEME — identidade do hub (login, "/"), mesmo laranja
+   do logo do SquadSystem. Escopado via classe (não é global como
+   .frame) — aplique na raiz da página que deve usar essa cor.
+═══════════════════════════════════════════════════════════════ */
+.squadsystem {
+  --color-primary:        253 126 20;   /* #FD7E14 */
+  --color-primary-hover:  235 108 8;    /* #EB6C08 */
+  --color-primary-active: 199 88  4;    /* #C75804 */
+  --color-primary-soft:   255 232 209;  /* #FFE8D1 */
+}
+
+/* Espaço (descendente), não composto: .squadsystem fica numa div aninhada,
+   não na <html> — só .dark ali é que fica na <html>. Independe de .frame. */
+.dark .squadsystem {
+  --color-primary:        255 154 66;   /* #FF9A42 */
+  --color-primary-hover:  255 176 102;  /* #FFB066 */
+  --color-primary-active: 255 196 138;  /* #FFC48A */
+  --color-primary-soft:   69  36  14;   /* #45240E */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SQUADBOARD THEME — "Quiet UI": 95% neutros, cor só com significado
+   semântico. Escopado via classe, igual .frame/.squadsystem.
+   --color-sidebar-* fica fixo (sidebar sempre escura, estilo Linear,
+   independente de light/dark) — só declarado no bloco light, o dark
+   herda por cascata (não é redeclarado).
+═══════════════════════════════════════════════════════════════ */
+.squadboard {
+  /* Superfícies */
+  --color-bg:            247 250 252;  /* #F7FAFC */
+  --color-surface:       255 255 255;  /* #FFFFFF */
+  --color-surface-2:     238 243 247;  /* #EEF3F7 — Secondary 50 */
+  --color-surface-3:     216 226 234;  /* #D8E2EA — Secondary 100 */
+
+  /* Texto */
+  --color-text:          19  24  30;   /* #13181E — Primary 900 */
+  --color-text-2:        88  103 117;  /* #586775 — Secondary 500 */
+  --color-text-3:        149 164 178;  /* #95A4B2 — Secondary 300 */
+
+  /* Bordas */
+  --color-border:        217 225 231;  /* #D9E1E7 */
+  --color-divider:       238 243 247;  /* #EEF3F7 */
+
+  /* Primária — botão "quiet": escuro sobre claro, nunca cor viva */
+  --color-primary:        27  34  42;  /* #1B222A — Primary 800 */
+  --color-primary-hover:  41  50  61;  /* #29323D — Primary 700 */
+  --color-primary-active: 19  24  30;  /* #13181E — Primary 900 */
+  --color-primary-soft:   238 243 247; /* #EEF3F7 */
+
+  /* Accent — uso raríssimo (ex: destaque de automação/IA) */
+  --color-accent:         142 118 214; /* #8E76D6 */
+  --color-accent-hover:   124 100 196; /* #7C64C4 */
+  --color-accent-soft:    239 234 251; /* #EFEAFB */
+
+  /* Semânticas — só para indicar estado, nunca identidade */
+  --color-success:       63  163 114; /* #3FA372 */
+  --color-success-hover: 51  138 97;
+  --color-success-soft:  227 243 234; /* #E3F3EA */
+  --color-warning:       198 138 46;  /* #C68A2E */
+  --color-warning-hover: 173 119 36;
+  --color-warning-soft:  251 240 220; /* #FBF0DC */
+  --color-danger:        194 90  90;  /* #C25A5A */
+  --color-danger-hover:  173 71  71;
+  --color-danger-soft:   248 228 228; /* #F8E4E4 */
+  --color-info:          78  127 209; /* #4E7FD1 */
+  --color-info-soft:     229 237 252; /* #E5EDFC */
+
+  /* Sidebar — sempre escura (Linear-style), fixa em qualquer tema */
+  --color-sidebar-bg:          19  24  30;  /* #13181E */
+  --color-sidebar-surface:     27  34  42;  /* #1B222A */
+  --color-sidebar-text:        216 226 234; /* #D8E2EA */
+  --color-sidebar-text-muted:  114 130 144; /* #728290 */
+  --color-sidebar-border:      41  50  61;  /* #29323D */
+
+  --radius-md: 10px;
+  --radius-lg: 12px;
+}
+
+/* Espaço (descendente), não composto: .squadboard fica numa div aninhada,
+   não na <html> — só .dark ali é que fica na <html>. Independe de .frame. */
+.dark .squadboard {
+  --color-bg:            19  24  30;   /* #13181E */
+  --color-surface:       27  34  42;   /* #1B222A */
+  --color-surface-2:     41  50  61;   /* #29323D */
+  --color-surface-3:     57  70  82;   /* #394652 — Primary 600 */
+
+  --color-text:          238 243 247;  /* #EEF3F7 */
+  --color-text-2:        184 198 210;  /* #B8C6D2 — Secondary 200 */
+  --color-text-3:        114 130 144;  /* #728290 — Secondary 400 */
+
+  --color-border:        57  70  82;   /* #394652 */
+  --color-divider:       41  50  61;   /* #29323D */
+
+  --color-primary:        88  103 117; /* #586775 — Secondary 500 */
+  --color-primary-hover:  114 130 144; /* #728290 — Secondary 400 */
+  --color-primary-active: 65  76  87;  /* entre 500/600 */
+  --color-primary-soft:   41  50  61;  /* #29323D */
+
+  --color-accent:         182 166 232; /* #B6A6E8 */
+  --color-accent-hover:   201 189 238; /* mais claro no hover */
+  --color-accent-soft:    36  30  51;  /* tint escuro */
+
+  --color-success:       130 201 162; /* #82C9A2 */
+  --color-success-hover: 154 214 182;
+  --color-success-soft:  30  51  40;
+  --color-warning:       232 193 122; /* #E8C17A */
+  --color-warning-hover: 237 209 155;
+  --color-warning-soft:  51  42  20;
+  --color-danger:        216 124 124; /* #D87C7C */
+  --color-danger-hover:  224 152 152;
+  --color-danger-soft:   51  28  28;
+  --color-info:          146 184 245; /* #92B8F5 */
+  --color-info-soft:     22  34  51;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BASE
 ═══════════════════════════════════════════════════════════════ */
 @layer base {

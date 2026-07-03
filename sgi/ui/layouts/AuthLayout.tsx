@@ -8,6 +8,7 @@ interface AuthLayoutProps {
   description?: string;
   logoSrc?: string;
   logoAlt?: string;
+  logoSize?: number;
   cardSize?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -23,6 +24,7 @@ export function AuthLayout({
   description,
   logoSrc,
   logoAlt = "Logo",
+  logoSize = 48,
   cardSize = "md",
   className,
 }: AuthLayoutProps) {
@@ -39,7 +41,7 @@ export function AuthLayout({
         {(logoSrc || title) && (
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
             {logoSrc && (
-              <Image src={logoSrc} alt={logoAlt} width={48} height={48} />
+              <Image src={logoSrc} alt={logoAlt} width={logoSize} height={logoSize} />
             )}
             {title && (
               <div>

@@ -7,6 +7,7 @@ export const MODULOS: Modulo[] = [
     descricao: "Compras, obras, catálogo, tarefas e financeiro operacional.",
     ativo: true,
     cor: "primary",
+    logo: "/icon.png",
   },
   {
     slug: "squadboard",
@@ -14,6 +15,8 @@ export const MODULOS: Modulo[] = [
     descricao: "Quadros visuais, listas, cards e fluxos de tarefas.",
     ativo: true,
     cor: "accent",
+    logo: "/logo-board.png",
+    logoSize: 49,
   },
   {
     slug: "squadflow",

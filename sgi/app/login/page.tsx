@@ -30,11 +30,13 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      logoSrc="/favicon.png"
-      logoAlt="SquadFrame"
-      title="SquadFrame"
-      description="Gestão Industrial Para Esquadrias"
+      logoSrc="/logo-system.png"
+      logoAlt="SquadSystem"
+      logoSize={72}
+      title="SquadSystem"
+      description="Plataforma modular de gestão industrial"
       cardSize="sm"
+      className="squadsystem"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input

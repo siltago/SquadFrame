@@ -52,9 +52,9 @@ export default function CadastroPage() {
 
   return (
     <AuthLayout
-      logoSrc="/icon.png"
-      logoAlt="SquadFrame"
-      title="SquadFrame"
+      logoSrc="/logo-system.png"
+      logoAlt="SquadSystem"
+      title="SquadSystem"
       description="Criar conta"
       cardSize="sm"
     >

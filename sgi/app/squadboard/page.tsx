@@ -1,12 +1,9 @@
-import { redirect } from "next/navigation";
-import { getUsuarioAtual } from "@/shared/auth/auth";
-import { SquadBoardHome } from "@/modules/squadboard/components/squad-board-home";
+import { SquadBoardView } from "@/modules/squadboard/components/squad-board-view";
+import { BOARD, CARDS } from "@/modules/squadboard/data/mock";
 
 export const dynamic = "force-dynamic";
 
-export default async function SquadBoardPage() {
-  const usuario = await getUsuarioAtual();
-  if (!usuario) redirect("/login");
-
-  return <SquadBoardHome />;
+// Autenticação já é validada no layout.tsx do módulo.
+export default function SquadBoardPage() {
+  return <SquadBoardView board={BOARD} cardsIniciais={CARDS} />;
 }

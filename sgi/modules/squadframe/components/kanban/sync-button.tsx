@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { sincronizarTarefasCompras } from "@/app/tarefas/actions";
+import { sincronizarTarefasCompras } from "@/modules/squadframe/actions/tarefas/actions";
 
 export function SyncButton() {
   const [pending, startTransition] = useTransition();

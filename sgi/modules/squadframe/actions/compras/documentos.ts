@@ -33,7 +33,7 @@ export async function registrarDocumento(
     tamanho_bytes: tamanho,
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`/compras/pedidos/${pedidoId}`);
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
 }
 
 export async function excluirDocumento(documentoId: string) {
@@ -47,7 +47,7 @@ export async function excluirDocumento(documentoId: string) {
   if (!doc) throw new Error("Documento não encontrado.");
   await admin.storage.from("pedido-docs").remove([doc.caminho_storage]);
   await admin.from("pedido_documentos").delete().eq("id", documentoId);
-  revalidatePath(`/compras/pedidos/${doc.pedido_id}`);
+  revalidatePath(`/squadframe/compras/pedidos/${doc.pedido_id}`);
 }
 
 export async function gerarUrlDownload(caminho: string) {

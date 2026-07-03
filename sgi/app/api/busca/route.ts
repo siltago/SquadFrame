@@ -55,28 +55,28 @@ export async function GET(req: NextRequest) {
       id: o.id,
       titulo: o.nome,
       subtitulo: [o.cliente?.nome, o.codigo].filter(Boolean).join(" · "),
-      href: `/obras/${o.id}`,
+      href: `/squadframe/obras/${o.id}`,
     })),
     ...(produtos.data ?? []).map((p: any) => ({
       tipo: "produto" as const,
       id: p.id,
       titulo: p.nome,
       subtitulo: [p.codigo_mestre, p.linha?.nome].filter(Boolean).join(" · "),
-      href: `/catalogo/${p.linha?.id}/${p.id}`,
+      href: `/squadframe/catalogo/${p.linha?.id}/${p.id}`,
     })),
     ...(fornecedores.data ?? []).map((f: any) => ({
       tipo: "fornecedor" as const,
       id: f.id,
       titulo: f.nome,
       subtitulo: "Fornecedor",
-      href: `/compras/fornecedores`,
+      href: `/squadframe/compras/fornecedores`,
     })),
     ...(pedidos.data ?? []).map((p: any) => ({
       tipo: "pedido" as const,
       id: p.id,
       titulo: p.numero,
       subtitulo: p.fornecedor?.nome ?? "Pedido de compra",
-      href: `/compras/pedidos/${p.id}`,
+      href: `/squadframe/compras/pedidos/${p.id}`,
     })),
     // Pedidos encontrados via item — sem duplicar os do bloco anterior
     ...((pedidosPorItem.data ?? []) as any[])
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
         id: r.pedido.id,
         titulo: r.pedido.numero,
         subtitulo: `Item: ${r.descricao_snapshot}`,
-        href: `/compras/pedidos/${r.pedido.id}`,
+        href: `/squadframe/compras/pedidos/${r.pedido.id}`,
       })),
     // Solicitações encontradas via item
     ...((solicitacoesPorItem.data ?? []) as any[])
@@ -96,14 +96,14 @@ export async function GET(req: NextRequest) {
         id: r.solicitacao.id,
         titulo: r.solicitacao.numero,
         subtitulo: `Item: ${r.descricao_manual ?? ""}`,
-        href: `/compras/solicitacoes/${r.solicitacao.id}`,
+        href: `/squadframe/compras/solicitacoes/${r.solicitacao.id}`,
       })),
     ...(tarefas.data ?? []).map((t: any) => ({
       tipo: "tarefa" as const,
       id: t.id,
       titulo: t.titulo,
       subtitulo: t.setor?.nome ?? t.status,
-      href: `/tarefas/${t.id}`,
+      href: `/squadframe/tarefas/${t.id}`,
     })),
   ];
 

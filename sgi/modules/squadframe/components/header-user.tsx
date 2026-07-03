@@ -138,7 +138,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
               <div className="my-1 border-t border-border" />
 
               <Link
-                href="/perfil"
+                href="/squadframe/perfil"
                 onClick={() => setAberto(false)}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-text-2 hover:bg-bg hover:text-text"
               >

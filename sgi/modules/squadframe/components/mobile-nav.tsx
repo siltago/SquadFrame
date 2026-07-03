@@ -10,12 +10,12 @@ import {
 } from "@/ui/icons";
 
 const NAV_ITEMS = [
-  { href: "/obras",      label: "Obras",      icon: <BuildingIcon size={20} />    },
-  { href: "/catalogo",   label: "Catálogo",   icon: <BookOpenIcon size={20} />    },
-  { href: "/compras",    label: "Compras",    icon: <ShoppingBagIcon size={20} /> },
-  { href: "/financeiro", label: "Financeiro", icon: <DollarSignIcon size={20} />  },
-  { href: "/tarefas",    label: "Tarefas",    icon: <TasksIcon size={20} />       },
-  { href: "/usuarios",   label: "Usuários",   icon: <UsersIcon size={20} />       },
+  { href: "/squadframe/obras",      label: "Obras",      icon: <BuildingIcon size={20} />    },
+  { href: "/squadframe/catalogo",   label: "Catálogo",   icon: <BookOpenIcon size={20} />    },
+  { href: "/squadframe/compras",    label: "Compras",    icon: <ShoppingBagIcon size={20} /> },
+  { href: "/squadframe/financeiro", label: "Financeiro", icon: <DollarSignIcon size={20} />  },
+  { href: "/squadframe/tarefas",    label: "Tarefas",    icon: <TasksIcon size={20} />       },
+  { href: "/squadframe/usuarios",   label: "Usuários",   icon: <UsersIcon size={20} />       },
 ];
 
 function NavLink({ href, children, onClick }: LinkProps & { children: React.ReactNode; onClick?: () => void }) {

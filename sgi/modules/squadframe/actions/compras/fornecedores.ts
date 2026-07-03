@@ -18,14 +18,14 @@ export async function criarFormaPagamento(formData: FormData) {
   if (!nome) throw new Error("Nome é obrigatório.");
   const { error } = await admin.from("formas_pagamento").insert({ nome, descricao, is_faturamento_direto });
   if (error) throw new Error(error.message);
-  revalidatePath("/compras/formas-pagamento");
+  revalidatePath("/squadframe/compras/formas-pagamento");
 }
 
 export async function alterarFormaPagamento(id: string, ativo: boolean) {
   await verificarPermissao(PERMISSIONS.COMPRAS_FORMA_PAGAMENTO_GERENCIAR);
   const admin = createAdminClient();
   await admin.from("formas_pagamento").update({ ativo }).eq("id", id);
-  revalidatePath("/compras/fornecedores");
+  revalidatePath("/squadframe/compras/fornecedores");
 }
 
 export async function excluirFormasPagamento(ids: string[]) {
@@ -34,7 +34,7 @@ export async function excluirFormasPagamento(ids: string[]) {
   const admin = createAdminClient();
   const { error } = await admin.from("formas_pagamento").delete().in("id", ids);
   if (error) throw new Error("Não é possível excluir: há pedidos vinculados a essa forma de pagamento.");
-  revalidatePath("/compras/formas-pagamento");
+  revalidatePath("/squadframe/compras/formas-pagamento");
 }
 
 // ── Fornecedores ─────────────────────────────────────────────────────────────

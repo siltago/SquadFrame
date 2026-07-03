@@ -19,18 +19,18 @@ export function ComprasSidebar() {
   const sections: SidebarSection[] = [
     {
       items: [
-        { href: "/compras",              label: "Painel",          icon: <DashboardIcon />,  exact: true },
-        { href: "/compras/solicitacoes", label: "Solicitações",    icon: <DocumentIcon />  },
-        { href: "/compras/pedidos",      label: "Pedidos",         icon: <PackageIcon />   },
-        { href: "/compras/fornecedores", label: "Fornecedores",    icon: <BuildingIcon />  },
-        { href: "/compras/financeiro",   label: "Financeiro",      icon: <DollarSignIcon /> },
+        { href: "/squadframe/compras",              label: "Painel",          icon: <DashboardIcon />,  exact: true },
+        { href: "/squadframe/compras/solicitacoes", label: "Solicitações",    icon: <DocumentIcon />  },
+        { href: "/squadframe/compras/pedidos",      label: "Pedidos",         icon: <PackageIcon />   },
+        { href: "/squadframe/compras/fornecedores", label: "Fornecedores",    icon: <BuildingIcon />  },
+        { href: "/squadframe/compras/financeiro",   label: "Financeiro",      icon: <DollarSignIcon /> },
       ],
     },
     {
       title: "Configurações",
       items: [
-        { href: "/compras/empresa",          label: "Empresa",         icon: <BriefcaseIcon />  },
-        { href: "/compras/formas-pagamento", label: "Formas de Pgto.", icon: <CreditCardIcon /> },
+        { href: "/squadframe/compras/empresa",          label: "Empresa",         icon: <BriefcaseIcon />  },
+        { href: "/squadframe/compras/formas-pagamento", label: "Formas de Pgto.", icon: <CreditCardIcon /> },
       ],
     },
   ];
@@ -38,12 +38,12 @@ export function ComprasSidebar() {
   const footer = (podeCriarSolicitacao || podeCriarPedido) ? (
     <div className="space-y-2">
       {podeCriarSolicitacao && (
-        <Button as="a" href="/compras/solicitacoes/nova" className="w-full justify-center">
+        <Button as="a" href="/squadframe/compras/solicitacoes/nova" className="w-full justify-center">
           Nova solicitação
         </Button>
       )}
       {podeCriarPedido && (
-        <Button as="a" href="/compras/pedidos/novo" variant="ghost" className="w-full justify-center">
+        <Button as="a" href="/squadframe/compras/pedidos/novo" variant="ghost" className="w-full justify-center">
           Novo pedido
         </Button>
       )}

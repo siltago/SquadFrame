@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import type { Tarefa } from "@/modules/squadframe/types/kanban";
 import { PRIORIDADE_COR, ORIGEM_COR, ORIGEM_LABEL } from "@/modules/squadframe/types/kanban";
-import { aceitarTarefa, excluirTarefa } from "@/app/tarefas/actions";
+import { aceitarTarefa, excluirTarefa } from "@/modules/squadframe/actions/tarefas/actions";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -87,7 +87,7 @@ export function KanbanCard({ tarefa, onClick }: Props) {
     >
       <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <Link
-          href={`/tarefas/${tarefa.id}`}
+          href={`/squadframe/tarefas/${tarefa.id}`}
           onClick={(e) => e.stopPropagation()}
           className="flex h-6 w-6 items-center justify-center rounded text-text-3 hover:text-primary hover:bg-bg transition-colors"
           title="Abrir em página dedicada"

@@ -119,7 +119,7 @@ function PedidoParaAprovarRow({ p }: { p: PedidoParaAprovar }) {
   const subtitulo = [p.fornecedor?.nome, p.obra?.nome].filter(Boolean).join(" · ");
   return (
     <Link
-      href={`/compras/pedidos/${p.id}`}
+      href={`/squadframe/compras/pedidos/${p.id}`}
       className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-bg transition-colors"
     >
       <div className="shrink-0 h-2.5 w-1.5 rounded-full bg-warning" />
@@ -141,7 +141,7 @@ function PedidoCompradorRow({ p, variant, label }: { p: PedidoComprador; variant
   const dotColor = variant === "success" ? "bg-success" : "bg-danger";
   return (
     <Link
-      href={`/compras/pedidos/${p.id}`}
+      href={`/squadframe/compras/pedidos/${p.id}`}
       className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-bg transition-colors"
     >
       <div className={`shrink-0 h-2.5 w-1.5 rounded-full ${dotColor}`} />
@@ -161,7 +161,7 @@ function SolicitacaoRow({ s }: { s: SolicitacaoParaAprovar }) {
   const subtitulo = [s.solicitante?.nome, s.obra?.nome].filter(Boolean).join(" · ");
   return (
     <Link
-      href={`/compras/solicitacoes/${s.id}`}
+      href={`/squadframe/compras/solicitacoes/${s.id}`}
       className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-bg transition-colors"
     >
       <div className="shrink-0 h-2.5 w-1.5 rounded-full bg-accent" />
@@ -218,7 +218,7 @@ function TarefaRow({ t, onOpen }: { t: TarefaCentral; onOpen: (id: string) => vo
           </span>
         )}
         <Link
-          href={`/tarefas/${t.id}`}
+          href={`/squadframe/tarefas/${t.id}`}
           onClick={(e) => e.stopPropagation()}
           className="opacity-0 group-hover:opacity-100 p-1 rounded text-text-3 hover:text-primary transition-all"
           title="Abrir em nova página"
@@ -472,7 +472,7 @@ export function MinhaCentral({
               title="Tudo em dia!"
               description="Nenhuma tarefa ativa ou pedido pendente atribuído a você."
               action={
-                <Button as="a" href="/tarefas" variant="ghost" size="sm">
+                <Button as="a" href="/squadframe/tarefas" variant="ghost" size="sm">
                   Ver board do setor →
                 </Button>
               }

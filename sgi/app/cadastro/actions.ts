@@ -27,7 +27,7 @@ export async function cadastrarUsuario(formData: FormData) {
       { auth_id: criado.user.id, nome, email, empresa: empresa || null },
       { onConflict: "auth_id", ignoreDuplicates: true }
     );
-    revalidatePath("/usuarios");
+    revalidatePath("/squadframe/usuarios");
     return { ok: true };
   }
 
@@ -50,7 +50,7 @@ export async function cadastrarUsuario(formData: FormData) {
       { onConflict: "auth_id" }
     );
 
-    revalidatePath("/usuarios");
+    revalidatePath("/squadframe/usuarios");
     return { ok: true };
   }
 

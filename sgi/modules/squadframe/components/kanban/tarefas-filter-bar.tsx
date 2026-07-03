@@ -23,7 +23,7 @@ export function TarefasFilterBar({ setores, setorAtual }: Props) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
-    router.push(`/tarefas?${params.toString()}`);
+    router.push(`/squadframe/tarefas?${params.toString()}`);
   }
 
   const semDono = searchParams.get("sem_dono") === "1";

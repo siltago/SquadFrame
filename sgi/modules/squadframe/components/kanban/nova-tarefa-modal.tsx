@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { criarTarefa } from "@/app/tarefas/actions";
+import { criarTarefa } from "@/modules/squadframe/actions/tarefas/actions";
 import { Button } from "@/ui/components/Button";
 
 interface Props {

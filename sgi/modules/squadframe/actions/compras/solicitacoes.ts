@@ -70,7 +70,7 @@ export async function criarSolicitacao(formData: FormData) {
     itens_count:    itens.length,
   });
 
-  redirect(`/compras/solicitacoes/${solId}`);
+  redirect(`/squadframe/compras/solicitacoes/${solId}`);
 }
 
 export async function alterarStatusSolicitacao(

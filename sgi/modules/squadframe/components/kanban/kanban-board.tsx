@@ -18,7 +18,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
 import { CardPanel } from "./card-panel";
 import { NovaTarefaModal } from "./nova-tarefa-modal";
-import { moverCard } from "@/app/tarefas/actions";
+import { moverCard } from "@/modules/squadframe/actions/tarefas/actions";
 import { createClient } from "@/shared/database/supabase-client";
 
 interface Props {

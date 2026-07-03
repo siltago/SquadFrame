@@ -8,7 +8,7 @@ import {
   buscarNotificacoes,
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas,
-} from "@/app/tarefas/actions";
+} from "@/modules/squadframe/actions/tarefas/actions";
 import type { Notificacao } from "@/modules/squadframe/types/kanban";
 
 const TIPO_LABEL: Record<string, string> = {
@@ -26,16 +26,16 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
   switch (n.tipo) {
     case "tarefa_atribuida":
     case "tarefa_comentario":
-      if (n.tarefa_id) return { href: `/tarefas?tarefa=${n.tarefa_id}`, label: p.titulo ?? "Ver tarefa" };
+      if (n.tarefa_id) return { href: `/squadframe/tarefas?tarefa=${n.tarefa_id}`, label: p.titulo ?? "Ver tarefa" };
       break;
     case "pedido_aguardando_aprovacao":
     case "pedido_aprovado":
     case "debito_carteira_falhou":
-      if (p.order_id) return { href: `/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
+      if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
       break;
     case "solicitacao_aprovada":
     case "solicitacao_rejeitada":
-      if (p.request_id) return { href: `/compras/solicitacoes/${p.request_id}`, label: p.numero ?? "Ver solicitação" };
+      if (p.request_id) return { href: `/squadframe/compras/solicitacoes/${p.request_id}`, label: p.numero ?? "Ver solicitação" };
       break;
   }
   return null;

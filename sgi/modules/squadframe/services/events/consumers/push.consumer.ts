@@ -66,7 +66,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       await push(userIds, {
         title: `Pedido de ${tipo} aguardando aprovação`,
         body: `Pedido ${numero}${obraLabel} está aguardando aprovação`,
-        url: `/compras/pedidos/${p.order_id}`,
+        url: `/squadframe/compras/pedidos/${p.order_id}`,
         tag: `pedido-aprovacao-${p.order_id}`,
         actions: [{ action: "open", title: "Ver pedido" }],
       });
@@ -84,7 +84,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([ped.comprador_id], {
           title: "Pedido aprovado — emita agora",
           body: `Pedido ${ped.numero} foi aprovado`,
-          url: `/compras/pedidos/${p.order_id}`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
           tag: `pedido-aprovado-${p.order_id}`,
         });
       }
@@ -103,7 +103,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([ped.comprador_id], {
           title: `Pedido ${numero} devolvido para edição`,
           body: `Pedido ${numero} devolvido para edição — faça as correções e reenvie`,
-          url: `/compras/pedidos/${p.order_id}`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
           tag: `pedido-rascunho-${p.order_id}`,
         });
       }
@@ -125,7 +125,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([ped.comprador_id], {
           title: `Pedido ${numero} de ${tipo}${obraLabel} cancelado`,
           body: `Pedido ${numero} foi cancelado`,
-          url: `/compras/pedidos/${p.order_id}`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
           tag: `pedido-cancelado-${p.order_id}`,
         });
       }
@@ -143,7 +143,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([ped.comprador_id], {
           title: "Pedido recebido",
           body: `Pedido ${ped.numero} foi recebido integralmente`,
-          url: `/compras/pedidos/${p.order_id}`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
           tag: `pedido-recebido-${p.order_id}`,
         });
       }
@@ -163,7 +163,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([sol.solicitante_id], {
           title: "Solicitação aprovada",
           body: `Solicitação ${sol.numero} foi aprovada`,
-          url: `/compras/solicitacoes/${p.request_id}`,
+          url: `/squadframe/compras/solicitacoes/${p.request_id}`,
           tag: `sol-aprovada-${p.request_id}`,
         });
       }
@@ -181,7 +181,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         await push([sol.solicitante_id], {
           title: "Solicitação rejeitada",
           body: `Solicitação ${sol.numero} foi rejeitada`,
-          url: `/compras/solicitacoes/${p.request_id}`,
+          url: `/squadframe/compras/solicitacoes/${p.request_id}`,
           tag: `sol-rejeitada-${p.request_id}`,
         });
       }

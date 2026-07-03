@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BackButton } from "@/modules/squadframe/components/back-button";
-import { NovaAbaInline } from "@/app/catalogo/nova-aba-inline";
+import { NovaAbaInline } from "@/modules/squadframe/components/catalogo/nova-aba-inline";
 
 type Tipo = { id: string; nome: string; slug: string };
 type Linha = { id: string; nome: string; tipo: string };
@@ -26,7 +26,7 @@ function NavLinks({
   const tipoParam = (searchParams.get("tipo") ?? searchParams.get("aba") ?? "").toLowerCase();
   const linhaParam = searchParams.get("linha") ?? "";
   const aplicacaoParam = searchParams.get("aplicacao") ?? "";
-  const onCatalogRoot = pathname === "/catalogo";
+  const onCatalogRoot = pathname === "/squadframe/catalogo";
 
   useEffect(() => { onClose(); }, [pathname, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -47,7 +47,7 @@ function NavLinks({
         return (
           <div key={tipo.slug} className="mb-1">
             <Link
-              href={`/catalogo?tipo=${tipo.slug}`}
+              href={`/squadframe/catalogo?tipo=${tipo.slug}`}
               onClick={onClose}
               className={`flex items-center gap-2 mx-2 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${
                 tipoAtivo && !linhaParam ? "text-primary" : "text-text-3 hover:text-text-2"
@@ -61,7 +61,7 @@ function NavLinks({
               return (
                 <Link
                   key={linha.id}
-                  href={`/catalogo?tipo=${tipo.slug}&linha=${linha.id}`}
+                  href={`/squadframe/catalogo?tipo=${tipo.slug}&linha=${linha.id}`}
                   onClick={onClose}
                   className={`flex items-center gap-2 mx-2 rounded-lg pl-7 pr-3 py-2 text-sm transition-colors ${
                     ativo ? "bg-primary/10 text-primary font-medium" : "text-text-2 hover:bg-bg hover:text-text"
@@ -81,7 +81,7 @@ function NavLinks({
         return (
           <Link
             key={tipo.slug}
-            href={`/catalogo?tipo=${tipo.slug}`}
+            href={`/squadframe/catalogo?tipo=${tipo.slug}`}
             onClick={onClose}
             className={`flex items-center gap-3 mx-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
               ativo ? "bg-primary/10 text-primary" : "text-text-2 hover:bg-bg hover:text-text"
@@ -95,7 +95,7 @@ function NavLinks({
 
       <div className="mb-1">
         <Link
-          href="/catalogo?tipo=cores"
+          href="/squadframe/catalogo?tipo=cores"
           onClick={onClose}
           className={`flex items-center gap-2 mx-2 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${
             onCatalogRoot && tipoParam === "cores" && !aplicacaoParam ? "text-primary" : "text-text-3 hover:text-text-2"
@@ -109,7 +109,7 @@ function NavLinks({
           return (
             <Link
               key={tipo.slug}
-              href={`/catalogo?tipo=cores&aplicacao=${tipo.slug}`}
+              href={`/squadframe/catalogo?tipo=cores&aplicacao=${tipo.slug}`}
               onClick={onClose}
               className={`flex items-center gap-2 mx-2 rounded-lg pl-7 pr-3 py-2 text-sm transition-colors ${
                 ativo ? "bg-primary/10 text-primary font-medium" : "text-text-2 hover:bg-bg hover:text-text"

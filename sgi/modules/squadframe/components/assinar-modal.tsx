@@ -82,7 +82,7 @@ export function AssinarModal({
           {texto === null && (
             <div className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-bg">
               <p className="text-sm text-text-3">Nenhuma assinatura cadastrada.</p>
-              <a href="/perfil" className="text-xs text-primary underline">
+              <a href="/squadframe/perfil" className="text-xs text-primary underline">
                 Criar no perfil →
               </a>
             </div>

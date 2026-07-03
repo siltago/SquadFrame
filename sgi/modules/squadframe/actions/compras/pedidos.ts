@@ -100,7 +100,7 @@ export async function criarPedido(formData: FormData) {
     itens_count:  itens.length,
   });
 
-  redirect(`/compras/pedidos/${pedidoId}`);
+  redirect(`/squadframe/compras/pedidos/${pedidoId}`);
 }
 
 export async function alterarStatusPedido(
@@ -244,7 +244,7 @@ export async function adicionarAnotacao(pedidoId: string, texto: string) {
     status_pedido: ped?.status ?? null,
     texto: texto.trim(),
   });
-  revalidatePath(`/compras/pedidos/${pedidoId}`);
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
 }
 
 export async function registrarValorFinal(pedidoId: string, valorFinal: number) {
@@ -285,8 +285,8 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
     usuario_id,
   });
 
-  revalidatePath(`/compras/pedidos/${pedidoId}`);
-  revalidatePath("/financeiro");
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
+  revalidatePath("/squadframe/financeiro");
 }
 
 export async function excluirPedidos(ids: string[]) {

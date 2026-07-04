@@ -31,7 +31,9 @@ export function BoardCardItem({ card, onOpen }: { card: BoardWorkPackageCard; on
 
   const prazo = formatarPrazo(card.prazo);
 
-  const strip = card.prioridade ? PRIORITY_STRIP[card.prioridade] : undefined;
+  const strip = card.etiquetas.length === 0 && card.prioridade
+    ? PRIORITY_STRIP[card.prioridade]
+    : undefined;
 
   return (
     <BoardCard
@@ -46,6 +48,20 @@ export function BoardCardItem({ card, onOpen }: { card: BoardWorkPackageCard; on
         <DragHandle size="sm" className="mt-0.5 shrink-0" {...attributes} {...listeners} />
         <p className="flex-1 text-sm font-medium leading-snug text-text">{card.nome}</p>
       </div>
+
+      {/* Etiquetas */}
+      {card.etiquetas.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {card.etiquetas.map((e) => (
+            <span
+              key={e.id}
+              title={e.nome}
+              className="h-2 w-7 rounded-full"
+              style={{ backgroundColor: e.cor }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Obra */}
       <p className="truncate text-xs text-text-3">{card.obraNome}</p>

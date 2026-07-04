@@ -1,4 +1,5 @@
 import type { BoardWorkPackageCard, PrioridadePacote } from "@/modules/squadboard/types/work-package";
+import type { BoardEtiqueta } from "@/modules/squadboard/types/etiqueta";
 import { colunaPadrao, type PipelineId } from "@/modules/squadboard/types/pipeline";
 
 type TipologiaStatus = { status: string | null };
@@ -24,12 +25,8 @@ export function mapearPrioridade(valor: string | null): PrioridadePacote | null 
 }
 
 type PipelineStatusRaw = { coluna: string; ordem: number };
+type EtiquetaJoinRaw = { etiqueta: { id: string; nome: string; cor: string; criado_em: string } | { id: string; nome: string; cor: string; criado_em: string }[] | null };
 
-// Shape retornado pela query Supabase em modules/squadboard/actions/pacotes.ts
-// (join com obras/usuarios volta como objeto único via PostgREST, mas o TS
-// infere array para FKs simples — normaliza sem `any`, mesmo padrão já usado
-// em app/squadframe/obras/[id]/page.tsx). `pipeline_status` também vem como
-// array (0 ou 1 item: o filtro na query já restringe ao pipeline consultado).
 export type LoteBoardRaw = {
   id: string;
   nome: string;
@@ -43,7 +40,17 @@ export type LoteBoardRaw = {
   solicitacoes: { id: string }[] | null;
   pedidos: { id: string }[] | null;
   pipeline_status: PipelineStatusRaw[] | null;
+  etiquetas: EtiquetaJoinRaw[] | null;
 };
+
+function mapEtiquetas(raw: EtiquetaJoinRaw[] | null): BoardEtiqueta[] {
+  if (!raw) return [];
+  return raw.flatMap((e) => {
+    const et = Array.isArray(e.etiqueta) ? e.etiqueta[0] : e.etiqueta;
+    if (!et) return [];
+    return [{ id: et.id, nome: et.nome, cor: et.cor, criadoEm: et.criado_em }];
+  });
+}
 
 export function mapLoteParaBoardCard(lote: LoteBoardRaw, pipeline: PipelineId): BoardWorkPackageCard {
   const obra = Array.isArray(lote.obra) ? lote.obra[0] ?? null : lote.obra;
@@ -63,10 +70,12 @@ export function mapLoteParaBoardCard(lote: LoteBoardRaw, pipeline: PipelineId): 
     criadoEm: lote.criado_em,
     progresso: calcularProgresso(tipologias),
     coluna: pipelineStatus?.coluna ?? colunaPadrao(pipeline),
+    ordem: pipelineStatus?.ordem ?? 0,
     contadores: {
       tipologias: tipologias.length,
       solicitacoes: (lote.solicitacoes ?? []).length,
       pedidos: (lote.pedidos ?? []).length,
     },
+    etiquetas: mapEtiquetas(lote.etiquetas),
   };
 }

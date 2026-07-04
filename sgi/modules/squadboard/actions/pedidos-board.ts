@@ -21,7 +21,8 @@ export async function buscarPedidosCompras(): Promise<BoardPedidoCard[]> {
       valor_final, criado_em, fornecedor_id,
       obra:obras(id, nome, deleted_at),
       fornecedor:fornecedores(nome),
-      comprador:usuarios(nome)
+      comprador:usuarios(nome),
+      etiquetas:pedido_board_etiqueta(etiqueta:board_etiquetas(id, nome, cor, criado_em))
     `)
     .is("lote_id", null)
     .neq("status", "CANCELADO")
@@ -46,6 +47,29 @@ export async function moverPedidoBoard(pedidoId: string, novaColuna: string): Pr
     .from("pedidos_compra")
     .update({ status: novoStatus })
     .eq("id", pedidoId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/squadboard");
+}
+
+// Move um grupo inteiro de pedidos (mesma obra) para outra coluna.
+// Todos os pedidos do grupo recebem o mesmo status canônico da coluna destino.
+export async function moverGrupoPedidosBoard(
+  pedidoIds: string[],
+  novaColuna: string,
+): Promise<void> {
+  const usuario = await getUsuarioAtual();
+  if (!usuario) throw new Error("Não autenticado.");
+
+  const novoStatus = COLUNA_STATUS_COMPRAS[novaColuna];
+  if (!novoStatus) throw new Error(`Coluna "${novaColuna}" inválida.`);
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("pedidos_compra")
+    .update({ status: novoStatus })
+    .in("id", pedidoIds);
 
   if (error) throw new Error(error.message);
 

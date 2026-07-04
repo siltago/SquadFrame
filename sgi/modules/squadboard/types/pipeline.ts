@@ -24,10 +24,11 @@ export const PIPELINES: Pipeline[] = [
     id: "compras",
     nome: "Compras",
     colunas: [
-      { id: "aguardando", nome: "Aguardando" },
-      { id: "solicitacao", nome: "Solicitação" },
-      { id: "pedido", nome: "Pedido" },
-      { id: "recebido", nome: "Recebido" },
+      { id: "aguardando", nome: "Incompletos" },
+      { id: "solicitacao", nome: "Aguardando Aprovação" },
+      { id: "emissao", nome: "Emissão" },
+      { id: "pedido", nome: "Aguardando Recebimento" },
+      { id: "recebido", nome: "Recebidos" },
     ],
   },
   {

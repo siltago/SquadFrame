@@ -31,19 +31,19 @@ export async function buscarPacotesBoard(pipeline: PipelineId): Promise<BoardWor
       tipologias:tipologias_obra(status),
       solicitacoes:solicitacoes_compra(id),
       pedidos:pedidos_compra(id),
-      pipeline_status:pacote_pipeline_status(coluna, ordem)
+      pipeline_status:pacote_pipeline_status(coluna, ordem),
+      etiquetas:lote_board_etiqueta(etiqueta:board_etiquetas(id, nome, cor, criado_em))
     `)
-    // Filtra a linha embutida de pacote_pipeline_status para este pipeline
-    // (não exclui o Pacote se ele ainda não tiver linha — LEFT JOIN
-    // implícito do PostgREST; sem match, pipeline_status volta vazio e o
-    // mapper assume a primeira coluna do pipeline).
     .eq("pipeline_status.pipeline", pipeline)
     .is("obra.deleted_at", null)
     .order("criado_em", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  return ((data ?? []) as unknown as LoteBoardRaw[]).map((lote) => mapLoteParaBoardCard(lote, pipeline));
+  const cards = ((data ?? []) as unknown as LoteBoardRaw[]).map((lote) =>
+    mapLoteParaBoardCard(lote, pipeline),
+  );
+  return cards.sort((a, b) => a.ordem - b.ordem);
 }
 
 // Move um Pacote para uma coluna dentro de UM pipeline específico. Não
@@ -72,6 +72,33 @@ export async function moverPacotePipeline(
   if (error) throw new Error(error.message);
 
   revalidatePath("/squadboard");
+}
+
+// Persiste a ordem dos cards dentro de uma coluna. Chamado após reordenação
+// manual pelo usuário (drag-and-drop vertical dentro da mesma coluna).
+export async function salvarOrdemColuna(
+  pipeline: PipelineId,
+  coluna: string,
+  ids: string[], // IDs dos lotes na nova ordem
+): Promise<void> {
+  const usuario = await getUsuarioAtual();
+  if (!usuario) throw new Error("Não autenticado.");
+
+  const admin = createAdminClient();
+  const agora = new Date().toISOString();
+
+  const rows = ids.map((loteId, idx) => ({
+    lote_id: loteId,
+    pipeline,
+    coluna,
+    ordem: idx,
+    atualizado_em: agora,
+  }));
+
+  const { error } = await admin
+    .from("pacote_pipeline_status")
+    .upsert(rows, { onConflict: "lote_id,pipeline" });
+  if (error) throw new Error(error.message);
 }
 
 // Retorna a coluna atual do pacote em CADA um dos 3 pipelines.

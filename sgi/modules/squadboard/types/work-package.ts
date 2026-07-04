@@ -22,9 +22,11 @@ export type BoardWorkPackageCard = {
   criadoEm: string; // ISO datetime
   progresso: number; // 0-100, calculado a partir das tipologias
   coluna: string; // posição atual do pacote dentro do pipeline consultado
+  ordem: number; // posição dentro da coluna (para reordenação)
   contadores: {
     tipologias: number;
     solicitacoes: number;
     pedidos: number;
   };
+  etiquetas: import("./etiqueta").BoardEtiqueta[];
 };

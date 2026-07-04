@@ -7,11 +7,12 @@ import { PipelineSelector } from "@/modules/squadboard/components/pipeline-selec
 import { KanbanBoard } from "@/modules/squadboard/components/kanban/board";
 import { CommandPalette } from "@/modules/squadboard/components/command-palette";
 import { PackageCardModal } from "@/modules/squadboard/components/kanban/package-card-modal";
-import { buscarPacotesBoard, moverPacotePipeline } from "@/modules/squadboard/actions/pacotes";
-import { buscarPedidosCompras, moverPedidoBoard } from "@/modules/squadboard/actions/pedidos-board";
+import { PedidoGroupModal } from "@/modules/squadboard/components/kanban/pedido-group-modal";
+import { buscarPacotesBoard, moverPacotePipeline, salvarOrdemColuna } from "@/modules/squadboard/actions/pacotes";
+import { buscarPedidosCompras, moverGrupoPedidosBoard } from "@/modules/squadboard/actions/pedidos-board";
 import { colunasDoPipeline, type PipelineId } from "@/modules/squadboard/types/pipeline";
 import type { BoardWorkPackageCard } from "@/modules/squadboard/types/work-package";
-import type { BoardPedidoCard } from "@/modules/squadboard/types/pedido";
+import type { BoardPedidoCard, PedidoGrupo } from "@/modules/squadboard/types/pedido";
 
 export function SquadBoardView({
   pipelineInicial, pacotesIniciais,
@@ -23,6 +24,7 @@ export function SquadBoardView({
   const [cards, setCards] = useState<BoardWorkPackageCard[]>(pacotesIniciais);
   const [pedidos, setPedidos] = useState<BoardPedidoCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<BoardWorkPackageCard | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<PedidoGrupo | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [carregandoPipeline, startCarregandoPipeline] = useTransition();
@@ -65,8 +67,12 @@ export function SquadBoardView({
     });
   }
 
-  function handlePedidoColunaChange(pedidoId: string, novaColuna: string) {
-    moverPedidoBoard(pedidoId, novaColuna).catch(async (e) => {
+  function handleOrdemChange(coluna: string, ids: string[]) {
+    salvarOrdemColuna(pipeline, coluna, ids).catch(() => {});
+  }
+
+  function handlePedidoGroupColunaChange(pedidoIds: string[], novaColuna: string) {
+    moverGrupoPedidosBoard(pedidoIds, novaColuna).catch(async (e) => {
       setErro(e instanceof Error ? e.message : "Não foi possível mover o pedido.");
       try { setPedidos(await buscarPedidosCompras()); } catch { /* mantém estado otimista */ }
     });
@@ -102,9 +108,10 @@ export function SquadBoardView({
           onCardsChange={setCards}
           onPedidosChange={setPedidos}
           onOpenCard={abrirCard}
-          onOpenPedido={() => {}} // abre modal de pedido — a implementar
+          onOpenGroup={(grupo) => setSelectedGroup(grupo)}
           onColunaChange={handleColunaChange}
-          onPedidoColunaChange={handlePedidoColunaChange}
+          onOrdemChange={handleOrdemChange}
+          onPedidoGroupColunaChange={handlePedidoGroupColunaChange}
         />
       </div>
 
@@ -113,6 +120,12 @@ export function SquadBoardView({
         open={selectedCard !== null}
         onClose={() => setSelectedCard(null)}
         onCardUpdated={handleCardUpdated}
+      />
+
+      <PedidoGroupModal
+        grupo={selectedGroup}
+        open={selectedGroup !== null}
+        onClose={() => setSelectedGroup(null)}
       />
 
       <CommandPalette

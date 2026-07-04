@@ -1,7 +1,14 @@
 // DTO do SquadBoard para pedidos de compra standalone (sem lote_id vinculado).
 // A posição no board é DERIVADA do status — não persiste em tabela separada.
-// Ao arrastar entre colunas, o status do pedido é atualizado para o
-// "status canônico" da coluna de destino (ver COLUNA_STATUS_COMPRAS abaixo).
+// Ao arrastar entre colunas o status é atualizado para o status canônico
+// da coluna de destino (ver COLUNA_STATUS_COMPRAS abaixo).
+//
+// Pipeline Compras — 5 colunas:
+//   aguardando   → "Incompletos"          (RASCUNHO, REJEITADO)
+//   solicitacao  → "Aguardando Aprovação" (AGUARDANDO_APROVACAO)
+//   emissao      → "Emissão"              (APROVADO, EMITIDO)
+//   pedido       → "Aguardando Recebimento" (AGUARDANDO_RECEBIMENTO, RECEBIDO_PARCIAL)
+//   recebido     → "Recebidos"            (RECEBIDO, FINALIZADO)
 
 export type StatusPedidoBoard =
   | "RASCUNHO"
@@ -17,10 +24,10 @@ export type StatusPedidoBoard =
 // Status → coluna do pipeline Compras
 export const STATUS_COLUNA_COMPRAS: Record<StatusPedidoBoard, string> = {
   RASCUNHO: "aguardando",
-  AGUARDANDO_APROVACAO: "aguardando",
   REJEITADO: "aguardando",
-  APROVADO: "solicitacao",
-  EMITIDO: "solicitacao",
+  AGUARDANDO_APROVACAO: "solicitacao",
+  APROVADO: "emissao",
+  EMITIDO: "emissao",
   AGUARDANDO_RECEBIMENTO: "pedido",
   RECEBIDO_PARCIAL: "pedido",
   RECEBIDO: "recebido",
@@ -29,8 +36,9 @@ export const STATUS_COLUNA_COMPRAS: Record<StatusPedidoBoard, string> = {
 
 // Coluna → status canônico ao mover um card (drag & drop)
 export const COLUNA_STATUS_COMPRAS: Record<string, StatusPedidoBoard> = {
-  aguardando: "AGUARDANDO_APROVACAO",
-  solicitacao: "APROVADO",
+  aguardando: "RASCUNHO",
+  solicitacao: "AGUARDANDO_APROVACAO",
+  emissao: "APROVADO",
   pedido: "AGUARDANDO_RECEBIMENTO",
   recebido: "RECEBIDO",
 };
@@ -61,4 +69,15 @@ export type BoardPedidoCard = {
   status: StatusPedidoBoard;
   coluna: string;             // derivado de STATUS_COLUNA_COMPRAS[status]
   criadoEm: string;
+  etiquetas: import("./etiqueta").BoardEtiqueta[];
+};
+
+// Agrupamento visual: pedidos da mesma obra na mesma coluna formam um grupo.
+// Pedidos sem obra ficam individualmente (grupoId = "ind-{pedidoId}").
+export type PedidoGrupo = {
+  grupoId: string;
+  obraId: string | null;
+  obraNome: string | null;
+  coluna: string;
+  pedidos: BoardPedidoCard[];
 };

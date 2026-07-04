@@ -14,6 +14,10 @@ import type { BoardWorkPackageCard, PrioridadePacote } from "@/modules/squadboar
 import type { PriorityLevel } from "@/ui/components/kanban";
 import { PIPELINES, type PipelineId } from "@/modules/squadboard/types/pipeline";
 import { buscarStatusPipelines, atualizarPacote } from "@/modules/squadboard/actions/pacotes";
+import { buscarEtiquetas, buscarEtiquetasDoPacote, atribuirEtiqueta, removerEtiquetaDoPacote } from "@/modules/squadboard/actions/etiquetas";
+import { LabelPicker } from "@/modules/squadboard/components/kanban/label-picker";
+import { LabelsManager } from "@/modules/squadboard/components/labels-manager";
+import type { BoardEtiqueta } from "@/modules/squadboard/types/etiqueta";
 
 const PRIORITY_MAP: Record<PrioridadePacote, PriorityLevel> = {
   baixa: "low", media: "medium", alta: "high", critica: "critical",
@@ -43,20 +47,30 @@ export function PackageCardModal({
   const [nomeRascunho, setNomeRascunho] = useState("");
   const [pipelineStatus, setPipelineStatus] = useState<Record<PipelineId, string> | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [todasEtiquetas, setTodasEtiquetas] = useState<BoardEtiqueta[]>([]);
+  const [etiquetasSelecionadas, setEtiquetasSelecionadas] = useState<BoardEtiqueta[]>([]);
+  const [labelsManagerOpen, setLabelsManagerOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  // Carrega status de todos os pipelines quando abre
+  // Carrega status de todos os pipelines + etiquetas quando abre
   useEffect(() => {
     if (!open || !card) return;
     setNomeRascunho(card.nome);
     setEditingTitle(false);
     setPipelineStatus(null);
     setLoadingStatus(true);
-    buscarStatusPipelines(card.id)
-      .then(setPipelineStatus)
-      .catch(() => {})
-      .finally(() => setLoadingStatus(false));
+    setEtiquetasSelecionadas(card.etiquetas ?? []);
+
+    Promise.all([
+      buscarStatusPipelines(card.id),
+      buscarEtiquetas(),
+      buscarEtiquetasDoPacote(card.id),
+    ]).then(([status, todas, selecionadas]) => {
+      setPipelineStatus(status);
+      setTodasEtiquetas(todas);
+      setEtiquetasSelecionadas(selecionadas);
+    }).catch(() => {}).finally(() => setLoadingStatus(false));
   }, [open, card?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Foca no input de título quando entra em modo edição
@@ -115,12 +129,29 @@ export function PackageCardModal({
     });
   }
 
+  function toggleEtiqueta(etiqueta: BoardEtiqueta) {
+    if (!card) return;
+    const jaSelecionada = etiquetasSelecionadas.some((e) => e.id === etiqueta.id);
+    const novas = jaSelecionada
+      ? etiquetasSelecionadas.filter((e) => e.id !== etiqueta.id)
+      : [...etiquetasSelecionadas, etiqueta];
+    setEtiquetasSelecionadas(novas);
+    onCardUpdated({ id: card.id, etiquetas: novas });
+    startTransition(async () => {
+      if (jaSelecionada) {
+        await removerEtiquetaDoPacote(card.id, etiqueta.id);
+      } else {
+        await atribuirEtiqueta(card.id, etiqueta.id);
+      }
+    });
+  }
+
   const prazoDate = card.prazo ? new Date(card.prazo) : null;
   const prazoAtrasado = prazoDate ? prazoDate < new Date() : false;
   const prazoValue = card.prazo ? card.prazo.slice(0, 10) : "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 py-10">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto scrollbar-thin p-4 py-10">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
@@ -264,6 +295,34 @@ export function PackageCardModal({
           {/* Sidebar */}
           <div className="w-52 shrink-0 border-l border-border bg-surface-2 px-5 py-5 flex flex-col gap-5">
 
+            {/* Etiquetas */}
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-3">Etiquetas</p>
+              {etiquetasSelecionadas.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {etiquetasSelecionadas.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => toggleEtiqueta(e)}
+                      title={`Remover "${e.nome}"`}
+                      className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium text-white transition-opacity hover:opacity-75"
+                      style={{ backgroundColor: e.cor }}
+                    >
+                      {e.nome}
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <LabelPicker
+                todas={todasEtiquetas}
+                selecionadas={etiquetasSelecionadas}
+                onToggle={toggleEtiqueta}
+                onOpenManager={() => setLabelsManagerOpen(true)}
+              />
+            </div>
+
             {/* Prioridade */}
             <div>
               <MetaLabel>Prioridade</MetaLabel>
@@ -351,6 +410,14 @@ export function PackageCardModal({
         @keyframes sbFadeIn  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes sbSlideUp { from { opacity: 0; transform: translateY(10px) scale(0.98) } to { opacity: 1; transform: none } }
       `}</style>
+
+      <LabelsManager
+        open={labelsManagerOpen}
+        onClose={() => setLabelsManagerOpen(false)}
+        onEtiquetasChange={() => {
+          buscarEtiquetas().then(setTodasEtiquetas).catch(() => {});
+        }}
+      />
     </div>
   );
 }

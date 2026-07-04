@@ -1,4 +1,7 @@
 import { STATUS_COLUNA_COMPRAS, type BoardPedidoCard, type StatusPedidoBoard } from "@/modules/squadboard/types/pedido";
+import type { BoardEtiqueta } from "@/modules/squadboard/types/etiqueta";
+
+type EtiquetaJoinRaw = { etiqueta: { id: string; nome: string; cor: string; criado_em: string } | { id: string; nome: string; cor: string; criado_em: string }[] | null };
 
 export type PedidoBoardRaw = {
   id: string;
@@ -13,7 +16,17 @@ export type PedidoBoardRaw = {
   obra: { id: string; nome: string; deleted_at: string | null }[] | { id: string; nome: string; deleted_at: string | null } | null;
   fornecedor: { nome: string }[] | { nome: string } | null;
   comprador: { nome: string }[] | { nome: string } | null;
+  etiquetas: EtiquetaJoinRaw[] | null;
 };
+
+function mapEtiquetas(raw: EtiquetaJoinRaw[] | null): BoardEtiqueta[] {
+  if (!raw) return [];
+  return raw.flatMap((e) => {
+    const et = Array.isArray(e.etiqueta) ? e.etiqueta[0] : e.etiqueta;
+    if (!et) return [];
+    return [{ id: et.id, nome: et.nome, cor: et.cor, criadoEm: et.criado_em }];
+  });
+}
 
 export function mapPedidoParaBoardCard(raw: PedidoBoardRaw): BoardPedidoCard {
   const obra = Array.isArray(raw.obra) ? raw.obra[0] ?? null : raw.obra;
@@ -36,5 +49,6 @@ export function mapPedidoParaBoardCard(raw: PedidoBoardRaw): BoardPedidoCard {
     status,
     coluna: STATUS_COLUNA_COMPRAS[status] ?? "aguardando",
     criadoEm: raw.criado_em,
+    etiquetas: mapEtiquetas(raw.etiquetas),
   };
 }

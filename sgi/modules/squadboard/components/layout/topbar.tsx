@@ -7,9 +7,6 @@ import { Avatar } from "@/ui/components/Avatar";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/ui/components/Dropdown";
 import { SearchIcon, BellIcon, SunIcon, MoonIcon, LogoutIcon, UserIcon } from "@/ui/icons";
 
-// Fase 4: SquadBoard é somente leitura (Pacotes de Trabalho reais). Criação
-// de pacote continua exclusivamente pela aba Produção — por isso não há mais
-// botão "Novo card" aqui.
 export function SquadBoardTopbar({
   onOpenSearch,
 }: {

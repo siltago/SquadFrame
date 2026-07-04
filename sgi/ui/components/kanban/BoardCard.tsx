@@ -26,10 +26,10 @@ export const BoardCard = forwardRef<HTMLDivElement, BoardCardProps>(
           className
         )}
       >
-        {colorStrip && (
-          <div className={cn("h-[6px] w-full shrink-0", colorStrip)} />
-        )}
         <div className="flex flex-col gap-2.5 p-3.5">
+          {colorStrip && (
+            <div className={cn("h-[6px] w-[38%] rounded-full shrink-0", colorStrip)} />
+          )}
           {children}
         </div>
       </div>

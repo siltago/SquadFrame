@@ -105,7 +105,7 @@ export function InternalKanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto p-6 h-full scrollbar-thin">
+      <div className="flex gap-4 overflow-x-auto p-3 sm:p-6 h-full scrollbar-thin">
         {colunas.map((col) => (
           <InternalColumn
             key={col.id}

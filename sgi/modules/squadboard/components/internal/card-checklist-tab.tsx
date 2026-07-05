@@ -38,26 +38,40 @@ function detectMention(value: string, cursor: number): MentionState {
 function MentionDropdown({
   usuarios,
   query,
+  anchorRef,
   onSelect,
 }: {
   usuarios: SquadUsuario[];
   query: string;
+  anchorRef: React.RefObject<HTMLInputElement | null>;
   onSelect: (usuario: SquadUsuario) => void;
 }) {
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      const r = anchorRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 176) });
+    }
+  }, [anchorRef, query]);
+
   const filtered = query
     ? usuarios.filter((u) => u.nome.toLowerCase().includes(query.toLowerCase()))
     : usuarios.slice(0, 8);
 
-  if (filtered.length === 0) return null;
+  if (filtered.length === 0 || !pos) return null;
 
   return (
-    <div className="absolute left-0 top-full z-30 mt-0.5 w-44 rounded-lg border border-border bg-surface shadow-xl py-1 max-h-40 overflow-y-auto">
+    <div
+      style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+      className="rounded-lg border border-border bg-surface shadow-xl py-1 max-h-40 overflow-y-auto"
+    >
       {filtered.map((u) => (
         <button
           key={u.id}
           type="button"
           onMouseDown={(e) => {
-            e.preventDefault(); // keep focus on input
+            e.preventDefault();
             onSelect(u);
           }}
           className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-surface-2 transition-colors"
@@ -193,6 +207,7 @@ function CheckItemRow({
               <MentionDropdown
                 usuarios={usuarios}
                 query={mention.query}
+                anchorRef={inputRef}
                 onSelect={selectMention}
               />
             )}

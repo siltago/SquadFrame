@@ -760,7 +760,7 @@ export function ExpandedCard({
       </div>
 
       {/* Tab content */}
-      <div className="max-h-[520px] overflow-y-auto scrollbar-thin px-4 py-3">
+      <div className="max-h-[80dvh] sm:max-h-[520px] overflow-y-auto scrollbar-thin px-4 py-3">
         {!detalhe && activeTab !== "atividade" ? (
           <p className="py-4 text-center text-xs text-text-3 animate-pulse">Carregando…</p>
         ) : activeTab === "resumo" && detalhe ? (

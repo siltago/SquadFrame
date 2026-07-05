@@ -96,7 +96,7 @@ export async function notificarCardAtribuido(opts: {
       autor_nome: opts.autorNome,
     },
     {
-      title: `SquadBoard ��� ${setorLabel}`,
+      title: `SquadBoard — ${setorLabel}`,
       body: `${opts.autorNome} te atribuiu ao card\n"${opts.cardTitulo}"`,
       url,
       tag: `board-atribuido-${opts.cardId}`,
@@ -181,12 +181,13 @@ export async function notificarChecklistMencao(opts: {
   const primeiroNome = match[1].toLowerCase();
   const admin = createAdminClient();
 
-  // Busca usuário pelo primeiro nome (case-insensitive)
+  // Busca usuário pelo primeiro nome ou qualquer parte do nome (case-insensitive)
   const { data: usuarios } = await admin
     .from("usuarios")
     .select("id, nome")
-    .ilike("nome", `${primeiroNome}%`)
+    .ilike("nome", `%${primeiroNome}%`)
     .eq("ativo", true)
+    .order("nome")
     .limit(1);
 
   const mencionado = usuarios?.[0];

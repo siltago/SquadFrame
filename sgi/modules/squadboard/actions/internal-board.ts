@@ -182,13 +182,15 @@ export async function moverCardInterno(
   await invalidateCacheKey(cacheKey);
 
   if (ctx?.cardTitulo && ctx?.colunaNova) {
-    notificarCardMovido({
-      cardId,
-      setor,
-      cardTitulo: ctx.cardTitulo,
-      colunaNova: ctx.colunaNova,
-      autorId: usuario.id,
-    }).catch(() => {});
+    try {
+      await notificarCardMovido({
+        cardId,
+        setor,
+        cardTitulo: ctx.cardTitulo,
+        colunaNova: ctx.colunaNova,
+        autorId: usuario.id,
+      });
+    } catch {}
   }
 }
 
@@ -270,13 +272,15 @@ export async function adicionarResponsavelCard(
 
   // Notifica o usuário adicionado (apenas se for diferente de quem está adicionando)
   if (usuarioId !== usuario.id && ctx?.cardTitulo) {
-    notificarCardAtribuido({
-      cardId,
-      setor,
-      cardTitulo: ctx.cardTitulo,
-      usuarioId,
-      autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
-    }).catch(() => {});
+    try {
+      await notificarCardAtribuido({
+        cardId,
+        setor,
+        cardTitulo: ctx.cardTitulo,
+        usuarioId,
+        autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
+      });
+    } catch {}
   }
 }
 
@@ -353,14 +357,16 @@ export async function criarComentario(
   const comentario = await getProvider("trello").createComment(cardId, texto);
 
   if (ctx?.cardTitulo) {
-    notificarCardComentario({
-      cardId,
-      setor,
-      cardTitulo: ctx.cardTitulo,
-      autorId: usuario.id,
-      autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
-      previewTexto: texto,
-    }).catch(() => {});
+    try {
+      await notificarCardComentario({
+        cardId,
+        setor,
+        cardTitulo: ctx.cardTitulo,
+        autorId: usuario.id,
+        autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
+        previewTexto: texto,
+      });
+    } catch {}
   }
 
   return comentario;
@@ -420,14 +426,16 @@ export async function criarItemChecklist(
   const item = await getProvider("trello").createChecklistItem(checklistId, cardId, nome);
 
   if (ctx?.cardTitulo && /@\S+/.test(nome)) {
-    notificarChecklistMencao({
-      cardId,
-      setor,
-      cardTitulo: ctx.cardTitulo,
-      itemTexto: nome,
-      autorId: usuario.id,
-      autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
-    }).catch(() => {});
+    try {
+      await notificarChecklistMencao({
+        cardId,
+        setor,
+        cardTitulo: ctx.cardTitulo,
+        itemTexto: nome,
+        autorId: usuario.id,
+        autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
+      });
+    } catch {}
   }
 
   return item;
@@ -447,14 +455,16 @@ export async function atualizarItemChecklist(
   await getProvider("trello").updateChecklistItem(checklistId, itemId, cardId, nome);
 
   if (ctx?.cardTitulo && /@\S+/.test(nome)) {
-    notificarChecklistMencao({
-      cardId,
-      setor,
-      cardTitulo: ctx.cardTitulo,
-      itemTexto: nome,
-      autorId: usuario.id,
-      autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
-    }).catch(() => {});
+    try {
+      await notificarChecklistMencao({
+        cardId,
+        setor,
+        cardTitulo: ctx.cardTitulo,
+        itemTexto: nome,
+        autorId: usuario.id,
+        autorNome: ctx.autorNome ?? usuario.email ?? "Alguém",
+      });
+    } catch {}
   }
 }
 

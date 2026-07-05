@@ -28,7 +28,19 @@ function SortableCard({
   if (isExpanded) {
     return (
       <div ref={setNodeRef}>
-        <ExpandedCard card={card} setor={setor} onClose={onClose} />
+        {/* Mobile: modal sobre tela inteira */}
+        <div className="sm:hidden fixed inset-0 z-50 flex flex-col bg-black/60" onClick={onClose}>
+          <div
+            className="mt-auto max-h-[92dvh] overflow-hidden rounded-t-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExpandedCard card={card} setor={setor} onClose={onClose} />
+          </div>
+        </div>
+        {/* Desktop: inline na coluna */}
+        <div className="hidden sm:block">
+          <ExpandedCard card={card} setor={setor} onClose={onClose} />
+        </div>
       </div>
     );
   }

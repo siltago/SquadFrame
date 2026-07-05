@@ -328,6 +328,7 @@ function AddItemForm({
           <MentionDropdown
             usuarios={usuarios}
             query={mention.query}
+            anchorRef={inputRef}
             onSelect={selectMention}
           />
         )}

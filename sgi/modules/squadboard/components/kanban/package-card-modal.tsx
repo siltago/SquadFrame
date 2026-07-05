@@ -15,9 +15,15 @@ import type { PriorityLevel } from "@/ui/components/kanban";
 import { PIPELINES, type PipelineId } from "@/modules/squadboard/types/pipeline";
 import { buscarStatusPipelines, atualizarPacote } from "@/modules/squadboard/actions/pacotes";
 import { buscarEtiquetas, buscarEtiquetasDoPacote, atribuirEtiqueta, removerEtiquetaDoPacote } from "@/modules/squadboard/actions/etiquetas";
+import { buscarConteudo, criarChecklist } from "@/modules/squadboard/actions/board-content";
 import { LabelPicker } from "@/modules/squadboard/components/kanban/label-picker";
 import { LabelsManager } from "@/modules/squadboard/components/labels-manager";
+import { ContentBar } from "@/modules/squadboard/components/kanban/content-bar";
+import { BoardDescription } from "@/modules/squadboard/components/kanban/board-description";
+import { BoardChecklistSection } from "@/modules/squadboard/components/kanban/board-checklist";
+import { BoardAttachments } from "@/modules/squadboard/components/kanban/board-attachments";
 import type { BoardEtiqueta } from "@/modules/squadboard/types/etiqueta";
+import type { BoardContent, BoardChecklist } from "@/modules/squadboard/types/board-content";
 
 const PRIORITY_MAP: Record<PrioridadePacote, PriorityLevel> = {
   baixa: "low", media: "medium", alta: "high", critica: "critical",
@@ -50,8 +56,12 @@ export function PackageCardModal({
   const [todasEtiquetas, setTodasEtiquetas] = useState<BoardEtiqueta[]>([]);
   const [etiquetasSelecionadas, setEtiquetasSelecionadas] = useState<BoardEtiqueta[]>([]);
   const [labelsManagerOpen, setLabelsManagerOpen] = useState(false);
+  const [conteudo, setConteudo] = useState<BoardContent>({ descricao: "", checklists: [], anexos: [] });
+  const [showAnexoForm, setShowAnexoForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const descricaoRef = useRef<{ focus: () => void } | null>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
 
   // Carrega status de todos os pipelines + etiquetas quando abre
   useEffect(() => {
@@ -62,14 +72,19 @@ export function PackageCardModal({
     setLoadingStatus(true);
     setEtiquetasSelecionadas(card.etiquetas ?? []);
 
+    setConteudo({ descricao: "", checklists: [], anexos: [] });
+    setShowAnexoForm(false);
+
     Promise.all([
       buscarStatusPipelines(card.id),
       buscarEtiquetas(),
       buscarEtiquetasDoPacote(card.id),
-    ]).then(([status, todas, selecionadas]) => {
+      buscarConteudo("lote", card.id),
+    ]).then(([status, todas, selecionadas, content]) => {
       setPipelineStatus(status);
       setTodasEtiquetas(todas);
       setEtiquetasSelecionadas(selecionadas);
+      setConteudo(content);
     }).catch(() => {}).finally(() => setLoadingStatus(false));
   }, [open, card?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -129,6 +144,19 @@ export function PackageCardModal({
     });
   }
 
+  function handleAddChecklist() {
+    if (!card) return;
+    startTransition(async () => {
+      const novo = await criarChecklist("lote", card.id, "Checklist");
+      setConteudo((prev) => ({ ...prev, checklists: [...prev.checklists, novo] }));
+      setTimeout(() => mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: "smooth" }), 50);
+    });
+  }
+
+  function handleDescricaoFocus() {
+    setTimeout(() => descricaoRef.current?.focus(), 50);
+  }
+
   function toggleEtiqueta(etiqueta: BoardEtiqueta) {
     if (!card) return;
     const jaSelecionada = etiquetasSelecionadas.some((e) => e.id === etiqueta.id);
@@ -175,7 +203,7 @@ export function PackageCardModal({
         </button>
 
         {/* Header — Título + Obra */}
-        <div className="px-7 pt-6 pb-5 border-b border-border pr-12">
+        <div className="px-7 pt-6 pb-4 pr-12">
           {editingTitle ? (
             <textarea
               ref={titleRef}
@@ -209,10 +237,57 @@ export function PackageCardModal({
           </p>
         </div>
 
+        {/* ContentBar */}
+        <ContentBar
+          onDescricao={handleDescricaoFocus}
+          onChecklist={handleAddChecklist}
+          onAnexo={() => { setShowAnexoForm(true); setTimeout(() => mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: "smooth" }), 50); }}
+        />
+
         {/* Body — 2 colunas */}
         <div className="flex min-h-0">
           {/* Coluna principal */}
-          <div className="flex-1 min-w-0 px-7 py-5 flex flex-col gap-6">
+          <div ref={mainRef} className="flex-1 min-w-0 px-7 py-5 flex flex-col gap-6 overflow-y-auto scrollbar-thin max-h-[65vh]">
+
+            {/* Descrição */}
+            <BoardDescription
+              entityType="lote"
+              entityId={card.id}
+              valor={conteudo.descricao}
+              onChange={(descricao) => setConteudo((prev) => ({ ...prev, descricao }))}
+              focusRef={descricaoRef}
+            />
+
+            {/* Checklists */}
+            {conteudo.checklists.map((cl) => (
+              <BoardChecklistSection
+                key={cl.id}
+                checklist={cl}
+                onUpdate={(updated) =>
+                  setConteudo((prev) => ({
+                    ...prev,
+                    checklists: prev.checklists.map((c) => (c.id === updated.id ? updated : c)),
+                  }))
+                }
+                onDelete={() => {
+                  setConteudo((prev) => ({
+                    ...prev,
+                    checklists: prev.checklists.filter((c) => c.id !== cl.id),
+                  }));
+                  startTransition(async () => { const { deletarChecklist } = await import("@/modules/squadboard/actions/board-content"); await deletarChecklist(cl.id); });
+                }}
+              />
+            ))}
+
+            {/* Anexos */}
+            <BoardAttachments
+              entityType="lote"
+              entityId={card.id}
+              anexos={conteudo.anexos}
+              onUpdate={(anexos) => setConteudo((prev) => ({ ...prev, anexos }))}
+              showForm={showAnexoForm}
+              onHideForm={() => setShowAnexoForm(false)}
+            />
 
             {/* Status nos 3 pipelines */}
             <section>

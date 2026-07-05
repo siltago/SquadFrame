@@ -19,6 +19,12 @@ const TIPO_LABEL: Record<string, string> = {
   solicitacao_aprovada:        "Solicitação aprovada",
   solicitacao_rejeitada:       "Solicitação rejeitada",
   debito_carteira_falhou:      "Débito da carteira não realizado",
+  // SquadBoard
+  board_card_atribuido:        "Card atribuído a você",
+  board_card_movido:           "Card movido de coluna",
+  board_card_comentario:       "Novo comentário no card",
+  board_checklist_mencionado:  "Você foi mencionado no checklist",
+  board_card_prazo_proximo:    "Card com prazo amanhã",
 };
 
 function resolverLink(n: Notificacao): { href: string; label: string } | null {
@@ -36,6 +42,13 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "solicitacao_aprovada":
     case "solicitacao_rejeitada":
       if (p.request_id) return { href: `/squadframe/compras/solicitacoes/${p.request_id}`, label: p.numero ?? "Ver solicitação" };
+      break;
+    case "board_card_atribuido":
+    case "board_card_movido":
+    case "board_card_comentario":
+    case "board_checklist_mencionado":
+    case "board_card_prazo_proximo":
+      if (p.card_id) return { href: `/squadboard/interno?card=${p.card_id}`, label: (p.card_titulo as string) ?? "Ver card" };
       break;
   }
   return null;

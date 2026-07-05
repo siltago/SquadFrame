@@ -6,13 +6,13 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
 import { Tooltip } from "@/ui/components/Tooltip";
 import {
-  KanbanIcon, InboxIcon, CalendarIcon, SettingsIcon,
+  KanbanIcon, HubIcon, CalendarIcon, SettingsIcon,
   ChevronLeftIcon, ChevronRightIcon, MenuIcon, CloseIcon,
 } from "@/ui/icons";
 
 const NAV = [
-  { href: "/squadboard", label: "Quadro", icon: <KanbanIcon size={18} />, exact: true },
-  { href: "/squadboard/inbox", label: "Inbox", icon: <InboxIcon size={18} /> },
+  { href: "/squadboard", label: "Quadro Operacional", icon: <KanbanIcon size={18} />, exact: true },
+  { href: "/squadboard/interno", label: "Quadro Interno", icon: <HubIcon size={18} /> },
   { href: "/squadboard/calendario", label: "Calendário", icon: <CalendarIcon size={18} /> },
   { href: "/squadboard/configuracoes", label: "Configurações", icon: <SettingsIcon size={18} /> },
 ];

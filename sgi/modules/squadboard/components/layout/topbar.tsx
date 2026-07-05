@@ -1,11 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useTheme } from "@/ui/theme/ThemeProvider";
 import { useUsuario } from "@/modules/squadframe/components/user-provider";
 import { Avatar } from "@/ui/components/Avatar";
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/ui/components/Dropdown";
-import { SearchIcon, BellIcon, SunIcon, MoonIcon, LogoutIcon, UserIcon } from "@/ui/icons";
+import { NotificacoesBadge } from "@/modules/squadframe/components/notificacoes/notificacoes-badge";
+import { buscarNotificacoes } from "@/modules/squadframe/actions/tarefas/actions";
+import { SearchIcon, SunIcon, MoonIcon, LogoutIcon, UserIcon } from "@/ui/icons";
+
+function NotificacoesWrapper() {
+  const usuario = useUsuario();
+  const [naoLidas, setNaoLidas] = useState(0);
+
+  useEffect(() => {
+    if (!usuario?.id) return;
+    buscarNotificacoes(1).then((r) => setNaoLidas(r.naoLidas)).catch(() => {});
+  }, [usuario?.id]);
+
+  if (!usuario?.id) return null;
+  return <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidas} />;
+}
 
 export function SquadBoardTopbar({
   onOpenSearch,
@@ -31,12 +47,7 @@ export function SquadBoardTopbar({
       </button>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <button
-          aria-label="Notificações"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
-        >
-          <BellIcon size={17} />
-        </button>
+        <NotificacoesWrapper />
 
         <button
           onClick={toggle}

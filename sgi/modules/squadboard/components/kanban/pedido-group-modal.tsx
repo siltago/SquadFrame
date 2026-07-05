@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
 import { Avatar } from "@/ui/components/Avatar";
@@ -11,9 +11,15 @@ import {
   type BoardPedidoCard, type PedidoGrupo, type StatusPedidoBoard,
 } from "@/modules/squadboard/types/pedido";
 import { buscarEtiquetas, atribuirEtiquetaPedido, removerEtiquetaDePedido } from "@/modules/squadboard/actions/etiquetas";
+import { buscarConteudo, criarChecklist } from "@/modules/squadboard/actions/board-content";
 import { LabelPicker } from "@/modules/squadboard/components/kanban/label-picker";
 import { LabelsManager } from "@/modules/squadboard/components/labels-manager";
+import { ContentBar } from "@/modules/squadboard/components/kanban/content-bar";
+import { BoardDescription } from "@/modules/squadboard/components/kanban/board-description";
+import { BoardChecklistSection } from "@/modules/squadboard/components/kanban/board-checklist";
+import { BoardAttachments } from "@/modules/squadboard/components/kanban/board-attachments";
 import type { BoardEtiqueta } from "@/modules/squadboard/types/etiqueta";
+import type { BoardContent, EntityType } from "@/modules/squadboard/types/board-content";
 
 const STATUS_BADGE: Record<StatusPedidoBoard, string> = {
   REJEITADO: "text-danger bg-danger/10",
@@ -122,7 +128,11 @@ export function PedidoGroupModal({
   const [todasEtiquetas, setTodasEtiquetas] = useState<BoardEtiqueta[]>([]);
   const [etiquetasSelecionadas, setEtiquetasSelecionadas] = useState<BoardEtiqueta[]>([]);
   const [labelsManagerOpen, setLabelsManagerOpen] = useState(false);
+  const [conteudo, setConteudo] = useState<BoardContent>({ descricao: "", checklists: [], anexos: [] });
+  const [showAnexoForm, setShowAnexoForm] = useState(false);
   const [, startTransition] = useTransition();
+  const mainRef = useRef<HTMLDivElement>(null);
+  const descricaoRef = useRef<{ focus: () => void } | null>(null);
 
   useEffect(() => {
     if (!open || !grupo) return;
@@ -131,7 +141,20 @@ export function PedidoGroupModal({
       grupo.pedidos.flatMap((p) => p.etiquetas).map((e) => [e.id, e])
     ).values()];
     setEtiquetasSelecionadas(uniao);
-    buscarEtiquetas().then(setTodasEtiquetas).catch(() => {});
+    setConteudo({ descricao: "", checklists: [], anexos: [] });
+    setShowAnexoForm(false);
+
+    // entityType/entityId para o conteúdo do grupo
+    const entityType: EntityType = grupo.obraId ? "pedido_grupo" : "pedido";
+    const entityId = grupo.obraId ?? grupo.pedidos[0]?.id ?? "";
+
+    Promise.all([
+      buscarEtiquetas(),
+      buscarConteudo(entityType, entityId),
+    ]).then(([todas, content]) => {
+      setTodasEtiquetas(todas);
+      setConteudo(content);
+    }).catch(() => {});
   }, [open, grupo?.grupoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -148,6 +171,17 @@ export function PedidoGroupModal({
   }, [open, onClose, labelsManagerOpen]);
 
   if (!open || !grupo) return null;
+
+  const entityType: EntityType = grupo.obraId ? "pedido_grupo" : "pedido";
+  const entityId = grupo.obraId ?? grupo.pedidos[0]?.id ?? "";
+
+  function handleAddChecklist() {
+    startTransition(async () => {
+      const novo = await criarChecklist(entityType, entityId, "Checklist");
+      setConteudo((prev) => ({ ...prev, checklists: [...prev.checklists, novo] }));
+      setTimeout(() => mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: "smooth" }), 50);
+    });
+  }
 
   // Toggle aplica/remove a etiqueta em TODOS os pedidos do grupo
   function toggleEtiqueta(etiqueta: BoardEtiqueta) {
@@ -211,14 +245,59 @@ export function PedidoGroupModal({
           <CloseIcon size={15} />
         </button>
 
-        <div className="px-7 pt-6 pb-5 border-b border-border pr-12">
+        <div className="px-7 pt-6 pb-4 pr-12">
           <h2 className="text-lg font-semibold text-text leading-snug">{titulo}</h2>
           <p className="mt-1 text-sm text-text-3">{subtitulo}</p>
         </div>
 
+        {/* ContentBar */}
+        <ContentBar
+          onDescricao={() => setTimeout(() => descricaoRef.current?.focus(), 50)}
+          onChecklist={handleAddChecklist}
+          onAnexo={() => { setShowAnexoForm(true); setTimeout(() => mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: "smooth" }), 50); }}
+        />
+
         <div className="flex min-h-0">
           {/* Coluna principal */}
-          <div className="flex-1 min-w-0 px-7 py-5 flex flex-col gap-4 overflow-y-auto scrollbar-thin max-h-[70vh]">
+          <div ref={mainRef} className="flex-1 min-w-0 px-7 py-5 flex flex-col gap-5 overflow-y-auto scrollbar-thin max-h-[65vh]">
+
+            {/* Descrição */}
+            <BoardDescription
+              entityType={entityType}
+              entityId={entityId}
+              valor={conteudo.descricao}
+              onChange={(descricao) => setConteudo((prev) => ({ ...prev, descricao }))}
+              focusRef={descricaoRef}
+            />
+
+            {/* Checklists */}
+            {conteudo.checklists.map((cl) => (
+              <BoardChecklistSection
+                key={cl.id}
+                checklist={cl}
+                onUpdate={(updated) =>
+                  setConteudo((prev) => ({
+                    ...prev,
+                    checklists: prev.checklists.map((c) => (c.id === updated.id ? updated : c)),
+                  }))
+                }
+                onDelete={() => {
+                  setConteudo((prev) => ({ ...prev, checklists: prev.checklists.filter((c) => c.id !== cl.id) }));
+                  startTransition(async () => { const { deletarChecklist } = await import("@/modules/squadboard/actions/board-content"); await deletarChecklist(cl.id); });
+                }}
+              />
+            ))}
+
+            {/* Anexos */}
+            <BoardAttachments
+              entityType={entityType}
+              entityId={entityId}
+              anexos={conteudo.anexos}
+              onUpdate={(anexos) => setConteudo((prev) => ({ ...prev, anexos }))}
+              showForm={showAnexoForm}
+              onHideForm={() => setShowAnexoForm(false)}
+            />
+
             <section>
               <MetaLabel>{isSingle ? "Detalhes do Pedido" : "Pedidos"}</MetaLabel>
               <div className="flex flex-col gap-3">

@@ -15,7 +15,7 @@ export default async function SquadBoardLayout({ children }: { children: React.R
 
   return (
     <div className="squadboard flex h-screen bg-bg text-text">
-      <SquadBoardSidebar boardNome="Pacotes de Trabalho" />
+      <SquadBoardSidebar boardNome="SquadBoard" />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );

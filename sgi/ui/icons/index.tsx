@@ -1036,6 +1036,52 @@ export function ToggleOffIcon(p: IconProps) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════
+   RICH TEXT FORMATTING
+═══════════════════════════════════════════════════════ */
+
+/** Negrito */
+export function BoldIcon(p: IconProps) {
+  return (
+    <S {...p}>
+      <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+      <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+    </S>
+  );
+}
+
+/** Itálico */
+export function ItalicIcon(p: IconProps) {
+  return (
+    <S {...p}>
+      <line x1="19" y1="4" x2="10" y2="4" />
+      <line x1="14" y1="20" x2="5" y2="20" />
+      <line x1="15" y1="4" x2="9" y2="20" />
+    </S>
+  );
+}
+
+/** Sublinhado */
+export function UnderlineIcon(p: IconProps) {
+  return (
+    <S {...p}>
+      <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+      <line x1="4" y1="21" x2="20" y2="21" />
+    </S>
+  );
+}
+
+/** Tachado */
+export function StrikethroughIcon(p: IconProps) {
+  return (
+    <S {...p}>
+      <path d="M17.3 12.3C17.8 12.9 18 13.6 18 14.4c0 1.7-1.3 3.1-3.1 3.5-.6.1-1.2.2-1.9.2-2 0-3.6-.6-4.9-1.7" />
+      <path d="M6.7 11.7C6.3 11.2 6 10.5 6 9.6 6 7.6 7.6 6 9.8 6c.8 0 1.5.1 2.2.4 1 .4 1.8 1 2.4 1.7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+    </S>
+  );
+}
+
 /** Caixa de entrada */
 export function InboxIcon(p: IconProps) {
   return (

@@ -10,7 +10,13 @@ export type NotificacaoTipo =
   | 'pedido_aguardando_aprovacao'
   | 'debito_carteira_falhou'
   | 'solicitacao_aprovada'
-  | 'solicitacao_rejeitada';
+  | 'solicitacao_rejeitada'
+  // SquadBoard
+  | 'board_card_atribuido'
+  | 'board_card_movido'
+  | 'board_card_comentario'
+  | 'board_checklist_mencionado'
+  | 'board_card_prazo_proximo';
 
 export type Coluna = {
   id: string; nome: string; ordem: number; tipo: ColunaTipo;

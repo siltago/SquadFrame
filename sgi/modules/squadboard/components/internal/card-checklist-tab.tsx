@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect, useCallback } from "react";
+import { useState, useTransition, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/ui/lib/cn";
 import { PlusIcon, TrashIcon, CheckSquareIcon } from "@/ui/icons";
 import {
@@ -484,6 +484,39 @@ function ChecklistBlock({
   );
 }
 
+// ── Mention groups (same user in 2+ checklists) ────────────────────────
+
+type MentionEntry = { clTitulo: string; item: InternalChecklistItem };
+
+function MentionGroupSection({ groups }: { groups: Map<string, MentionEntry[]> }) {
+  if (!groups.size) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from(groups.entries()).map(([nome, entries]) => (
+        <div key={nome} className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+          <p className="text-[11px] font-semibold text-primary mb-1.5">@{nome}</p>
+          <div className="flex flex-col gap-1 pl-2 border-l-2 border-primary/20">
+            {entries.map(({ clTitulo, item }) => (
+              <div key={item.id} className="flex items-start gap-1.5">
+                <div className={cn(
+                  "mt-[3px] h-3 w-3 shrink-0 rounded border",
+                  item.concluido ? "bg-primary border-primary" : "border-border bg-surface-2"
+                )} />
+                <div className="flex-1 min-w-0">
+                  <span className="block text-[10px] text-text-3 leading-tight">{clTitulo}</span>
+                  <span className={cn("text-[11px] leading-snug", item.concluido && "line-through text-text-3")}>
+                    {item.texto}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Tab ────────────────────────────────────────────────────────────────
 
 export function CardChecklistTab({
@@ -507,6 +540,28 @@ export function CardChecklistTab({
     buscarUsuariosSquadSystem().then(setUsuarios).catch(() => {});
   }, []);
 
+  // Grupos de @menção: só mostra quando o mesmo @user aparece em 2+ checklists distintos
+  const mentionGroups = useMemo(() => {
+    const clSets = new Map<string, Set<string>>();
+    const entries = new Map<string, MentionEntry[]>();
+    for (const cl of checklists) {
+      for (const item of cl.itens) {
+        const match = item.texto.match(/@(\S+)/);
+        if (!match) continue;
+        const nome = match[1].toLowerCase();
+        if (!clSets.has(nome)) clSets.set(nome, new Set());
+        clSets.get(nome)!.add(cl.id);
+        if (!entries.has(nome)) entries.set(nome, []);
+        entries.get(nome)!.push({ clTitulo: cl.titulo, item });
+      }
+    }
+    const result = new Map<string, MentionEntry[]>();
+    for (const [nome, clSet] of clSets) {
+      if (clSet.size >= 2) result.set(nome, entries.get(nome)!);
+    }
+    return result;
+  }, [checklists]);
+
   function createCl() {
     const n = newName.trim();
     if (!n) return;
@@ -524,6 +579,7 @@ export function CardChecklistTab({
 
   return (
     <div className="flex flex-col gap-3">
+      <MentionGroupSection groups={mentionGroups} />
       {checklists.map((cl) => (
         <ChecklistBlock
           key={cl.id}

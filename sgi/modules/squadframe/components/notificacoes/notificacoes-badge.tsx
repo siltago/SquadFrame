@@ -69,32 +69,6 @@ function RelativeTime({ ts }: { ts: string }) {
   return <>{Math.floor(hrs / 24)}d</>;
 }
 
-// ── Agrupamento de menções de checklist ───────────────────────────────
-// Todas as board_checklist_mencionado vão para um único bloco agregado.
-
-type FlatItem    = { kind: "flat";  n: Notificacao };
-type MentionGroup = { kind: "mentions"; items: Notificacao[] };
-type DisplayItem = FlatItem | MentionGroup;
-
-function agruparNotificacoes(ns: Notificacao[]): DisplayItem[] {
-  const result: DisplayItem[] = [];
-  let mentionGroup: MentionGroup | null = null;
-
-  for (const n of ns) {
-    if (n.tipo === "board_checklist_mencionado") {
-      if (!mentionGroup) {
-        mentionGroup = { kind: "mentions", items: [] };
-        result.push(mentionGroup);
-      }
-      mentionGroup.items.push(n);
-    } else {
-      result.push({ kind: "flat", n });
-    }
-  }
-
-  return result;
-}
-
 export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -172,17 +146,6 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
     });
   }
 
-  function handleMarcarGrupo(items: Notificacao[]) {
-    const unread = items.filter((i) => !i.lida);
-    if (!unread.length) return;
-    startTransition(async () => {
-      await Promise.all(unread.map((i) => marcarNotificacaoLida(i.id)));
-      const ids = new Set(unread.map((i) => i.id));
-      setNotificacoes((prev) => prev.map((n) => (ids.has(n.id) ? { ...n, lida: true } : n)));
-      setNaoLidas((c) => Math.max(0, c - unread.length));
-    });
-  }
-
   return (
     <div className="relative">
       <button
@@ -219,73 +182,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
                   Nenhuma notificação
                 </div>
               ) : (
-                agruparNotificacoes(notificacoes).map((item) => {
-                  if (item.kind === "mentions") {
-                    const anyUnread = item.items.some((i) => !i.lida);
-                    return (
-                      <div key="mentions-group" className={`px-4 py-3 transition-colors ${anyUnread ? "bg-primary/5" : ""}`}>
-                        {/* Cabeçalho do grupo */}
-                        <div className="flex items-start gap-3 mb-2">
-                          <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${anyUnread ? "bg-primary" : ""}`} />
-                          <p className="flex-1 text-xs font-medium text-text">
-                            {item.items.length > 1
-                              ? `${item.items.length} menções no checklist`
-                              : "Menção no checklist"}
-                          </p>
-                          {anyUnread && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleMarcarGrupo(item.items); }}
-                              className="shrink-0 text-[10px] text-text-3 hover:text-primary transition-colors"
-                              title="Marcar todas como lidas"
-                            >
-                              ✓
-                            </button>
-                          )}
-                        </div>
-                        {/* Itens aninhados */}
-                        <div className="ml-5 flex flex-col gap-1.5 border-l-2 border-border pl-3">
-                          {item.items.map((n) => {
-                            const p = n.payload as Record<string, string>;
-                            const href = p.card_id ? `/squadboard/interno?card=${p.card_id}` : null;
-                            return (
-                              <div
-                                key={n.id}
-                                className={`flex items-start gap-2 rounded px-1 -mx-1 transition-colors ${n.lida ? "opacity-50" : ""} ${href ? "cursor-pointer hover:bg-surface-2" : ""}`}
-                                onClick={() => {
-                                  if (!href) return;
-                                  if (!n.lida) handleMarcarLida(n.id);
-                                  setAberto(false);
-                                  router.push(href);
-                                }}
-                              >
-                                <div className="flex-1 min-w-0">
-                                  {p.card_titulo && (
-                                    <span className="text-[10px] text-primary block truncate">{p.card_titulo}</span>
-                                  )}
-                                  <span className="text-[11px] text-text">{p.item_texto ?? ""}</span>
-                                </div>
-                                <span className="text-[10px] text-text-3 shrink-0 mt-0.5">
-                                  <RelativeTime ts={n.criado_em} />
-                                </span>
-                                {!n.lida && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleMarcarLida(n.id); }}
-                                    className="shrink-0 text-[10px] text-text-3 hover:text-primary transition-colors"
-                                    title="Marcar como lida"
-                                  >
-                                    ✓
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Notificação simples (flat)
-                  const n = item.n;
+                notificacoes.map((n) => {
                   const link = resolverLink(n);
                   return (
                     <div

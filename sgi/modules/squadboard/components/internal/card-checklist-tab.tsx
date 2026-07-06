@@ -362,6 +362,7 @@ function ChecklistBlock({
   cardTitulo,
   setor,
   usuarios,
+  hiddenItemIds,
   onDelete,
 }: {
   checklist: InternalChecklist;
@@ -369,6 +370,7 @@ function ChecklistBlock({
   cardTitulo: string;
   setor: Setor;
   usuarios: SquadUsuario[];
+  hiddenItemIds: Set<string>;
   onDelete: (id: string) => void;
 }) {
   const [cl, setCl] = useState(initial);
@@ -376,8 +378,9 @@ function ChecklistBlock({
   const [titulo, setTitulo] = useState(initial.titulo);
   const [, start] = useTransition();
 
-  const done = cl.itens.filter((i) => i.concluido).length;
-  const total = cl.itens.length;
+  const visibleItens = cl.itens.filter((i) => !hiddenItemIds.has(i.id));
+  const done = visibleItens.filter((i) => i.concluido).length;
+  const total = visibleItens.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   function saveTitle() {
@@ -456,7 +459,7 @@ function ChecklistBlock({
       )}
 
       <div className="flex flex-col gap-0.5">
-        {cl.itens.map((item) => (
+        {visibleItens.map((item) => (
           <CheckItemRow
             key={item.id}
             item={item}
@@ -484,35 +487,80 @@ function ChecklistBlock({
   );
 }
 
-// ── Mention groups (same user in 2+ checklists) ────────────────────────
+// ── Mention groups (same user mentioned in 2+ items) ──────────────────
 
-type MentionEntry = { clTitulo: string; item: InternalChecklistItem };
+type MentionEntry = { clId: string; clTitulo: string; item: InternalChecklistItem };
 
-function MentionGroupSection({ groups }: { groups: Map<string, MentionEntry[]> }) {
+function MentionGroupSection({
+  groups,
+  cardId,
+  setor,
+}: {
+  groups: Map<string, MentionEntry[]>;
+  cardId: string;
+  setor: Setor;
+}) {
+  // Optimistic state: overrides for toggled/deleted items
+  const [toggled, setToggled] = useState<Map<string, boolean>>(new Map());
+  const [deleted, setDeleted] = useState<Set<string>>(new Set());
+  const [, start] = useTransition();
+
   if (!groups.size) return null;
+
+  function handleToggle(clId: string, itemId: string, currentDone: boolean) {
+    const newDone = !currentDone;
+    setToggled((prev) => new Map(prev).set(itemId, newDone));
+    start(() => toggleCheckItemInterno(cardId, itemId, newDone, setor));
+  }
+
+  function handleDelete(clId: string, itemId: string) {
+    setDeleted((prev) => new Set(prev).add(itemId));
+    start(() => excluirItemChecklist(clId, itemId, cardId, setor));
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {Array.from(groups.entries()).map(([nome, entries]) => (
-        <div key={nome} className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-          <p className="text-[11px] font-semibold text-primary mb-1.5">@{nome}</p>
-          <div className="flex flex-col gap-1 pl-2 border-l-2 border-primary/20">
-            {entries.map(({ clTitulo, item }) => (
-              <div key={item.id} className="flex items-start gap-1.5">
-                <div className={cn(
-                  "mt-[3px] h-3 w-3 shrink-0 rounded border",
-                  item.concluido ? "bg-primary border-primary" : "border-border bg-surface-2"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <span className="block text-[10px] text-text-3 leading-tight">{clTitulo}</span>
-                  <span className={cn("text-[11px] leading-snug", item.concluido && "line-through text-text-3")}>
-                    {item.texto}
-                  </span>
-                </div>
-              </div>
-            ))}
+      {Array.from(groups.entries()).map(([nome, entries]) => {
+        const visible = entries.filter((e) => !deleted.has(e.item.id));
+        if (!visible.length) return null;
+        return (
+          <div key={nome} className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+            <p className="text-[11px] font-semibold text-primary mb-1.5">@{nome}</p>
+            <div className="flex flex-col gap-1 pl-2 border-l-2 border-primary/20">
+              {visible.map(({ clId, clTitulo, item }) => {
+                const isDone = toggled.has(item.id) ? toggled.get(item.id)! : item.concluido;
+                return (
+                  <div key={item.id} className="group flex items-start gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggle(clId, item.id, isDone)}
+                      className={cn(
+                        "mt-[3px] h-3 w-3 shrink-0 rounded border transition-colors",
+                        isDone
+                          ? "bg-primary border-primary"
+                          : "border-border bg-surface-2 hover:border-primary/50",
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[10px] text-text-3 leading-tight">{clTitulo}</span>
+                      <span className={cn("text-[11px] leading-snug", isDone && "line-through text-text-3")}>
+                        {item.texto}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(clId, item.id)}
+                      className="hidden group-hover:flex shrink-0 text-text-3 hover:text-danger transition-colors mt-0.5"
+                    >
+                      <TrashIcon size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -542,25 +590,30 @@ export function CardChecklistTab({
 
   // Grupos de @menção: só mostra quando o mesmo @user aparece em 2+ checklists distintos
   const mentionGroups = useMemo(() => {
-    const clSets = new Map<string, Set<string>>();
     const entries = new Map<string, MentionEntry[]>();
     for (const cl of checklists) {
       for (const item of cl.itens) {
         const match = item.texto.match(/@(\S+)/);
         if (!match) continue;
         const nome = match[1].toLowerCase();
-        if (!clSets.has(nome)) clSets.set(nome, new Set());
-        clSets.get(nome)!.add(cl.id);
         if (!entries.has(nome)) entries.set(nome, []);
-        entries.get(nome)!.push({ clTitulo: cl.titulo, item });
+        entries.get(nome)!.push({ clId: cl.id, clTitulo: cl.titulo, item });
       }
     }
     const result = new Map<string, MentionEntry[]>();
-    for (const [nome, clSet] of clSets) {
-      if (clSet.size >= 2) result.set(nome, entries.get(nome)!);
+    for (const [nome, list] of entries) {
+      if (list.length >= 2) result.set(nome, list);
     }
     return result;
   }, [checklists]);
+
+  const hiddenItemIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const entries of mentionGroups.values()) {
+      for (const e of entries) ids.add(e.item.id);
+    }
+    return ids;
+  }, [mentionGroups]);
 
   function createCl() {
     const n = newName.trim();
@@ -579,7 +632,7 @@ export function CardChecklistTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <MentionGroupSection groups={mentionGroups} />
+      <MentionGroupSection groups={mentionGroups} cardId={cardId} setor={setor} />
       {checklists.map((cl) => (
         <ChecklistBlock
           key={cl.id}
@@ -588,6 +641,7 @@ export function CardChecklistTab({
           cardTitulo={cardTitulo}
           setor={setor}
           usuarios={usuarios}
+          hiddenItemIds={hiddenItemIds}
           onDelete={deleteCl}
         />
       ))}

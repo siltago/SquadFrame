@@ -18,6 +18,30 @@ export type NotificacaoTipo =
   | 'board_checklist_mencionado'
   | 'board_card_prazo_proximo';
 
+// Cada módulo só enxerga (lista, contagem de não lidas, "marcar todas") os
+// tipos que ele mesmo produz — mesma tabela `notificacoes`, mesmo mecanismo
+// de push, só o recorte in-app é separado por módulo.
+export type EscopoNotificacao = 'squadframe' | 'squadboard';
+
+export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, NotificacaoTipo[]> = {
+  squadframe: [
+    'tarefa_atribuida',
+    'tarefa_comentario',
+    'pedido_aprovado',
+    'pedido_aguardando_aprovacao',
+    'debito_carteira_falhou',
+    'solicitacao_aprovada',
+    'solicitacao_rejeitada',
+  ],
+  squadboard: [
+    'board_card_atribuido',
+    'board_card_movido',
+    'board_card_comentario',
+    'board_checklist_mencionado',
+    'board_card_prazo_proximo',
+  ],
+};
+
 export type Coluna = {
   id: string; nome: string; ordem: number; tipo: ColunaTipo;
   setor_id: string | null; usuario_id: string | null;

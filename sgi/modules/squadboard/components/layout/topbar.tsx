@@ -16,11 +16,11 @@ function NotificacoesWrapper() {
 
   useEffect(() => {
     if (!usuario?.id) return;
-    buscarNotificacoes(1).then((r) => setNaoLidas(r.naoLidas)).catch(() => {});
+    buscarNotificacoes(1, "squadboard").then((r) => setNaoLidas(r.naoLidas)).catch(() => {});
   }, [usuario?.id]);
 
   if (!usuario?.id) return null;
-  return <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidas} />;
+  return <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidas} escopo="squadboard" />;
 }
 
 export function SquadBoardTopbar({

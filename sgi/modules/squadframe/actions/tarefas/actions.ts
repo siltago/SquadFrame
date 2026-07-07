@@ -5,6 +5,7 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { revalidatePath } from "next/cache";
 import { criarTarefaAutomatica } from "@/modules/squadframe/lib/tarefas";
 import { garantirColunasCompras } from "@/modules/squadframe/lib/kanban-compras";
+import { TIPOS_NOTIFICACAO_POR_ESCOPO, type EscopoNotificacao } from "@/modules/squadframe/types/kanban";
 
 async function usuarioAtualId(): Promise<string | null> {
   const u = await getUsuarioAtual();
@@ -849,23 +850,27 @@ export async function removerParticipante(tarefaId: string, usuarioId: string) {
   return { ok: true };
 }
 
-export async function buscarNotificacoes(limite: number = 20) {
+// `escopo` recorta os tipos visíveis por módulo (SquadFrame vs SquadBoard) —
+// mesma tabela `notificacoes`, mesmo push, só o que aparece no sino de cada
+// módulo muda. Sem `escopo`, mantém o comportamento antigo (todas).
+export async function buscarNotificacoes(limite: number = 20, escopo?: EscopoNotificacao) {
   const admin = createAdminClient();
   const uid = await usuarioAtualId();
   if (!uid) return { notificacoes: [], naoLidas: 0 };
 
+  const tipos = escopo ? TIPOS_NOTIFICACAO_POR_ESCOPO[escopo] : null;
+  const notifBase = admin.from("notificacoes").select("*").eq("usuario_id", uid);
+  const countBase = admin
+    .from("notificacoes")
+    .select("*", { count: "exact", head: true })
+    .eq("usuario_id", uid)
+    .eq("lida", false);
+
   const [notifRes, countRes] = await Promise.all([
-    admin
-      .from("notificacoes")
-      .select("*")
-      .eq("usuario_id", uid)
+    (tipos ? notifBase.in("tipo", tipos) : notifBase)
       .order("criado_em", { ascending: false })
       .limit(limite),
-    admin
-      .from("notificacoes")
-      .select("*", { count: "exact", head: true })
-      .eq("usuario_id", uid)
-      .eq("lida", false),
+    tipos ? countBase.in("tipo", tipos) : countBase,
   ]);
 
   return {
@@ -888,16 +893,19 @@ export async function marcarNotificacaoLida(notificacaoId: string) {
   return { ok: true };
 }
 
-export async function marcarTodasNotificacoesLidas() {
+export async function marcarTodasNotificacoesLidas(escopo?: EscopoNotificacao) {
   const admin = createAdminClient();
   const uid = await usuarioAtualId();
   if (!uid) return { ok: false };
 
-  await admin
+  const tipos = escopo ? TIPOS_NOTIFICACAO_POR_ESCOPO[escopo] : null;
+  const base = admin
     .from("notificacoes")
     .update({ lida: true })
     .eq("usuario_id", uid)
     .eq("lida", false);
+
+  await (tipos ? base.in("tipo", tipos) : base);
 
   return { ok: true };
 }

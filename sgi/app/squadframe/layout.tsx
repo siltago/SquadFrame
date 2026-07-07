@@ -7,6 +7,7 @@ import { BuscaGlobal } from "@/modules/squadframe/components/busca-global";
 import { NotificacoesBadge } from "@/modules/squadframe/components/notificacoes/notificacoes-badge";
 import { HeaderUser } from "@/modules/squadframe/components/header-user";
 import { AppHeader } from "@/ui/layout/AppHeader";
+import { TIPOS_NOTIFICACAO_POR_ESCOPO } from "@/modules/squadframe/types/kanban";
 
 const ThemeToggle = dynamic(
   () => import("@/modules/squadframe/components/theme-toggle").then((m) => m.ThemeToggle),
@@ -33,7 +34,8 @@ export default async function SquadFrameLayout({ children }: { children: React.R
     .from("notificacoes")
     .select("id", { count: "exact", head: true })
     .eq("usuario_id", usuario.id)
-    .eq("lida", false);
+    .eq("lida", false)
+    .in("tipo", TIPOS_NOTIFICACAO_POR_ESCOPO.squadframe);
   const naoLidasCount = count ?? 0;
 
   return (
@@ -47,7 +49,7 @@ export default async function SquadFrameLayout({ children }: { children: React.R
         rightSlot={
           <>
             <BuscaGlobal />
-            <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidasCount} />
+            <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidasCount} escopo="squadframe" />
             <ThemeToggle />
             <HeaderUser usuario={usuario} />
           </>

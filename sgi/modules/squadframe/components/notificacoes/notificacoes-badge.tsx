@@ -9,7 +9,7 @@ import {
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas,
 } from "@/modules/squadframe/actions/tarefas/actions";
-import type { Notificacao } from "@/modules/squadframe/types/kanban";
+import { TIPOS_NOTIFICACAO_POR_ESCOPO, type EscopoNotificacao, type Notificacao } from "@/modules/squadframe/types/kanban";
 
 const TIPO_LABEL: Record<string, string> = {
   tarefa_atribuida:            "Tarefa atribuída",
@@ -57,6 +57,9 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
 interface Props {
   usuarioId: string;
   naoLidasIniciais: number;
+  // Cada módulo só enxerga os tipos que ele mesmo produz — mesma tabela,
+  // mesmo push, sino separado. Ver TIPOS_NOTIFICACAO_POR_ESCOPO.
+  escopo: EscopoNotificacao;
 }
 
 function RelativeTime({ ts }: { ts: string }) {
@@ -69,7 +72,7 @@ function RelativeTime({ ts }: { ts: string }) {
   return <>{Math.floor(hrs / 24)}d</>;
 }
 
-export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
+export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
@@ -77,11 +80,15 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
   const [carregado, setCarregado] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Subscrição realtime para novos registros na tabela notificacoes
+  const tiposDoEscopo = TIPOS_NOTIFICACAO_POR_ESCOPO[escopo];
+
+  // Subscrição realtime para novos registros na tabela notificacoes. O
+  // filtro do Realtime só suporta igualdade simples (usuario_id=eq.X), então
+  // o recorte por tipo é feito no cliente após o evento chegar.
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`notificacoes-${usuarioId}`)
+      .channel(`notificacoes-${escopo}-${usuarioId}`)
       .on(
         "postgres_changes",
         {
@@ -92,6 +99,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
         },
         (payload) => {
           const nova = payload.new as Notificacao;
+          if (!tiposDoEscopo.includes(nova.tipo)) return;
           setNotificacoes((prev) => [nova, ...prev]);
           setNaoLidas((n) => n + 1);
         }
@@ -106,6 +114,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
         },
         (payload) => {
           const atualizada = payload.new as Notificacao;
+          if (!tiposDoEscopo.includes(atualizada.tipo)) return;
           setNotificacoes((prev) =>
             prev.map((n) => (n.id === atualizada.id ? atualizada : n))
           );
@@ -116,12 +125,12 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [usuarioId]);
+  }, [usuarioId, escopo, tiposDoEscopo]);
 
   async function handleAbrir() {
     setAberto((p) => !p);
     if (!carregado) {
-      const r = await buscarNotificacoes(30);
+      const r = await buscarNotificacoes(30, escopo);
       setNotificacoes(r.notificacoes);
       setNaoLidas(r.naoLidas);
       setCarregado(true);
@@ -140,7 +149,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais }: Props) {
 
   function handleMarcarTodas() {
     startTransition(async () => {
-      await marcarTodasNotificacoesLidas();
+      await marcarTodasNotificacoesLidas(escopo);
       setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })));
       setNaoLidas(0);
     });

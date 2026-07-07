@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
   const q            = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   const tipo         = req.nextUrl.searchParams.get("tipo")?.trim() ?? "";
   const fornecedorId = req.nextUrl.searchParams.get("fornecedor_id")?.trim() ?? "";
+  const corId        = req.nextUrl.searchParams.get("cor_id")?.trim() ?? "";
 
   if (q.length < 2) return NextResponse.json([]);
 
@@ -55,17 +56,26 @@ export async function GET(req: NextRequest) {
   if (fornecedorId) {
     const prodIds = produtos.map((p: any) => p.id);
 
-    // Busca alias vinculado a este fornecedor — pode sobrescrever specs do produto
+    // Busca aliases vinculadas a este fornecedor — pode sobrescrever specs do
+    // produto. Um produto pode ter mais de uma alias por fornecedor (uma por
+    // cor, ex: FEC325PTR/FEC325BRC); prioriza a alias específica da cor
+    // pedida e cai para a genérica (cor_id nulo, "vale para qualquer cor")
+    // quando não há uma exata.
     const { data: aliasRows } = await admin
       .from("produto_aliases")
-      .select("produto_id, alias, peso_metro, preco_metro, tamanho_mm, preco_kg")
+      .select("produto_id, alias, peso_metro, preco_metro, tamanho_mm, preco_kg, cor_id")
       .eq("fornecedor_id", fornecedorId)
       .in("produto_id", prodIds);
 
-    const aliasMap = new Map((aliasRows ?? []).map((a: any) => [a.produto_id, a]));
+    const aliasExata = new Map<string, NonNullable<typeof aliasRows>[number]>();
+    const aliasGenerica = new Map<string, NonNullable<typeof aliasRows>[number]>();
+    for (const a of aliasRows ?? []) {
+      if (corId && a.cor_id === corId) aliasExata.set(a.produto_id, a);
+      else if (!a.cor_id) aliasGenerica.set(a.produto_id, a);
+    }
 
     return NextResponse.json(produtos.map((p: any) => {
-      const al = aliasMap.get(p.id);
+      const al = aliasExata.get(p.id) ?? aliasGenerica.get(p.id);
       const pesoEfetivo = al?.peso_metro ?? p.peso_metro ?? null;
       // preco_kg × peso calcula preco_metro para barras compradas por peso
       const precoMetroEfetivo = al?.preco_kg != null && pesoEfetivo != null

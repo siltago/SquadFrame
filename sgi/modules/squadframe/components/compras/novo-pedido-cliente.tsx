@@ -62,8 +62,8 @@ function itemPeso(it: Item) {
 }
 
 // ── BuscaProduto ──────────────────────────────────────────────────
-function BuscaProduto({ tipoSlug, fornecedorId, nomeFornecedor, onAdd, onAddForcar, onIncrement, existingIds }: {
-  tipoSlug: string; fornecedorId: string; nomeFornecedor: string;
+function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, onAddForcar, onIncrement, existingIds }: {
+  tipoSlug: string; fornecedorId: string; corId?: string; nomeFornecedor: string;
   onAdd: (p: Produto) => void;
   onAddForcar: (p: Produto) => void;
   onIncrement: (produtoId: string, delta: number) => void;
@@ -85,11 +85,14 @@ function BuscaProduto({ tipoSlug, fornecedorId, nomeFornecedor, onAdd, onAddForc
       const params = new URLSearchParams({ q });
       if (tipoSlug) params.set("tipo", tipoSlug);
       if (fornecedorId) params.set("fornecedor_id", fornecedorId);
+      // Cor única do pedido — resolve o código do fornecedor específico da
+      // cor quando o produto tem alias por cor (ex: FEC325PTR/FEC325BRC).
+      if (corId) params.set("cor_id", corId);
       const res = await fetch(`/api/produtos/search?${params}`);
       setResultados(await res.json());
       setAberto(true);
     }, 280);
-  }, [q, tipoSlug, fornecedorId]);
+  }, [q, tipoSlug, fornecedorId, corId]);
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false); };
@@ -219,7 +222,10 @@ export function NovoPedidoCliente({
   );
   const [fornecedorId, setFornecedorId] = useState("");
   const [erro, setErro] = useState<string | null>(null);
-  const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">("unica");
+  const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">(
+    tiposLinha.length === 1 && tiposLinha[0].slug.toUpperCase() === "COMPONENTES" ? "por-item" : "unica"
+  );
+  const [corUnicaId, setCorUnicaId] = useState("");
   const [formaPagId, setFormaPagId] = useState("");
   const [pending, start] = useTransition();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
@@ -233,6 +239,11 @@ export function NovoPedidoCliente({
   const outrasSolicitacoes = fromSolicitacao
     ? solicitacoesAprovadas.filter((s) => s.id !== fromSolicitacao.id)
     : solicitacoesAprovadas;
+
+  // Componentes tendem a ter código/cor por peça (ex: fechadura preta e
+  // branca no mesmo pedido) — não faz sentido oferecer "cor única" pra esse
+  // tipo, só "por item".
+  const tipoComponentes = tipoSelecionado?.slug?.toUpperCase() === "COMPONENTES";
 
   // Filtra fornecedores pelo tipo selecionado — estritamente
   const fornecedoresVisiveis = tipoSelecionado
@@ -256,8 +267,9 @@ export function NovoPedidoCliente({
         setFornecedorId("");
       }
     }
-    // Volta para cor única ao trocar tipo (cores mudam)
-    setModoCorPedido("unica");
+    // Volta para cor única ao trocar tipo (cores mudam) — exceto Componentes,
+    // que só tem "por item" (cada peça pode ter uma cor diferente).
+    setModoCorPedido(t?.slug?.toUpperCase() === "COMPONENTES" ? "por-item" : "unica");
   }
 
   function incrementarProduto(produtoId: string, delta: number) {
@@ -318,6 +330,34 @@ export function NovoPedidoCliente({
   function removeItem(idx: number) { setItens((prev) => prev.filter((_, i) => i !== idx)); }
   function updateItem(idx: number, field: keyof Item, value: any) {
     setItens((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  }
+
+  // No modo "por item", a cor só é escolhida depois que o produto já foi
+  // adicionado à linha — o código do fornecedor específico daquela cor
+  // (alias) precisa ser buscado de novo nesse momento, senão o campo fica
+  // vazio pra produtos cujo código muda por cor (ex: FEC325PTR/FEC325BRC).
+  // Só sobrescreve o campo se ele ainda estiver vazio ou igual ao código
+  // mestre — respeita edição manual do usuário.
+  function handleCorItemChange(idx: number, novoCorId: string | null) {
+    const itemAtual = itens[idx];
+    updateItem(idx, "cor_id", novoCorId);
+    if (!itemAtual?.produto || !fornecedorId || !novoCorId) return;
+
+    const produto = itemAtual.produto;
+    const codigoAnterior = itemAtual.codigo_fornecedor;
+    const params = new URLSearchParams({ q: produto.codigo_mestre, fornecedor_id: fornecedorId, cor_id: novoCorId });
+    fetch(`/api/produtos/search?${params}`)
+      .then((res) => res.json())
+      .then((resultados: Produto[]) => {
+        const match = resultados.find((p) => p.id === produto.id);
+        if (!match?.codigo_do_fornecedor) return;
+        setItens((prev) => prev.map((it, i) => {
+          if (i !== idx) return it;
+          const aindaSemEdicao = !it.codigo_fornecedor || it.codigo_fornecedor === codigoAnterior;
+          return aindaSemEdicao ? { ...it, codigo_fornecedor: match.codigo_do_fornecedor! } : it;
+        }));
+      })
+      .catch(() => { /* mantém o código atual se a busca falhar */ });
   }
 
   const totalValor  = itens.reduce((acc, i) => {
@@ -492,25 +532,29 @@ export function NovoPedidoCliente({
               <div className="sm:col-span-2">
                 <label className="label">Cor <span className="text-text-3 font-normal">(opcional)</span></label>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-                    <button type="button"
-                      onClick={() => setModoCorPedido("unica")}
-                      className={`px-3 py-1.5 transition-colors ${modoCorPedido === "unica" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                      Cor única
-                    </button>
-                    <button type="button"
-                      onClick={() => setModoCorPedido("por-item")}
-                      className={`px-3 py-1.5 border-l border-border transition-colors ${modoCorPedido === "por-item" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                      Por item
-                    </button>
-                  </div>
+                  {tipoComponentes ? (
+                    <span className="rounded-md bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-2">Por item</span>
+                  ) : (
+                    <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+                      <button type="button"
+                        onClick={() => setModoCorPedido("unica")}
+                        className={`px-3 py-1.5 transition-colors ${modoCorPedido === "unica" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
+                        Cor única
+                      </button>
+                      <button type="button"
+                        onClick={() => setModoCorPedido("por-item")}
+                        className={`px-3 py-1.5 border-l border-border transition-colors ${modoCorPedido === "por-item" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
+                        Por item
+                      </button>
+                    </div>
+                  )}
                   {modoCorPedido === "por-item" && (
                     <span className="text-xs text-text-3">Selecione a cor em cada item da tabela abaixo</span>
                   )}
                 </div>
-                {modoCorPedido === "unica" && (
+                {modoCorPedido === "unica" && !tipoComponentes && (
                   <>
-                    <select name="cor_id" className="field max-w-xs">
+                    <select name="cor_id" value={corUnicaId} onChange={(e) => setCorUnicaId(e.target.value)} className="field max-w-xs">
                       <option value="">Sem cor definida</option>
                       {coresFiltradas.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -585,6 +629,7 @@ export function NovoPedidoCliente({
             <BuscaProduto
               tipoSlug={tipoSelecionado?.slug ?? ""}
               fornecedorId={fornecedorId}
+              corId={modoCorPedido === "unica" ? corUnicaId : ""}
               nomeFornecedor={nomeFornecedorAtual}
               onAdd={addProduto}
               onAddForcar={(p) => addProduto(p, true)}
@@ -737,7 +782,7 @@ export function NovoPedidoCliente({
                       {corPorItem && (
                         <td className="px-4 py-2">
                           <select value={it.cor_id ?? ""}
-                            onChange={(e) => updateItem(idx, "cor_id", e.target.value || null)}
+                            onChange={(e) => handleCorItemChange(idx, e.target.value || null)}
                             className="field h-8 text-xs w-36">
                             <option value="">—</option>
                             {coresFiltradas.map((c) => (

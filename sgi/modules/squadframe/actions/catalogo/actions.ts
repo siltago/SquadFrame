@@ -6,6 +6,17 @@ import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
+// Cores RAL só valem para o(s) tipo(s) de linha marcados nelas
+// (cores_ral.tipos). Vincular automaticamente TODAS as cores a um produto,
+// sem olhar o tipo da linha, é o que fazia perfil puxar cor de vidro etc.
+async function tipoDaLinha(
+  supabase: ReturnType<typeof createClient>,
+  linhaId: string
+): Promise<string | null> {
+  const { data } = await supabase.from("linhas").select("tipo").eq("id", linhaId).maybeSingle();
+  return data?.tipo ?? null;
+}
+
 // ─── Abas (tipos de linha) ───────────────────────────────────
 
 export async function criarAba(formData: FormData) {
@@ -96,7 +107,10 @@ export async function criarLinha(formData: FormData) {
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23505") throw new Error(`Já existe uma linha com o nome "${nome}".`);
+    throw new Error(error.message);
+  }
 
   revalidatePath("/squadframe/catalogo");
   redirect(`/squadframe/catalogo/${data.id}`);
@@ -113,7 +127,10 @@ export async function editarLinha(linhaId: string, formData: FormData) {
     .from("linhas")
     .update({ nome, fabricante, descricao })
     .eq("id", linhaId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23505") throw new Error(`Já existe uma linha com o nome "${nome}".`);
+    throw new Error(error.message);
+  }
   revalidatePath("/squadframe/catalogo");
   revalidatePath(`/squadframe/catalogo/${linhaId}`);
 }
@@ -227,8 +244,11 @@ export async function importarPerfisXml(
 
   if (error) throw new Error(error.message);
 
-  // Vincula automaticamente todas as cores RAL
-  const { data: cores } = await supabase.from("cores_ral").select("id, acabamento_id");
+  // Vincula automaticamente só as cores RAL que se aplicam ao tipo desta linha
+  const tipo = await tipoDaLinha(supabase, linhaId);
+  let coresQuery = supabase.from("cores_ral").select("id, acabamento_id");
+  if (tipo) coresQuery = coresQuery.contains("tipos", [tipo]);
+  const { data: cores } = await coresQuery;
   if (cores && cores.length > 0 && inseridos && inseridos.length > 0) {
     await supabase.from("produto_cores").insert(
       inseridos.flatMap((p) =>
@@ -354,8 +374,12 @@ export async function criarProduto(linhaId: string, formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  // Vincula automaticamente todas as cores RAL existentes ao novo produto
-  const { data: cores } = await supabase.from("cores_ral").select("id, acabamento_id");
+  // Vincula automaticamente só as cores RAL que se aplicam ao tipo desta
+  // linha (perfil só recebe cor de perfil, vidro só de vidro, etc).
+  const tipo = await tipoDaLinha(supabase, linhaId);
+  let coresQuery = supabase.from("cores_ral").select("id, acabamento_id");
+  if (tipo) coresQuery = coresQuery.contains("tipos", [tipo]);
+  const { data: cores } = await coresQuery;
   if (cores && cores.length > 0) {
     await supabase.from("produto_cores").insert(
       cores.map((c) => {
@@ -376,8 +400,12 @@ export async function vincularTodasCores(produtoId: string, linhaId: string) {
   await verificarPermissao("catalogo.editar");
   const supabase = createClient();
 
+  const tipo = await tipoDaLinha(supabase, linhaId);
+  let coresQuery = supabase.from("cores_ral").select("id, acabamento_id");
+  if (tipo) coresQuery = coresQuery.contains("tipos", [tipo]);
+
   const [{ data: todasCores }, { data: jaVinculadas }] = await Promise.all([
-    supabase.from("cores_ral").select("id, acabamento_id"),
+    coresQuery,
     supabase
       .from("produto_cores")
       .select("cor_id")
@@ -479,7 +507,8 @@ export async function adicionarAlias(
   linhaId: string,
   alias: string,
   fornecedorId?: string | null,
-  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null; preco_kg?: number | null }
+  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null; preco_kg?: number | null },
+  corId?: string | null
 ) {
   await verificarPermissao("catalogo.editar");
   const supabase = createClient();
@@ -489,6 +518,7 @@ export async function adicionarAlias(
 
   const row: Record<string, unknown> = { produto_id: produtoId, alias: valor };
   if (fornecedorId) row.fornecedor_id = fornecedorId;
+  if (corId) row.cor_id = corId;
   if (specs?.peso_metro != null)  row.peso_metro  = specs.peso_metro;
   if (specs?.preco_metro != null) row.preco_metro = specs.preco_metro;
   if (specs?.tamanho_mm != null)  row.tamanho_mm  = specs.tamanho_mm;
@@ -506,7 +536,8 @@ export async function editarAlias(
   linhaId: string,
   alias: string,
   fornecedorId?: string | null,
-  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null; preco_kg?: number | null }
+  specs?: { peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null; preco_kg?: number | null },
+  corId?: string | null
 ) {
   await verificarPermissao("catalogo.editar");
   const supabase = createClient();
@@ -515,6 +546,7 @@ export async function editarAlias(
   const row: Record<string, unknown> = {
     alias: valor,
     fornecedor_id: fornecedorId || null,
+    cor_id: corId || null,
     peso_metro:  specs?.peso_metro  ?? null,
     preco_metro: specs?.preco_metro ?? null,
     tamanho_mm:  specs?.tamanho_mm  ?? null,

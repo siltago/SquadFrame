@@ -62,6 +62,7 @@ export default async function ProdutoPage({
   let coresDisponiveis: any[] = [];
   let acabamentos: any[] = [];
   let aliases: any[] = [];
+  let coresVinculadas: { id: string; codigo_ral: string; nome: string | null; hex: string | null }[] = [];
   let fornecedoresDisponiveis: any[] = [];
   let arquivos: any[] = [];
 
@@ -88,13 +89,18 @@ export default async function ProdutoPage({
   }
 
   if (abaAtiva === "cores") {
+    // Só oferece pra vincular as cores que se aplicam ao tipo desta linha
+    // (perfil só vê cor de perfil, vidro só de vidro, etc — cores_ral.tipos).
+    let coresDisponiveisQuery = supabase.from("cores_ral").select("id, codigo_ral, nome, hex").order("codigo_ral");
+    if (linha?.tipo) coresDisponiveisQuery = coresDisponiveisQuery.contains("tipos", [linha.tipo]);
+
     const results = await Promise.all([
       supabase
         .from("produto_cores")
         .select("cor:cores_ral(id, codigo_ral, nome, hex), acabamento:acabamentos(id, nome)")
         .eq("produto_id", params.produtoId)
         .order("cor_id"),
-      supabase.from("cores_ral").select("id, codigo_ral, nome, hex").order("codigo_ral"),
+      coresDisponiveisQuery,
       supabase.from("acabamentos").select("id, nome").order("nome"),
     ]);
     cores = results[0].data ?? [];
@@ -103,12 +109,20 @@ export default async function ProdutoPage({
   }
 
   if (abaAtiva === "aliases") {
-    const { data: al } = await supabase
-      .from("produto_aliases")
-      .select("id, alias, peso_metro, preco_metro, tamanho_mm, preco_kg, fornecedor:fornecedores(id, nome)")
-      .eq("produto_id", params.produtoId)
-      .order("alias");
+    const [{ data: al }, { data: pc }] = await Promise.all([
+      supabase
+        .from("produto_aliases")
+        .select("id, alias, peso_metro, preco_metro, tamanho_mm, preco_kg, fornecedor:fornecedores(id, nome), cor:cores_ral(id, codigo_ral, nome, hex)")
+        .eq("produto_id", params.produtoId)
+        .order("alias"),
+      supabase
+        .from("produto_cores")
+        .select("cor:cores_ral(id, codigo_ral, nome, hex)")
+        .eq("produto_id", params.produtoId)
+        .order("cor_id"),
+    ]);
     aliases = al ?? [];
+    coresVinculadas = (pc ?? []).map((r: any) => r.cor).filter(Boolean);
   }
 
   if (abaAtiva === "arquivos") {
@@ -195,6 +209,8 @@ export default async function ProdutoPage({
           aliases={aliases}
           tipoUnidade={tipoUnidade}
           fornecedoresDisponiveis={fornecedoresDisponiveis}
+          coresVinculadas={coresVinculadas}
+          masterFornecedorId={produto.fornecedor_mestre_id ?? null}
           masterPeso={produto.peso_metro ?? null}
           masterTamanho={produto.tamanho_mm ?? null}
         />

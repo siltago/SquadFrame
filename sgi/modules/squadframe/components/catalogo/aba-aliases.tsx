@@ -9,10 +9,35 @@ import { Button } from "@/ui/components/Button";
 type Alias = {
   id: string; alias: string;
   fornecedor?: { id: string; nome: string } | null;
+  cor?: { id: string; codigo_ral: string; nome: string | null; hex: string | null } | null;
   peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null;
   preco_kg?: number | null;
 };
 type Fornecedor = { id: string; nome: string };
+type CorVinculada = { id: string; codigo_ral: string; nome: string | null; hex: string | null };
+
+function CorSelect({ value, onChange, coresVinculadas }: {
+  value: string; onChange: (v: string) => void; coresVinculadas: CorVinculada[];
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="field h-7 text-xs">
+      <option value="">Todas as cores</option>
+      {coresVinculadas.map((c) => (
+        <option key={c.id} value={c.id}>{c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}</option>
+      ))}
+    </select>
+  );
+}
+
+function CorDisplay({ cor }: { cor?: Alias["cor"] }) {
+  if (!cor) return <span className="text-text-3 italic">Todas as cores</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {cor.hex && <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-border" style={{ backgroundColor: cor.hex }} />}
+      {cor.codigo_ral}{cor.nome ? ` — ${cor.nome}` : ""}
+    </span>
+  );
+}
 
 // Resolve specs efetivas do alias, herdando do produto mestre quando não informado
 function resolveSpecs(a: Alias, masterPeso?: number | null, masterTamanho?: number | null) {
@@ -131,14 +156,15 @@ function SpecsInputs({ a, tipoUnidade, masterPeso, masterTamanho }: {
   );
 }
 
-function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis, masterPeso, masterTamanho }: {
+function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis, coresVinculadas, masterPeso, masterTamanho }: {
   a: Alias; produtoId: string; linhaId: string;
-  tipoUnidade?: string | null; fornecedoresDisponiveis: Fornecedor[];
+  tipoUnidade?: string | null; fornecedoresDisponiveis: Fornecedor[]; coresVinculadas: CorVinculada[];
   masterPeso?: number | null; masterTamanho?: number | null;
 }) {
   const [editando, setEditando] = useState(false);
   const [aliasVal, setAliasVal] = useState(a.alias);
   const [fornId, setFornId] = useState((a.fornecedor as any)?.id ?? "");
+  const [corId, setCorId] = useState(a.cor?.id ?? "");
   const [pendEdit, startEdit] = useTransition();
   const [pendDel, startDel] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
@@ -157,7 +183,7 @@ function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis,
     setErro(null);
     startEdit(async () => {
       try {
-        await editarAlias(a.id, produtoId, linhaId, aliasVal, fornId || null, specs);
+        await editarAlias(a.id, produtoId, linhaId, aliasVal, fornId || null, specs, corId || null);
         setEditando(false);
         router.refresh();
       } catch (err: any) { setErro(err.message); }
@@ -175,7 +201,7 @@ function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis,
   if (editando) {
     return (
       <tr className="border-b border-border last:border-0 bg-bg">
-        <td colSpan={4} className="px-4 py-3">
+        <td colSpan={5} className="px-4 py-3">
           <form onSubmit={salvar} className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <div className="flex-1 min-w-[120px]">
@@ -191,6 +217,10 @@ function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis,
                     <option key={f.id} value={f.id}>{f.nome}</option>
                   ))}
                 </select>
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] uppercase tracking-wide text-text-3">Cor</label>
+                <CorSelect value={corId} onChange={setCorId} coresVinculadas={coresVinculadas} />
               </div>
             </div>
             <SpecsInputs a={a} tipoUnidade={tipoUnidade} masterPeso={masterPeso} masterTamanho={masterTamanho} />
@@ -210,6 +240,9 @@ function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis,
       <td className="px-4 py-2.5 font-mono text-sm font-medium text-text">{a.alias}</td>
       <td className="px-4 py-2.5 text-sm text-text-2">
         {(a.fornecedor as any)?.nome ?? <span className="text-text-3 italic">—</span>}
+      </td>
+      <td className="px-4 py-2.5 text-sm text-text-2">
+        <CorDisplay cor={a.cor} />
       </td>
       <td className="px-4 py-2.5">
         <SpecsDisplay a={a} tipoUnidade={tipoUnidade} masterPeso={masterPeso} masterTamanho={masterTamanho} />
@@ -236,14 +269,19 @@ function AliasRow({ a, produtoId, linhaId, tipoUnidade, fornecedoresDisponiveis,
   );
 }
 
-export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedoresDisponiveis = [], masterPeso, masterTamanho }: {
+export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedoresDisponiveis = [], coresVinculadas = [], masterFornecedorId, masterPeso, masterTamanho }: {
   produtoId: string; linhaId: string;
-  aliases: Alias[]; tipoUnidade?: string | null; fornecedoresDisponiveis?: Fornecedor[];
+  aliases: Alias[]; tipoUnidade?: string | null; fornecedoresDisponiveis?: Fornecedor[]; coresVinculadas?: CorVinculada[];
+  masterFornecedorId?: string | null;
   masterPeso?: number | null; masterTamanho?: number | null;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [valor, setValor] = useState("");
-  const [fornecedorId, setFornecedorId] = useState("");
+  // Pré-seleciona o fornecedor mestre do produto — na maioria dos casos
+  // (mesmo componente, cores diferentes) o fornecedor é sempre o mesmo, só a
+  // cor muda. O campo continua editável para o caso de fornecedor diferente.
+  const [fornecedorId, setFornecedorId] = useState(masterFornecedorId ?? "");
+  const [corId, setCorId] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -262,8 +300,8 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
     setErro(null);
     startTransition(async () => {
       try {
-        await adicionarAlias(produtoId, linhaId, valor.trim(), fornecedorId || null, specs);
-        setValor(""); setFornecedorId(""); setShowForm(false);
+        await adicionarAlias(produtoId, linhaId, valor.trim(), fornecedorId || null, specs, corId || null);
+        setValor(""); setCorId(""); setShowForm(false);
         router.refresh();
       } catch (err: any) { setErro(err.message); }
     });
@@ -272,7 +310,8 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
   return (
     <div className="mt-6 space-y-4">
       <p className="text-sm text-text-3">
-        Aliases são códigos alternativos usados por cada fornecedor.
+        Aliases são códigos alternativos usados por cada fornecedor — e, quando o código muda por cor
+        dentro do mesmo fornecedor, um alias por cor (ex: FEC325PTR para preto, FEC325BRC para branco).
         {isBarra && " Para perfis comprados por peso, informe o preço/kg — o sistema calcula o preço/m automaticamente no pedido."}
         {" "}Peso e comprimento do produto mestre são herdados se não informados.
       </p>
@@ -284,6 +323,7 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
                 <th className="px-4 py-2 font-medium">Código alias</th>
                 <th className="px-4 py-2 font-medium">Fornecedor</th>
+                <th className="px-4 py-2 font-medium">Cor</th>
                 <th className="px-4 py-2 font-medium">Especificações</th>
                 <th className="px-4 py-2 w-20" />
               </tr>
@@ -291,7 +331,7 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
             <tbody>
               {aliases.map((a) => (
                 <AliasRow key={a.id} a={a} produtoId={produtoId} linhaId={linhaId}
-                  tipoUnidade={tipoUnidade} fornecedoresDisponiveis={fornecedoresDisponiveis}
+                  tipoUnidade={tipoUnidade} fornecedoresDisponiveis={fornecedoresDisponiveis} coresVinculadas={coresVinculadas}
                   masterPeso={masterPeso} masterTamanho={masterTamanho} />
               ))}
             </tbody>
@@ -310,7 +350,7 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
             <div className="flex-1 min-w-[140px]">
               <label className="label">Código</label>
               <input value={valor} onChange={(e) => setValor(e.target.value)}
-                placeholder="Ex: 321, C-ABC-001…" className="field" disabled={pending} />
+                placeholder="Ex: 321, FEC325PTR…" className="field" disabled={pending} />
             </div>
             <div className="flex-1 min-w-[160px]">
               <label className="label">Fornecedor <span className="text-text-3 font-normal">(opcional)</span></label>
@@ -319,6 +359,15 @@ export function AbaAliases({ produtoId, linhaId, aliases, tipoUnidade, fornecedo
                 <option value="">Sem fornecedor</option>
                 {fornecedoresDisponiveis.map((f) => (
                   <option key={f.id} value={f.id}>{f.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="label">Cor <span className="text-text-3 font-normal">(opcional)</span></label>
+              <select value={corId} onChange={(e) => setCorId(e.target.value)} className="field" disabled={pending}>
+                <option value="">Todas as cores</option>
+                {coresVinculadas.map((c) => (
+                  <option key={c.id} value={c.id}>{c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}</option>
                 ))}
               </select>
             </div>

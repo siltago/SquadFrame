@@ -695,7 +695,10 @@ export async function criarCorRal(formData: FormData) {
   if (!codigo_ral) throw new Error("Código RAL é obrigatório.");
 
   const { error } = await supabase.from("cores_ral").insert({ codigo_ral, nome, hex, tipos });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23505") throw new Error(`Já existe uma cor com o código "${codigo_ral}".`);
+    throw new Error(error.message);
+  }
 
   revalidateTag("cores_ral");
   revalidatePath("/squadframe/catalogo");

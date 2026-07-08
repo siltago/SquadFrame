@@ -3,6 +3,27 @@
 import { useState } from "react";
 import { Button } from "@/ui/components/Button";
 
+// File System Access API (Chrome/Edge desktop) — abre o diálogo nativo de
+// "Salvar como", deixando o usuário escolher a pasta. Não existe no
+// TypeScript lib padrão nem em Firefox/Safari/celular, por isso é opcional
+// e usado só quando disponível (feature detection abaixo).
+interface FileSystemWritableFileStream {
+  write(data: Blob): Promise<void>;
+  close(): Promise<void>;
+}
+interface FileSystemFileHandleLike {
+  createWritable(): Promise<FileSystemWritableFileStream>;
+}
+interface SaveFilePickerOptions {
+  suggestedName?: string;
+  types?: { description?: string; accept: Record<string, string[]> }[];
+}
+declare global {
+  interface Window {
+    showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandleLike>;
+  }
+}
+
 export function PrintButton() {
   return (
     <Button
@@ -45,7 +66,7 @@ export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string;
       const larguraMm = el.scrollWidth * PX_PARA_MM;
       const alturaMm = el.scrollHeight * PX_PARA_MM;
 
-      await html2pdf()
+      const worker = html2pdf()
         .set({
           filename: nomeArquivo,
           margin: 0,
@@ -64,8 +85,39 @@ export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string;
           },
           jsPDF: { unit: "mm", format: [larguraMm, alturaMm], orientation: "portrait" },
         })
-        .from(el)
-        .save();
+        .from(el);
+
+      // Gera o PDF como Blob (nunca dispara download sozinho) pra decidir
+      // como entregar: diálogo nativo "Salvar como" quando o navegador
+      // suporta, ou download direto como fallback.
+      const blob = (await worker.outputPdf("blob")) as Blob;
+
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: nomeArquivo,
+            types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          return;
+        } catch (err) {
+          // Usuário cancelou o diálogo — não faz nada (nem cai no fallback).
+          if (err instanceof Error && err.name === "AbortError") return;
+          // Qualquer outro erro (ex: navegador anuncia o suporte mas falha):
+          // segue pro fallback de download direto abaixo.
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } finally {
       setGerando(false);
     }

@@ -109,20 +109,22 @@ export default async function ProdutoPage({
   }
 
   if (abaAtiva === "aliases") {
-    const [{ data: al }, { data: pc }] = await Promise.all([
+    let coresQuery = supabase
+      .from("cores_ral")
+      .select("id, codigo_ral, nome, hex")
+      .order("codigo_ral");
+    if (linha?.tipo) coresQuery = coresQuery.contains("tipos", [linha.tipo]);
+
+    const [{ data: al }, { data: cv }] = await Promise.all([
       supabase
         .from("produto_aliases")
         .select("id, alias, peso_metro, preco_metro, tamanho_mm, preco_kg, fornecedor:fornecedores(id, nome), cor:cores_ral(id, codigo_ral, nome, hex)")
         .eq("produto_id", params.produtoId)
         .order("alias"),
-      supabase
-        .from("produto_cores")
-        .select("cor:cores_ral(id, codigo_ral, nome, hex)")
-        .eq("produto_id", params.produtoId)
-        .order("cor_id"),
+      coresQuery,
     ]);
     aliases = al ?? [];
-    coresVinculadas = (pc ?? []).map((r: any) => r.cor).filter(Boolean);
+    coresVinculadas = cv ?? [];
   }
 
   if (abaAtiva === "arquivos") {

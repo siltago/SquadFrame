@@ -300,14 +300,6 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
 
   const usuario_id = await getUsuarioId();
 
-  if (ped.usa_carteira && !ped.debito_registrado) {
-    const { error: errDebito } = await admin.rpc("confirmar_debito_carteira", {
-      p_pedido_id:  pedidoId,
-      p_usuario_id: usuario_id,
-    });
-    if (errDebito) throw new Error(`Não foi possível debitar a carteira: ${errDebito.message}`);
-  }
-
   await admin.from("compra_historico").insert({
     entidade: "pedido", entidade_id: pedidoId,
     acao: "VALOR_FINAL_REGISTRADO",
@@ -315,8 +307,21 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
     usuario_id,
   });
 
+  // Revalida já — o valor final foi salvo com sucesso a partir daqui. Se o
+  // débito da carteira (abaixo) falhar, a tela não pode continuar mostrando
+  // o valor antigo: o dado no banco já mudou.
   revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
   revalidatePath("/squadframe/financeiro");
+
+  if (ped.usa_carteira && !ped.debito_registrado) {
+    const { error: errDebito } = await admin.rpc("confirmar_debito_carteira", {
+      p_pedido_id:  pedidoId,
+      p_usuario_id: usuario_id,
+    });
+    if (errDebito) {
+      throw new Error(`Valor final salvo, mas não foi possível debitar a carteira: ${errDebito.message}`);
+    }
+  }
 }
 
 export async function excluirPedidos(ids: string[]) {

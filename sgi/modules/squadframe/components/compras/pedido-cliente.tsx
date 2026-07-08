@@ -109,12 +109,18 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const podeRegistrarRecebimento =
     podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
 
-  // Valor final só editável enquanto aguarda recebimento — some após o primeiro recebimento ser registrado
-  const statusPermiteValorFinal = pedido.status === "AGUARDANDO_RECEBIMENTO";
+  // Todo pedido emitido precisa poder ter o valor final salvo — com ou sem
+  // faturamento direto/carteira — então acompanha os mesmos status aceitos
+  // pela action registrarValorFinal, não só "aguardando recebimento".
+  const statusPermiteValorFinal = ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"].includes(pedido.status);
   const podeRegistrarValorFinal = podeCriar && statusPermiteValorFinal;
 
   function salvarValorFinal() {
-    const v = parseFloat(valorFinalInput.replace(",", ".").replace(/[^0-9.]/g, ""));
+    // Aceita formato brasileiro (1.234,56): remove separador de milhar antes
+    // de trocar a vírgula decimal por ponto.
+    const v = parseFloat(
+      valorFinalInput.replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")
+    );
     if (isNaN(v) || v <= 0) { setErroVF("Insira um valor válido."); return; }
     setErroVF(null);
     startVF(async () => {

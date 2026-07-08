@@ -694,6 +694,32 @@ export async function criarCorRal(formData: FormData) {
 
   if (!codigo_ral) throw new Error("Código RAL é obrigatório.");
 
+  // A mesma cor (ex: PRETO) pode se aplicar a vários tipos de linha — cada
+  // aba do catálogo só lista as cores já marcadas pra ela, então "criar" a
+  // mesma cor numa aba diferente na prática significa "adicionar esse tipo"
+  // à cor existente, não duplicar o cadastro.
+  const { data: existente } = await supabase
+    .from("cores_ral")
+    .select("id, tipos, nome, hex")
+    .ilike("codigo_ral", codigo_ral)
+    .maybeSingle();
+
+  if (existente) {
+    const tiposMesclados = Array.from(new Set([...(existente.tipos ?? []), ...tipos]));
+    const { error } = await supabase
+      .from("cores_ral")
+      .update({
+        tipos: tiposMesclados,
+        nome: existente.nome ?? nome,
+        hex: existente.hex ?? hex,
+      })
+      .eq("id", existente.id);
+    if (error) throw new Error(error.message);
+    revalidateTag("cores_ral");
+    revalidatePath("/squadframe/catalogo");
+    return;
+  }
+
   const { error } = await supabase.from("cores_ral").insert({ codigo_ral, nome, hex, tipos });
   if (error) {
     if (error.code === "23505") throw new Error(`Já existe uma cor com o código "${codigo_ral}".`);

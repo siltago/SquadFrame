@@ -125,7 +125,7 @@ function CorRow({ cor, tiposLinha }: { cor: CorRal; tiposLinha: TipoLinha[] }) {
   );
 }
 
-function FormNovaCor({ tiposLinha, onDone }: { tiposLinha: TipoLinha[]; onDone: () => void }) {
+function FormNovaCor({ tiposLinha, aplicacaoAtiva, onDone }: { tiposLinha: TipoLinha[]; aplicacaoAtiva?: string | null; onDone: () => void }) {
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -169,7 +169,8 @@ function FormNovaCor({ tiposLinha, onDone }: { tiposLinha: TipoLinha[]; onDone: 
           <div className="mt-1 flex flex-wrap gap-3">
             {tiposLinha.map((t) => (
               <label key={t.slug} className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="checkbox" name="tipos" value={t.slug} className="rounded" />
+                <input type="checkbox" name="tipos" value={t.slug} className="rounded"
+                  defaultChecked={aplicacaoAtiva ? t.slug.toLowerCase() === aplicacaoAtiva.toLowerCase() : false} />
                 {t.nome}
               </label>
             ))}
@@ -233,7 +234,7 @@ export function AbaCoresCatalogo({
         {mostrarForm && (
           <div className="card p-5">
             <p className="mb-4 font-display text-sm font-semibold text-text">Nova cor RAL</p>
-            <FormNovaCor tiposLinha={tiposLinha} onDone={() => setMostrarForm(false)} />
+            <FormNovaCor tiposLinha={tiposLinha} aplicacaoAtiva={aplicacaoAtiva} onDone={() => setMostrarForm(false)} />
           </div>
         )}
 

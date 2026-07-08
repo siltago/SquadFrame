@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
-import { PrintButton } from "@/modules/squadframe/components/compras/print-button";
+import { PrintButton, SalvarPdfButton } from "@/modules/squadframe/components/compras/print-button";
 import { PdfScaleWrapper } from "@/modules/squadframe/components/compras/pdf-scale-wrapper";
 
 export const dynamic = "force-dynamic";
 
 function fmt(v: number, casas = 3) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+}
+
+// Nome sugerido pro arquivo salvo: "<número>-<obra> [AAAA-MM-DD HHmm].pdf" —
+// sem caracteres inválidos em nome de arquivo (Windows/macOS/Android/iOS).
+function nomeArquivoPdf(numero: string, obraNome: string): string {
+  const agora = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const timestamp = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())} ${pad(agora.getHours())}${pad(agora.getMinutes())}`;
+  const base = `${numero}-${obraNome} [${timestamp}]`.replace(/[\\/:*?"<>|]/g, "-").trim();
+  return `${base}.pdf`;
 }
 
 function DataRow({ label, value }: { label: string; value?: string | null }) {
@@ -184,8 +194,9 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
           <span className="hidden sm:inline">Voltar ao pedido</span>
         </Link>
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">Visualização — PC {pcNum}</span>
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <PrintButton />
+          <SalvarPdfButton elementId="pdf-content" nomeArquivo={nomeArquivoPdf(String(pcNum), obra.nome ?? "obra")} />
         </div>
       </div>
 

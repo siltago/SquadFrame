@@ -162,6 +162,11 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
   const pcNum = ped.numero ?? "—";
   const dataEmissao = new Date().toLocaleDateString("pt-BR");
+  // Valor final confirmado com o fornecedor prevalece sobre a soma dos itens
+  // no total do pedido (mesma regra da action registrarValorFinal e da RPC
+  // confirmar_debito_carteira) — TOTAL PRODUTO continua mostrando a soma
+  // bruta dos itens, informativa.
+  const totalDoPedido = ped.valor_final != null ? Number(ped.valor_final) : totalProduto;
 
   function largAlt(item: any) {
     if (item.largura_m == null || item.altura_m == null) return "—";
@@ -373,7 +378,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
           <div style={{ backgroundColor: azul, color: "white", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 28px" }}>
             <span style={{ fontWeight: 700, fontSize: 12 }}>TOTAL DO PEDIDO:</span>
             <div style={{ display: "flex", gap: 48, alignItems: "center" }}>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>R$ {fmt(totalProduto, 2)}</span>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>R$ {fmt(totalDoPedido, 2)}</span>
               <span style={{ fontWeight: 700, fontSize: 13 }}>{fmt(totalKg, 3)} kg</span>
             </div>
           </div>

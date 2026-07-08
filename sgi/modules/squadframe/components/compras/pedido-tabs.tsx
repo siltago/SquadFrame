@@ -29,6 +29,11 @@ function formatBytes(b: number) {
 // ── Resumo ────────────────────────────────────────────────────────
 function TabResumo({ pedido, itens, coresRal }: { pedido: any; itens: any[]; coresRal?: any[] }) {
   const totalPedido = itens.reduce((a, i) => a + Number(i.quantidade_pedida) * Number(i.preco_unitario || 0), 0);
+  // Quando o valor final já foi confirmado com o fornecedor, ele é o total
+  // que vale (mesma regra já usada em confirmar_debito_carteira) — a soma
+  // dos itens é só a estimativa usada antes disso.
+  const temValorFinal = pedido.valor_final != null;
+  const totalExibido = temValorFinal ? Number(pedido.valor_final) : totalPedido;
   const totalQtdPedida = itens.reduce((a, i) => a + Number(i.quantidade_pedida), 0);
   const totalQtdRecebida = itens.reduce((a, i) => a + Number(i.quantidade_recebida || 0), 0);
   const totalMetros = itens.reduce((s, i) => { const m = itemMedida(i); return m?.sufixo === "m"  ? s + m.valor : s; }, 0);
@@ -90,8 +95,15 @@ function TabResumo({ pedido, itens, coresRal }: { pedido: any; itens: any[]; cor
         <div className="card p-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-text-3 mb-2">Totais</p>
           <p className="text-2xl font-bold text-text">
-            {totalPedido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {totalExibido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </p>
+          {temValorFinal && (
+            <p className="mt-0.5 text-xs text-text-3">
+              Valor final confirmado
+              {Math.abs(totalPedido - totalExibido) > 0.01 &&
+                ` · estimado pelos itens: ${totalPedido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+            </p>
+          )}
           <p className="mt-1 text-sm text-text-2">{itens.length} iten(s) no pedido</p>
           {totalMetros > 0 && (
             <p className="text-sm text-text-2">{totalMetros.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m lineares</p>

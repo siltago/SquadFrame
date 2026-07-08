@@ -34,6 +34,17 @@ export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string;
     setGerando(true);
     try {
       const { default: html2pdf } = await import("html2pdf.js");
+
+      // Altura real do conteúdo (não muda com a escala responsiva do
+      // PdfScaleWrapper — scrollHeight/scrollWidth refletem o tamanho
+      // intrínseco do elemento, não o transform do ancestral). Gera a
+      // página do PDF já com esse tamanho exato: com formato "a4" fixo, a
+      // altura do conteúdo raramente bate exatamente com 297mm e sobra uma
+      // página quase em branco no final, mesmo em pedidos curtos.
+      const PX_PARA_MM = 25.4 / 96;
+      const larguraMm = el.scrollWidth * PX_PARA_MM;
+      const alturaMm = el.scrollHeight * PX_PARA_MM;
+
       await html2pdf()
         .set({
           filename: nomeArquivo,
@@ -51,7 +62,7 @@ export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string;
               if (clonado?.parentElement) clonado.parentElement.style.transform = "none";
             },
           },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          jsPDF: { unit: "mm", format: [larguraMm, alturaMm], orientation: "portrait" },
         })
         .from(el)
         .save();

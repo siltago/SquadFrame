@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alterarStatusPedido, registrarValorFinal, confirmarDebitoPedido } from "@/app/squadframe/compras/actions";
+import { recalcularPrecoKgPerfisAction } from "@/modules/squadframe/actions/catalogo/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
@@ -51,6 +52,9 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   );
   const [pendingVF, startVF] = useTransition();
   const [erroVF, setErroVF] = useState<string | null>(null);
+  const [showConfirmarPrecoKg, setShowConfirmarPrecoKg] = useState(false);
+  const [pendingPrecoKg, startPrecoKg] = useTransition();
+  const [resultadoPrecoKg, setResultadoPrecoKg] = useState<string | null>(null);
   const [pendingDebito, startDebito] = useTransition();
   const [erroDebito, setErroDebito] = useState<string | null>(null);
   const [okDebito, setOkDebito] = useState(false);
@@ -115,6 +119,8 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const statusPermiteValorFinal = ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"].includes(pedido.status);
   const podeRegistrarValorFinal = podeCriar && statusPermiteValorFinal;
 
+  const ehPedidoDePerfil = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL");
+
   function salvarValorFinal() {
     // Aceita formato brasileiro (1.234,56): remove separador de milhar antes
     // de trocar a vírgula decimal por ponto.
@@ -128,7 +134,26 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
         await registrarValorFinal(pedido.id, v);
         setShowValorFinal(false);
         router.refresh();
+        // Só pedidos de perfil têm peso por item — o preço/kg médio do mês
+        // só faz sentido pra eles (mesma regra da distribuição por peso).
+        if (ehPedidoDePerfil) { setResultadoPrecoKg(null); setShowConfirmarPrecoKg(true); }
       } catch (e: any) { setErroVF(e.message); }
+    });
+  }
+
+  function handleRecalcularPrecoKg(sim: boolean) {
+    if (!sim) { setShowConfirmarPrecoKg(false); return; }
+    startPrecoKg(async () => {
+      try {
+        const resultado = await recalcularPrecoKgPerfisAction();
+        setResultadoPrecoKg(
+          resultado
+            ? `Preço/kg médio atualizado para ${resultado.mediaKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — ${resultado.produtosAtualizados} produto(s) de perfil atualizado(s), com base em ${resultado.pedidosConsiderados} pedido(s) do mês.`
+            : "Nenhum pedido de perfil com valor final e peso conhecido neste mês — nada foi atualizado."
+        );
+      } catch (e: any) {
+        setResultadoPrecoKg(`Erro ao recalcular: ${e.message}`);
+      }
     });
   }
 
@@ -231,6 +256,37 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
               </Button>
             </div>
             {erroVF && <p className="mt-2 text-xs text-danger">{erroVF}</p>}
+          </div>
+        )}
+
+        {showConfirmarPrecoKg && (
+          <div className="w-80 rounded-xl border border-border bg-surface p-4 shadow-lg">
+            {resultadoPrecoKg == null ? (
+              <>
+                <p className="text-sm font-semibold text-text mb-1">Atualizar preço/kg dos perfis?</p>
+                <p className="text-xs text-text-2 mb-3">
+                  Recalcula a média de R$/kg com base nos pedidos de perfil com valor final confirmado
+                  neste mês e atualiza o preço de todos os produtos de perfil no catálogo.
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={() => handleRecalcularPrecoKg(true)} disabled={pendingPrecoKg} className="h-9 flex-1 text-sm">
+                    {pendingPrecoKg ? "Atualizando…" : "Sim, atualizar"}
+                  </Button>
+                  <Button variant="ghost" disabled={pendingPrecoKg} onClick={() => handleRecalcularPrecoKg(false)} className="h-9 flex-1 text-sm">
+                    Não
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-2">{resultadoPrecoKg}</p>
+                <div className="mt-3 flex justify-end">
+                  <Button variant="ghost" onClick={() => setShowConfirmarPrecoKg(false)} className="h-8 px-3 text-xs">
+                    Fechar
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

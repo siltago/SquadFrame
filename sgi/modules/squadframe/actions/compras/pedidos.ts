@@ -9,6 +9,7 @@ import { emitirEvento } from "@/modules/squadframe/services/events/event-bus";
 import { EVENTS } from "@/modules/squadframe/services/events/event-types";
 import { validarTransicaoPedido, pedidoEditavel } from "@/modules/squadframe/services/state-machines/compras";
 import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa } from "./helpers";
+import { calcPesoItem } from "@/modules/squadframe/lib/tipo-unidade";
 
 const STATUS_PARA_EVENTO: Record<string, string> = {
   AGUARDANDO_APROVACAO:   EVENTS.PURCHASE_ORDER_AWAITING_APPROVAL,
@@ -283,7 +284,7 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
 
   const { data: ped } = await admin
     .from("pedidos_compra")
-    .select("status, usa_carteira, debito_registrado")
+    .select("status, usa_carteira, debito_registrado, tipo_linha")
     .eq("id", pedidoId)
     .single();
 
@@ -307,6 +308,14 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
     usuario_id,
   });
 
+  // Pedidos de perfil não vêm com preço fechado por item — o fornecedor
+  // confirma um valor único para o pedido inteiro. Redistribuímos esse
+  // valor proporcionalmente ao peso de cada item para que preco_unitario
+  // fique coerente na aba Itens, no PDF e no financeiro.
+  if ((ped.tipo_linha ?? "").toUpperCase().includes("PERFIL")) {
+    await distribuirValorFinalPorPeso(admin, pedidoId, valorFinal);
+  }
+
   // Revalida já — o valor final foi salvo com sucesso a partir daqui. Se o
   // débito da carteira (abaixo) falhar, a tela não pode continuar mostrando
   // o valor antigo: o dado no banco já mudou.
@@ -322,6 +331,54 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
       throw new Error(`Valor final salvo, mas não foi possível debitar a carteira: ${errDebito.message}`);
     }
   }
+}
+
+// Ratia o valor final do pedido entre os itens proporcionalmente ao peso de
+// cada um (kg). Itens sem peso calculável (produto sem tamanho/peso
+// cadastrado) mantêm o preco_unitario atual e ficam de fora do rateio.
+async function distribuirValorFinalPorPeso(
+  admin: ReturnType<typeof createAdminClient>,
+  pedidoId: string,
+  valorFinal: number
+) {
+  const { data: itens } = await admin
+    .from("pedido_itens")
+    .select("id, unidade, quantidade_pedida, largura_m, altura_m, qtd_pecas, produto:produtos(tamanho_mm, peso_metro)")
+    .eq("pedido_id", pedidoId);
+
+  if (!itens || itens.length === 0) return;
+
+  const comPeso = itens
+    .map((it: any) => ({
+      id: it.id,
+      quantidade: Number(it.quantidade_pedida),
+      peso: calcPesoItem({
+        unidade: it.unidade,
+        quantidadePedida: Number(it.quantidade_pedida),
+        larguraM: it.largura_m != null ? Number(it.largura_m) : null,
+        alturaM: it.altura_m != null ? Number(it.altura_m) : null,
+        qtdPecas: it.qtd_pecas != null ? Number(it.qtd_pecas) : null,
+        tamanhoMm: it.produto?.tamanho_mm != null ? Number(it.produto.tamanho_mm) : null,
+        pesoMetro: it.produto?.peso_metro != null ? Number(it.produto.peso_metro) : null,
+      }),
+    }))
+    .filter((it) => it.peso > 0 && it.quantidade > 0);
+
+  const pesoTotal = comPeso.reduce((s, it) => s + it.peso, 0);
+  if (pesoTotal <= 0) return; // nenhum item com peso conhecido — mantém os preços atuais
+
+  // preco_unitario passa a representar R$/kg (valor alocado ao item ÷ peso do
+  // item), não R$/barra nem R$/metro — é a base de custo real do perfil.
+  // quantidade_pedida × preco_unitario deixaria de bater com o valor alocado
+  // (teria que ser peso × preco_unitario); TabItens e o PDF já tratam esse
+  // caso quando o pedido é de perfil com valor_final confirmado.
+  await Promise.all(
+    comPeso.map((it) => {
+      const valorItem = (it.peso / pesoTotal) * valorFinal;
+      const precoUnitario = valorItem / it.peso;
+      return admin.from("pedido_itens").update({ preco_unitario: precoUnitario }).eq("id", it.id);
+    })
+  );
 }
 
 export async function excluirPedidos(ids: string[]) {

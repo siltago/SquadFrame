@@ -23,7 +23,7 @@ export default async function ProdutoPage({
     .from("produtos")
     .select(
       `id, codigo_mestre, nome, unidade, status, descricao, observacoes, fornecedor_mestre_id,
-       peso_metro, preco_metro, tamanho_mm,
+       peso_metro, preco_metro, preco_kg, tamanho_mm,
        linha:linhas(nome, fabricante, tipo),
        categoria:categorias_perfil(id, nome)`
     )

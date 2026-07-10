@@ -11,7 +11,7 @@ type Produto = {
   id: string; codigo_mestre: string; nome: string; unidade: string;
   status: boolean; descricao?: string | null; observacoes?: string | null;
   fornecedor_mestre_id?: string | null;
-  peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null;
+  peso_metro?: number | null; preco_metro?: number | null; preco_kg?: number | null; tamanho_mm?: number | null;
   linha?: { nome: string; fabricante?: string | null } | null;
   categoria?: { id?: string; nome: string } | null;
 };
@@ -196,7 +196,13 @@ export function AbaGeral({
 
   const sufixoTamanho = tipoUnidade === "CHAPA" ? "mm (espessura)" : "mm";
   const sufixoPeso    = (tipoUnidade === "CHAPA" || tipoUnidade === "M2") ? "kg/m²" : "kg/m";
+  const isBarra       = tipoUnidade?.toUpperCase() === "BARRA";
   const sufixoPreco   = (tipoUnidade === "CHAPA" || tipoUnidade === "M2") ? "/m²" : "/m";
+  // Perfil (BARRA): preço é cotado por kg (preco_kg, calculado automaticamente
+  // pelos pedidos confirmados no mês — ver recalcularPrecoKgPerfis), não por
+  // metro. preco_metro continua existindo só como valor derivado (peso × preco_kg).
+  const precoExibido = isBarra && produto.preco_kg != null ? produto.preco_kg : produto.preco_metro;
+  const sufixoPrecoExibido = isBarra ? "/kg" : sufixoPreco;
 
   return (
     <div className="mt-6 max-w-2xl">
@@ -225,7 +231,7 @@ export function AbaGeral({
               fornecedoresDisponiveis.find(f => f.id === produto.fornecedor_mestre_id)?.nome ?? "—"
             } />
           )}
-          {(produto.tamanho_mm || produto.peso_metro || produto.preco_metro) && (
+          {(produto.tamanho_mm || produto.peso_metro || precoExibido) && (
             <div className="col-span-2 border-t border-border pt-3 mt-1">
               <dt className="text-xs uppercase tracking-wide text-text-3 mb-2">Especificações</dt>
               <div className="flex flex-wrap gap-4 text-sm">
@@ -241,10 +247,10 @@ export function AbaGeral({
                     <span className="font-medium">{Number(produto.peso_metro).toLocaleString("pt-BR", { minimumFractionDigits: 3 })} {sufixoPeso}</span>
                   </span>
                 )}
-                {produto.preco_metro && (
+                {precoExibido != null && (
                   <span>
                     <span className="text-text-3">Preço:</span>{" "}
-                    <span className="font-medium">{Number(produto.preco_metro).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}{sufixoPreco}</span>
+                    <span className="font-medium">{Number(precoExibido).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}{sufixoPrecoExibido}</span>
                   </span>
                 )}
               </div>

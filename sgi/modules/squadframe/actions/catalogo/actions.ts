@@ -5,6 +5,7 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { recalcularPrecoKgPerfis } from "@/modules/squadframe/lib/preco-kg-perfis";
 
 // Cores RAL só valem para o(s) tipo(s) de linha marcados nelas
 // (cores_ral.tipos). Vincular automaticamente TODAS as cores a um produto,
@@ -612,6 +613,20 @@ export async function adicionarFornecedor(
   if (error) throw new Error(error.message);
 
   revalidatePath(`/squadframe/catalogo/${linhaId}/${produtoId}`);
+}
+
+// ─── Preço/kg de perfis ──────────────────────────────────────
+
+// Dispara o recálculo do preço/kg médio dos perfis (ver
+// modules/squadframe/lib/preco-kg-perfis.ts). Chamada tanto pelo botão de
+// confirmação ao registrar valor final de um pedido de perfil quanto,
+// futuramente, por qualquer outra tela do catálogo.
+export async function recalcularPrecoKgPerfisAction() {
+  await verificarPermissao(PERMISSIONS.CATALOGO_EDITAR);
+  const supabase = createClient();
+  const resultado = await recalcularPrecoKgPerfis(supabase);
+  revalidatePath("/squadframe/catalogo");
+  return resultado;
 }
 
 // ─── Excluir Arquivo ─────────────────────────────────────────

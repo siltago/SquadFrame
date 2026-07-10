@@ -28,7 +28,12 @@ function formatBytes(b: number) {
 
 // ── Resumo ────────────────────────────────────────────────────────
 function TabResumo({ pedido, itens, coresRal }: { pedido: any; itens: any[]; coresRal?: any[] }) {
-  const totalPedido = itens.reduce((a, i) => a + Number(i.quantidade_pedida) * Number(i.preco_unitario || 0), 0);
+  // Perfil com valor final confirmado: o "estimado pelos itens" usa peso ×
+  // (valor_final ÷ peso_total), não quantidade × preco_unitario — ver TabItens.
+  const usaPrecoKg = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL") && pedido.valor_final != null;
+  const pesoTotalPedido = itens.reduce((s, i) => s + (itemPeso(i) ?? 0), 0);
+  const precoKgMedioResumo = usaPrecoKg && pesoTotalPedido > 0 ? Number(pedido.valor_final) / pesoTotalPedido : null;
+  const totalPedido = itens.reduce((a, i) => a + itemTotal(itemPeso(i), precoKgMedioResumo, Number(i.quantidade_pedida), Number(i.preco_unitario || 0)), 0);
   // Quando o valor final já foi confirmado com o fornecedor, ele é o total
   // que vale (mesma regra já usada em confirmar_debito_carteira) — a soma
   // dos itens é só a estimativa usada antes disso.
@@ -162,14 +167,27 @@ function itemPeso(it: any) {
 }
 
 // ── Itens ─────────────────────────────────────────────────────────
+// Pedidos de perfil com valor final confirmado: o total de cada item é
+// calculado direto de peso × (valor_final ÷ peso_total_do_pedido) — não lemos
+// preco_unitario do banco pra isso. Isso evita depender de a distribuição
+// server-side (distribuirValorFinalPorPeso) ter batido exatamente com o peso
+// recalculado aqui; a tela sempre soma valor_final certinho, e o "preço/kg"
+// exibido é sempre o mesmo número (a média) pra todos os itens do pedido.
+function itemTotal(peso: number | null, precoKgMedio: number | null, quantidade: number, precoUnitarioFallback: number): number {
+  if (precoKgMedio != null && peso != null) return peso * precoKgMedio;
+  return quantidade * precoUnitarioFallback;
+}
+
 function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; coresRal?: any[] }) {
-  const totalPedido = itens.reduce((a, i) => a + Number(i.quantidade_pedida) * Number(i.preco_unitario || 0), 0);
+  const usaPrecoKg = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL") && pedido.valor_final != null;
   const podeReceber = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
   const temSpecs = itens.some((it) => it.produto?.tamanho_mm || it.produto?.peso_metro ||
     ["M","ML","M²","M2","CHAPA"].includes((it.unidade ?? "").toUpperCase()));
   const totalMetros = itens.reduce((s, it) => { const m = itemMedida(it); return m?.sufixo === "m"  ? s + m.valor : s; }, 0);
   const totalArea   = itens.reduce((s, it) => { const m = itemMedida(it); return m?.sufixo === "m²" ? s + m.valor : s; }, 0);
   const totalPeso   = itens.reduce((s, it) => s + (itemPeso(it) ?? 0), 0);
+  const precoKgMedio = usaPrecoKg && totalPeso > 0 ? Number(pedido.valor_final) / totalPeso : null;
+  const totalPedido = itens.reduce((a, i) => a + itemTotal(itemPeso(i), precoKgMedio, Number(i.quantidade_pedida), Number(i.preco_unitario || 0)), 0);
   const temCorItem  = itens.some((it) => it.cor_id);
 
   return (
@@ -199,7 +217,7 @@ function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; core
               {temSpecs && <th className="px-5 py-3 font-medium text-right">Peso</th>}
               <th className="px-5 py-3 font-medium text-right">Recebido</th>
               <th className="px-5 py-3 font-medium text-right">Saldo</th>
-              <th className="px-5 py-3 font-medium text-right">Preço unit.</th>
+              <th className="px-5 py-3 font-medium text-right">{precoKgMedio != null ? "Preço/kg" : "Preço unit."}</th>
               <th className="px-5 py-3 font-medium text-right">Total</th>
             </tr>
           </thead>
@@ -263,11 +281,16 @@ function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; core
                     {saldo.toLocaleString("pt-BR")}
                   </td>
                   <td className="px-5 py-3 text-right text-text-2">
-                    {it.preco_unitario ? Number(it.preco_unitario).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
+                    {precoKgMedio != null
+                      ? `${precoKgMedio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/kg`
+                      : it.preco_unitario
+                        ? Number(it.preco_unitario).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                        : "—"}
                   </td>
                   <td className="px-5 py-3 text-right font-medium text-text">
-                    {it.preco_unitario
-                      ? (Number(it.quantidade_pedida) * Number(it.preco_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    {precoKgMedio != null || it.preco_unitario
+                      ? itemTotal(peso, precoKgMedio, Number(it.quantidade_pedida), Number(it.preco_unitario || 0))
+                          .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
                       : "—"}
                   </td>
                 </tr>

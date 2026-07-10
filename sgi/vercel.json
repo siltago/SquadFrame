@@ -4,5 +4,11 @@
     "app/**": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/preco-kg-perfis",
+      "schedule": "0 6 1,16 * *"
+    }
+  ]
 }

@@ -70,3 +70,31 @@ export function calcPrecoUnit(unidade: string, tamanhoMm?: number | null, precoM
   if (un === "CHAPA" || un === "M2" || un === "M²") return precoMetro;
   return 0;
 }
+
+const FATOR_MASSA_CHAPA = 0.0000025;
+
+// Peso estimado de um item de pedido, em kg. Chapa usa L(mm) × A(mm) ×
+// espessura(mm) × 0.0000025 × qtd_pecas; os demais usam calcPesoTotal
+// (metros/área × peso cadastrado no produto) ou, na falta de medida
+// calculável (ex: unidade UN/KG), quantidade × peso do produto direto.
+export function calcPesoItem(item: {
+  unidade: string;
+  quantidadePedida: number;
+  larguraM?: number | null;
+  alturaM?: number | null;
+  qtdPecas?: number | null;
+  tamanhoMm?: number | null;
+  pesoMetro?: number | null;
+}): number {
+  const un = (item.unidade ?? "").toUpperCase();
+  const isChapa = ["CHAPA", "M2", "M²"].includes(un);
+  if (isChapa && item.larguraM && item.alturaM && item.tamanhoMm && item.qtdPecas) {
+    return item.larguraM * 1000 * item.alturaM * 1000 * item.tamanhoMm * FATOR_MASSA_CHAPA * item.qtdPecas;
+  }
+  if (isChapa && item.larguraM && item.alturaM && item.qtdPecas && item.pesoMetro) {
+    return item.larguraM * item.alturaM * item.qtdPecas * item.pesoMetro;
+  }
+  const viaMedida = calcPesoTotal(item.quantidadePedida, item.unidade, item.tamanhoMm, item.pesoMetro);
+  if (viaMedida != null) return viaMedida;
+  return item.quantidadePedida * (item.pesoMetro ?? 0);
+}

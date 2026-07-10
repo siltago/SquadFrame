@@ -126,6 +126,11 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
   let totalKg = 0;
 
   const isVidro = (ped.tipo_linha ?? "").toUpperCase().includes("VIDRO");
+  // Perfil com valor final confirmado: preco_unitario foi redefinido para
+  // R$/kg pela distribuição por peso (ver distribuirValorFinalPorPeso), não
+  // R$/m — o total do item vira peso × preco_unitario, e não
+  // quantidade × comprimento × preco_unitario como no modo estimativa.
+  const usaPrecoKg = (ped.tipo_linha ?? "").toUpperCase().includes("PERFIL") && ped.valor_final != null;
   // Para pedidos de vidro, o pedido já enriquece descricao_snapshot com "— NxL×A mm" (enriquecerItensChapa).
   // Como o PDF de vidro tem coluna própria "Larg x Alt", removemos esse sufixo redundante só na exibição.
   const SUFIXO_DIMENSOES = /\s*—\s*\d+\s*×\s*\d+L\s*×\s*\d+A\s*mm\s*$/;
@@ -134,21 +139,35 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
   }
 
   const FATOR_MASSA_CHAPA = 0.0000025;
-  const linhas = itens.map((item: any) => {
+
+  function calcTotalItemKg(item: any): number {
     const isChapa = ["CHAPA","M²","M2"].includes((item.unidade ?? "").toUpperCase());
     const tamanhoM = (item.produto?.tamanho_mm ?? 6000) / 1000;
     const temTamanho = !!(item.produto?.tamanho_mm);
-    const totalItem = temTamanho
-      ? item.quantidade_pedida * tamanhoM * (item.preco_unitario ?? 0)
-      : item.quantidade_pedida * (item.preco_unitario ?? 0);
-    let totalItemKg = 0;
     if (isChapa && item.largura_m && item.altura_m && item.produto?.tamanho_mm && item.qtd_pecas) {
       // L(mm) × A(mm) × espessura(mm) × 0.0000025 × qtd_pecas
-      totalItemKg = item.largura_m * 1000 * item.altura_m * 1000 * item.produto.tamanho_mm * FATOR_MASSA_CHAPA * item.qtd_pecas;
-    } else {
-      const pesoUnit = item.produto?.peso_metro ?? 0;
-      totalItemKg = temTamanho ? item.quantidade_pedida * tamanhoM * pesoUnit : item.quantidade_pedida * pesoUnit;
+      return item.largura_m * 1000 * item.altura_m * 1000 * item.produto.tamanho_mm * FATOR_MASSA_CHAPA * item.qtd_pecas;
     }
+    const pesoUnit = item.produto?.peso_metro ?? 0;
+    return temTamanho ? item.quantidade_pedida * tamanhoM * pesoUnit : item.quantidade_pedida * pesoUnit;
+  }
+
+  // Preço/kg médio calculado direto de valor_final ÷ peso_total_do_pedido —
+  // não lemos preco_unitario do banco pra isso (mesma razão do TabItens: a
+  // tela sempre bate com valor_final, mesmo que a distribuição server-side
+  // não tenha gravado exatamente esse peso).
+  const totalKgPedido = usaPrecoKg ? itens.reduce((s: number, item: any) => s + calcTotalItemKg(item), 0) : 0;
+  const precoKgMedio = usaPrecoKg && totalKgPedido > 0 ? Number(ped.valor_final) / totalKgPedido : null;
+
+  const linhas = itens.map((item: any) => {
+    const tamanhoM = (item.produto?.tamanho_mm ?? 6000) / 1000;
+    const temTamanho = !!(item.produto?.tamanho_mm);
+    const totalItemKg = calcTotalItemKg(item);
+    const totalItem = precoKgMedio != null
+      ? totalItemKg * precoKgMedio
+      : temTamanho
+        ? item.quantidade_pedida * tamanhoM * (item.preco_unitario ?? 0)
+        : item.quantidade_pedida * (item.preco_unitario ?? 0);
     totalProduto += totalItem;
     totalKg += totalItemKg;
     // cor por item → cor única do pedido → "Natural"
@@ -311,7 +330,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
                 <th style={{ ...thStyle, width: "11%" }}>LARG X ALT{"\n"}(mm)</th>
               )}
               <th style={{ ...thStyle, width: "9%" }}>QTD</th>
-              <th style={{ ...thStyle, width: "11%" }}>VLR UNIT{"\n"}(R$/m)</th>
+              <th style={{ ...thStyle, width: "11%" }}>VLR UNIT{"\n"}{precoKgMedio != null ? "(R$/kg)" : "(R$/m)"}</th>
               {!isVidro && (
                 <th style={{ ...thStyle, width: "10%" }}>PESO UNIT{"\n"}kg/m</th>
               )}
@@ -345,7 +364,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
                   <td style={{ ...tdStyle, textAlign: "center", fontFamily: "monospace" }}>{largAlt(item)}</td>
                 )}
                 <td style={{ ...tdStyle, textAlign: "center" }}>{fmt(item.quantidade_pedida)}</td>
-                <td style={{ ...tdStyle, textAlign: "center" }}>R$ {fmt(item.preco_unitario ?? 0, 2)}</td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>R$ {fmt(precoKgMedio ?? item.preco_unitario ?? 0, 2)}</td>
                 {!isVidro && (
                   <td style={{ ...tdStyle, textAlign: "center" }}>
                     {["CHAPA","M²","M2"].includes((item.unidade ?? "").toUpperCase())

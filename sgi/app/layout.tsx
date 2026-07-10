@@ -21,7 +21,11 @@ export const metadata: Metadata = {
   description: "Plataforma modular de gestão industrial",
   manifest: "/manifest.webmanifest",
   icons: {
-    apple: "/icon.png",
+    // Favicon da aba do navegador — logo do SquadSystem (mesma da tela de
+    // login). Não usa app/icon.png de propósito: aquele arquivo também é o
+    // ícone do card "SquadFrame" na tela de seleção de módulos.
+    icon: "/icon-v3.png",
+    apple: "/apple-icon.png",
   },
   other: {
     "apple-mobile-web-app-capable": "yes",

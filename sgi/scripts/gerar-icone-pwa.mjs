@@ -1,70 +1,43 @@
 /**
- * Gera o ícone PWA: gradiente #222831 → #00A6C0 + logo centralizada
+ * Gera os ícones de PWA/"adicionar à tela inicial" a partir da logo do
+ * SquadSystem usada na tela de login (public/logo-system.png) — sem fundo,
+ * a logo já vem com alpha. Sobe a versão (vN) sempre que regenerar, pra
+ * forçar os dispositivos que já instalaram o app a buscar o ícone novo
+ * (o manifest/apple-touch-icon costumam ficar em cache agressivo).
  * Uso: node scripts/gerar-icone-pwa.mjs
  */
 import sharp from "sharp";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
-const INPUT = path.resolve("C:/Users/sms/Downloads/pwa-frame.png");
+const INPUT = path.join(root, "public", "logo-system.png");
 const OUT_DIR = path.join(root, "public");
-
-// Fundo sólido #222831
-const BG = { r: 0x22, g: 0x28, b: 0x31 };
-
-async function solidBg(size) {
-  return sharp({
-    create: { width: size, height: size, channels: 4, background: { ...BG, alpha: 255 } },
-  }).png().toBuffer();
-}
+const VERSAO = "v3";
+const TRANSPARENTE = { r: 0, g: 0, b: 0, alpha: 0 };
 
 async function makeIcon(size, outFile) {
-  // Logo ocupa 62% do ícone, centralizada com padding
-  const logoSize = Math.round(size * 0.62);
-  const offset   = Math.round((size - logoSize) / 2);
-
-  // Apara o espaço em branco da imagem original, depois redimensiona para 80%
-  const logo = await sharp(INPUT)
-    .trim({ threshold: 30 })
-    .resize(logoSize, logoSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
-    .toBuffer();
-
-  const bg = await solidBg(size);
-
-  await sharp(bg)
-    .composite([{ input: logo, top: offset, left: offset, blend: "over" }])
+  await sharp(INPUT)
+    .resize(size, size, { fit: "contain", background: TRANSPARENTE })
     .png({ compressionLevel: 9 })
     .toFile(outFile);
-
   console.log(`✓ ${outFile} (${size}×${size})`);
 }
 
 async function main() {
-  if (!fs.existsSync(INPUT)) {
-    console.error(`Arquivo não encontrado: ${INPUT}`);
-    process.exit(1);
-  }
+  // Manifest PWA (Android/desktop "instalar app") — ver public/manifest.webmanifest
+  await makeIcon(192, path.join(OUT_DIR, `icon-192-${VERSAO}.png`));
+  await makeIcon(512, path.join(OUT_DIR, `icon-${VERSAO}.png`));
 
-  // Favicon do site: apara o fundo e deixa transparente
-  await sharp(INPUT)
-    .trim({ threshold: 30 })
-    .resize(512, 512, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
-    .toFile(path.join(OUT_DIR, "favicon.png"));
-  console.log(`✓ public/favicon.png (fundo transparente)`);
+  // Apple touch icon ("adicionar à tela de início" no iOS) — ver app/layout.tsx
+  await makeIcon(180, path.join(OUT_DIR, "apple-icon.png"));
 
-  // Ícones PWA
-  await makeIcon(512, path.join(OUT_DIR, "icon.png"));
-  await makeIcon(512, path.join(OUT_DIR, "icon-v2.png"));
-  await makeIcon(192, path.join(OUT_DIR, "icon-192.png"));
-  await makeIcon(192, path.join(OUT_DIR, "icon-192-v2.png"));
-
-  console.log("\nícones gerados em public/");
+  console.log("\nícones gerados em public/ — lembre de atualizar as referências de versão em manifest.webmanifest se mudou VERSAO.");
+  console.log("Nota: app/icon.png (favicon da aba) NÃO é gerado aqui de propósito — ele também é usado como");
+  console.log("ícone do card do módulo SquadFrame na tela de seleção de módulos (ver modules/home/data/modules.ts).");
+  console.log("O favicon da aba usa a logo do SquadSystem via metadata.icons em app/layout.tsx, não este arquivo.");
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

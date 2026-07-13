@@ -14,7 +14,7 @@ const PEDIDO_COMPRADOR_SELECT = "id, numero, tipo_linha, fornecedor:fornecedores
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: { aba?: string; periodo?: string };
+  searchParams: { aba?: string };
 }) {
   const usuario = await getUsuarioAtual();
   if (!usuario) redirect("/login");
@@ -30,11 +30,7 @@ export default async function HomePage({
   const abaAtual = searchParams.aba === "cobranca" && podeCobranca ? "cobranca" : "central";
 
   if (abaAtual === "cobranca") {
-    const periodo =
-      searchParams.periodo === "semanal" || searchParams.periodo === "mensal"
-        ? searchParams.periodo
-        : "diario";
-    const relatorio = await buscarRelatorioCobranca(admin, periodo);
+    const relatorio = await buscarRelatorioCobranca(admin);
 
     return (
       <div className="px-8 py-8 max-w-6xl">
@@ -42,13 +38,11 @@ export default async function HomePage({
           <CentralTabNav podeCobranca={podeCobranca} />
         </div>
         <CobrancaDashboard
-          periodoAtual={periodo}
           kpis={relatorio.kpis}
-          logsDiario={relatorio.logsDiario}
-          porDiaSemanal={relatorio.porDiaSemanal}
-          porSemanaMensal={relatorio.porSemanaMensal}
-          maisCobrados={relatorio.maisCobrados}
-          pedidosPrazoDetalhe={relatorio.pedidosPrazoDetalhe}
+          pedidosAprovacao={relatorio.pedidosAprovacao}
+          solicitacoesAprovacao={relatorio.solicitacoesAprovacao}
+          pedidosEmEntrega={relatorio.pedidosEmEntrega}
+          pedidosAtrasados={relatorio.pedidosAtrasados}
         />
       </div>
     );

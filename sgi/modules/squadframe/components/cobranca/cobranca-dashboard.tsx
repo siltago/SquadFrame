@@ -1,36 +1,35 @@
 import Link from "next/link";
-import { Progress } from "@/ui/components/Progress";
 
 export interface CobrancaKpis {
   pedidosAguardandoAprovacao: number;
-  pedidosDiasMedio: number;
   solicitacoesAguardandoAprovacao: number;
-  solicitacoesDiasMedio: number;
-  cobrancasHojeSucesso: number;
-  cobrancasHojeErro: number;
+  pedidosEmEntrega: number;
   pedidosPrazoVencido: number;
 }
 
-export interface LogRow {
+export interface PedidoAprovacaoRow {
   id: string;
-  entidade: "pedido" | "solicitacao";
-  destino_tipo: "individual" | "grupo";
-  mensagem: string;
-  sucesso: boolean;
-  enviado_em: string;
-}
-
-export interface DiaAgregado {
-  label: string;
-  total: number;
-  sucesso: number;
-}
-
-export interface ItemMaisCobrado {
-  entidade: "pedido" | "solicitacao";
-  entidade_id: string;
   numero: string;
-  dias_cobrados: number;
+  obra: string;
+  fornecedor: string;
+  dias_aberto: number;
+}
+
+export interface SolicitacaoAprovacaoRow {
+  id: string;
+  numero: string;
+  obra: string;
+  solicitante: string;
+  dias_aberto: number;
+}
+
+export interface PedidoEntregaRow {
+  id: string;
+  numero: string;
+  obra: string;
+  fornecedor: string;
+  prazo_entrega: string | null; // ISO date
+  dias_restantes: number | null;
 }
 
 export interface PedidoPrazoRow {
@@ -53,228 +52,203 @@ function KpiCard({ label, value, sub, tone }: { label: string; value: string | n
   );
 }
 
+function formatarData(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
+}
+
+function TabelaVazia({ colSpan, texto }: { colSpan: number; texto: string }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-5 py-8 text-center text-sm text-text-3">
+        {texto}
+      </td>
+    </tr>
+  );
+}
+
 export function CobrancaDashboard({
-  periodoAtual,
   kpis,
-  logsDiario,
-  porDiaSemanal,
-  porSemanaMensal,
-  maisCobrados,
-  pedidosPrazoDetalhe,
+  pedidosAprovacao,
+  solicitacoesAprovacao,
+  pedidosEmEntrega,
+  pedidosAtrasados,
 }: {
-  periodoAtual: "diario" | "semanal" | "mensal";
   kpis: CobrancaKpis;
-  logsDiario: LogRow[];
-  porDiaSemanal: DiaAgregado[];
-  porSemanaMensal: DiaAgregado[];
-  maisCobrados: ItemMaisCobrado[];
-  pedidosPrazoDetalhe: PedidoPrazoRow[];
+  pedidosAprovacao: PedidoAprovacaoRow[];
+  solicitacoesAprovacao: SolicitacaoAprovacaoRow[];
+  pedidosEmEntrega: PedidoEntregaRow[];
+  pedidosAtrasados: PedidoPrazoRow[];
 }) {
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
       <p className="mt-1 text-sm text-text-2">
-        Pedidos e solicitações parados em Aguardando Aprovação são cobrados diariamente (dias
-        úteis) via WhatsApp.
+        Visão geral de pedidos e solicitações de compra: o que está parado aguardando aprovação,
+        o que está a caminho e o que já passou do prazo combinado.
       </p>
 
       {/* KPIs */}
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <KpiCard label="Pedidos a aprovar" value={kpis.pedidosAguardandoAprovacao} />
+        <KpiCard label="Solicitações a aprovar" value={kpis.solicitacoesAguardandoAprovacao} />
+        <KpiCard label="Pedidos em entrega" value={kpis.pedidosEmEntrega} sub="Aguardando Recebimento" />
         <KpiCard
-          label="Pedidos aguard. aprovação"
-          value={kpis.pedidosAguardandoAprovacao}
-          sub={kpis.pedidosAguardandoAprovacao > 0 ? `${kpis.pedidosDiasMedio}d em média` : undefined}
-        />
-        <KpiCard
-          label="Solicitações aguard. aprovação"
-          value={kpis.solicitacoesAguardandoAprovacao}
-          sub={kpis.solicitacoesAguardandoAprovacao > 0 ? `${kpis.solicitacoesDiasMedio}d em média` : undefined}
-        />
-        <KpiCard
-          label="Cobranças enviadas hoje"
-          value={kpis.cobrancasHojeSucesso}
-          sub={kpis.cobrancasHojeErro > 0 ? `${kpis.cobrancasHojeErro} com erro` : "0 erros"}
-          tone={kpis.cobrancasHojeErro > 0 ? "warning" : undefined}
-        />
-        <KpiCard
-          label="Pedidos com prazo vencido"
+          label="Pedidos atrasados"
           value={kpis.pedidosPrazoVencido}
-          sub="Aguardando Recebimento"
+          sub="Prazo de entrega vencido"
           tone={kpis.pedidosPrazoVencido > 0 ? "danger" : undefined}
         />
       </div>
 
-      {/* Pedidos com prazo de entrega vencido */}
-      {pedidosPrazoDetalhe.length > 0 && (
-        <div className="mt-6 card overflow-x-auto">
-          <div className="border-b border-border px-5 py-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text">Pedidos com entrega atrasada</h2>
-            <span className="text-xs text-text-3">
-              {pedidosPrazoDetalhe.length} pedido{pedidosPrazoDetalhe.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
-                <th className="px-5 py-2 font-medium">Pedido</th>
-                <th className="px-5 py-2 font-medium">Obra</th>
-                <th className="px-5 py-2 font-medium">Fornecedor</th>
-                <th className="px-5 py-2 font-medium">Prazo de entrega</th>
-                <th className="px-5 py-2 font-medium">Atraso</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidosPrazoDetalhe.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="px-5 py-2.5">
-                    <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">
-                      {p.numero}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
-                  <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
-                  <td className="px-5 py-2.5 text-text-2">
-                    {new Date(`${p.prazo_entrega}T00:00:00`).toLocaleDateString("pt-BR")}
-                  </td>
-                  <td className="px-5 py-2.5">
-                    <span className="text-danger font-medium">{p.dias_atraso}d</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Pedidos aguardando aprovação */}
+      <div className="mt-6 card overflow-x-auto">
+        <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">Pedidos a aprovar</h2>
+          <span className="text-xs text-text-3">
+            {pedidosAprovacao.length} pedido{pedidosAprovacao.length !== 1 ? "s" : ""}
+          </span>
         </div>
-      )}
-
-      {/* Sub-abas de período */}
-      <div className="mt-8 flex gap-1 border-b border-border">
-        {(["diario", "semanal", "mensal"] as const).map((p) => {
-          const active = periodoAtual === p;
-          const label = p === "diario" ? "Diário" : p === "semanal" ? "Semanal" : "Mensal";
-          return (
-            <Link
-              key={p}
-              href={`/squadframe?aba=cobranca&periodo=${p}`}
-              className={
-                active
-                  ? "border-b-2 border-primary px-4 py-2.5 text-sm font-semibold text-text shrink-0"
-                  : "px-4 py-2.5 text-sm font-medium text-text-3 hover:text-text-2 shrink-0"
-              }
-            >
-              {label}
-            </Link>
-          );
-        })}
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+              <th className="px-5 py-2 font-medium">Pedido</th>
+              <th className="px-5 py-2 font-medium">Obra</th>
+              <th className="px-5 py-2 font-medium">Fornecedor</th>
+              <th className="px-5 py-2 font-medium">Em aberto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedidosAprovacao.length === 0 ? (
+              <TabelaVazia colSpan={4} texto="Nenhum pedido aguardando aprovação." />
+            ) : pedidosAprovacao.map((p) => (
+              <tr key={p.id} className="border-b border-border last:border-0">
+                <td className="px-5 py-2.5">
+                  <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">
+                    {p.numero}
+                  </Link>
+                </td>
+                <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.dias_aberto}d</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {periodoAtual === "diario" && (
-        <div className="mt-6 card overflow-x-auto">
-          <div className="border-b border-border px-5 py-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text">Cobranças de hoje</h2>
-            <span className="text-xs text-text-3">{logsDiario.length} envio{logsDiario.length !== 1 ? "s" : ""}</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
-                <th className="px-5 py-2 font-medium">Entidade</th>
-                <th className="px-5 py-2 font-medium">Destino</th>
-                <th className="px-5 py-2 font-medium">Status</th>
-                <th className="px-5 py-2 font-medium">Hora</th>
+      {/* Solicitações aguardando aprovação */}
+      <div className="mt-6 card overflow-x-auto">
+        <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">Solicitações a aprovar</h2>
+          <span className="text-xs text-text-3">
+            {solicitacoesAprovacao.length} solicitação{solicitacoesAprovacao.length !== 1 ? "ões" : ""}
+          </span>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+              <th className="px-5 py-2 font-medium">Solicitação</th>
+              <th className="px-5 py-2 font-medium">Obra</th>
+              <th className="px-5 py-2 font-medium">Solicitante</th>
+              <th className="px-5 py-2 font-medium">Em aberto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {solicitacoesAprovacao.length === 0 ? (
+              <TabelaVazia colSpan={4} texto="Nenhuma solicitação aguardando aprovação." />
+            ) : solicitacoesAprovacao.map((s) => (
+              <tr key={s.id} className="border-b border-border last:border-0">
+                <td className="px-5 py-2.5">
+                  <Link href="/squadframe/compras/solicitacoes" className="font-mono text-sm font-semibold text-primary hover:underline">
+                    {s.numero}
+                  </Link>
+                </td>
+                <td className="px-5 py-2.5 text-text-2">{s.obra}</td>
+                <td className="px-5 py-2.5 text-text-2">{s.solicitante}</td>
+                <td className="px-5 py-2.5 text-text-2">{s.dias_aberto}d</td>
               </tr>
-            </thead>
-            <tbody>
-              {logsDiario.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-text-3">
-                    Nenhuma cobrança enviada hoje ainda.
-                  </td>
-                </tr>
-              ) : logsDiario.map((log) => (
-                <tr key={log.id} className="border-b border-border last:border-0">
-                  <td className="px-5 py-2.5 text-text-2">
-                    {log.entidade === "pedido" ? "Pedido" : "Solicitação"}
-                  </td>
-                  <td className="px-5 py-2.5 text-text-2">
-                    {log.destino_tipo === "grupo" ? "Grupo" : "Individual"}
-                  </td>
-                  <td className="px-5 py-2.5">
-                    <span className={log.sucesso ? "text-success" : "text-danger"}>
-                      {log.sucesso ? "Enviado" : "Erro"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-2.5 text-text-3">
-                    {new Date(log.enviado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {periodoAtual === "semanal" && (
-        <div className="mt-6 card p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-text">Cobranças por dia útil (semana atual)</h2>
-          {porDiaSemanal.every((d) => d.total === 0) ? (
-            <p className="text-sm text-text-3">Nenhuma cobrança enviada nesta semana ainda.</p>
-          ) : porDiaSemanal.map((d) => (
-            <Progress
-              key={d.label}
-              label={`${d.label} — ${d.total} envio${d.total !== 1 ? "s" : ""}`}
-              value={d.total === 0 ? 0 : d.sucesso}
-              max={Math.max(d.total, 1)}
-              variant={d.total > 0 && d.sucesso < d.total ? "warning" : "success"}
-              showValue
-            />
-          ))}
-        </div>
-      )}
-
-      {periodoAtual === "mensal" && (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="card p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-text">Cobranças por semana (mês atual)</h2>
-            {porSemanaMensal.every((s) => s.total === 0) ? (
-              <p className="text-sm text-text-3">Nenhuma cobrança enviada neste mês ainda.</p>
-            ) : porSemanaMensal.map((s) => (
-              <Progress
-                key={s.label}
-                label={`${s.label} — ${s.total} envio${s.total !== 1 ? "s" : ""}`}
-                value={s.total === 0 ? 0 : s.sucesso}
-                max={Math.max(s.total, 1)}
-                variant={s.total > 0 && s.sucesso < s.total ? "warning" : "success"}
-                showValue
-              />
             ))}
-          </div>
+          </tbody>
+        </table>
+      </div>
 
-          <div className="card">
-            <div className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold text-text">Mais cobrados no mês</h2>
-            </div>
-            <div className="divide-y divide-border">
-              {maisCobrados.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-text-3 text-center">Nenhum item cobrado repetidamente ainda.</p>
-              ) : maisCobrados.map((item) => (
-                <Link
-                  key={`${item.entidade}-${item.entidade_id}`}
-                  href={
-                    item.entidade === "pedido"
-                      ? `/squadframe/compras/pedidos/${item.entidade_id}`
-                      : `/squadframe/compras/solicitacoes`
-                  }
-                  className="flex items-center justify-between px-5 py-3 hover:bg-bg/50"
-                >
-                  <span className="text-sm font-medium text-primary">
-                    {item.entidade === "pedido" ? "Pedido" : "Solicitação"} #{item.numero}
-                  </span>
-                  <span className="text-xs text-text-3">{item.dias_cobrados} dia(s) cobrado(s)</span>
-                </Link>
-              ))}
-            </div>
-          </div>
+      {/* Pedidos em entrega */}
+      <div className="mt-6 card overflow-x-auto">
+        <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">Pedidos em entrega</h2>
+          <span className="text-xs text-text-3">
+            {pedidosEmEntrega.length} pedido{pedidosEmEntrega.length !== 1 ? "s" : ""}
+          </span>
         </div>
-      )}
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+              <th className="px-5 py-2 font-medium">Pedido</th>
+              <th className="px-5 py-2 font-medium">Obra</th>
+              <th className="px-5 py-2 font-medium">Fornecedor</th>
+              <th className="px-5 py-2 font-medium">Prazo de entrega</th>
+              <th className="px-5 py-2 font-medium">Faltam</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedidosEmEntrega.length === 0 ? (
+              <TabelaVazia colSpan={5} texto="Nenhum pedido aguardando recebimento." />
+            ) : pedidosEmEntrega.map((p) => (
+              <tr key={p.id} className="border-b border-border last:border-0">
+                <td className="px-5 py-2.5">
+                  <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">
+                    {p.numero}
+                  </Link>
+                </td>
+                <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.prazo_entrega ? formatarData(p.prazo_entrega) : "Sem prazo definido"}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.dias_restantes != null ? `${p.dias_restantes}d` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pedidos com prazo de entrega vencido */}
+      <div className="mt-6 card overflow-x-auto">
+        <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">Pedidos atrasados</h2>
+          <span className="text-xs text-text-3">
+            {pedidosAtrasados.length} pedido{pedidosAtrasados.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+              <th className="px-5 py-2 font-medium">Pedido</th>
+              <th className="px-5 py-2 font-medium">Obra</th>
+              <th className="px-5 py-2 font-medium">Fornecedor</th>
+              <th className="px-5 py-2 font-medium">Prazo de entrega</th>
+              <th className="px-5 py-2 font-medium">Atraso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedidosAtrasados.length === 0 ? (
+              <TabelaVazia colSpan={5} texto="Nenhum pedido atrasado." />
+            ) : pedidosAtrasados.map((p) => (
+              <tr key={p.id} className="border-b border-border last:border-0">
+                <td className="px-5 py-2.5">
+                  <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">
+                    {p.numero}
+                  </Link>
+                </td>
+                <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
+                <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
+                <td className="px-5 py-2.5 text-text-2">{formatarData(p.prazo_entrega)}</td>
+                <td className="px-5 py-2.5">
+                  <span className="text-danger font-medium">{p.dias_atraso}d</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

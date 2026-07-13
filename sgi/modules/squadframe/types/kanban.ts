@@ -11,6 +11,8 @@ export type NotificacaoTipo =
   | 'debito_carteira_falhou'
   | 'solicitacao_aprovada'
   | 'solicitacao_rejeitada'
+  | 'pedido_cobranca_prazo'
+  | 'solicitacao_cobranca_prazo'
   // SquadBoard
   | 'board_card_atribuido'
   | 'board_card_movido'
@@ -32,6 +34,8 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'debito_carteira_falhou',
     'solicitacao_aprovada',
     'solicitacao_rejeitada',
+    'pedido_cobranca_prazo',
+    'solicitacao_cobranca_prazo',
   ],
   squadboard: [
     'board_card_atribuido',

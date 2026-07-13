@@ -10,11 +10,25 @@ export default async function PerfilPage() {
   if (!usuario) notFound();
 
   const admin = createAdminClient();
-  const { data: assinatura } = await admin
-    .from("assinaturas")
-    .select("texto")
-    .eq("usuario_id", usuario.id)
-    .single();
+  const [{ data: assinatura }, { data: whatsappStatus }] = await Promise.all([
+    admin.from("assinaturas").select("texto").eq("usuario_id", usuario.id).single(),
+    admin
+      .from("usuarios")
+      .select("whatsapp_pendente, whatsapp_codigo_expira_em")
+      .eq("id", usuario.id)
+      .single(),
+  ]);
 
-  return <PerfilCliente usuario={usuario} assinaturaUrl={assinatura?.texto ?? null} />;
+  const verificacaoPendente =
+    !!whatsappStatus?.whatsapp_pendente &&
+    !!whatsappStatus?.whatsapp_codigo_expira_em &&
+    new Date(whatsappStatus.whatsapp_codigo_expira_em) > new Date();
+
+  return (
+    <PerfilCliente
+      usuario={usuario}
+      assinaturaUrl={assinatura?.texto ?? null}
+      whatsappPendente={verificacaoPendente ? whatsappStatus!.whatsapp_pendente : null}
+    />
+  );
 }

@@ -138,6 +138,7 @@ export async function alterarStatusPedido(
   id: string,
   status: string,
   observacoes?: string,
+  prazoEntrega?: string,
 ) {
   const permissaoNecessaria =
     status === "APROVADO"  ? PERMISSIONS.COMPRAS_PEDIDO_APROVAR  :
@@ -151,7 +152,7 @@ export async function alterarStatusPedido(
 
   const { data: ped } = await admin
     .from("pedidos_compra")
-    .select("status, obra_id, usa_carteira, debito_registrado, comprador_id, numero")
+    .select("status, obra_id, usa_carteira, debito_registrado, comprador_id, numero, prazo_entrega")
     .eq("id", id)
     .single();
   if (!ped) throw new Error("Pedido não encontrado.");
@@ -161,7 +162,18 @@ export async function alterarStatusPedido(
 
   validarTransicaoPedido(ped.status, status);
 
-  const { error } = await admin.from("pedidos_compra").update({ status }).eq("id", id);
+  // Prazo de entrega é obrigatório para entrar em Aguardando Recebimento
+  if (status === "AGUARDANDO_RECEBIMENTO") {
+    const prazoFinal = prazoEntrega || ped.prazo_entrega;
+    if (!prazoFinal) {
+      throw new Error("Informe o prazo de entrega antes de mover o pedido para Aguardando Recebimento.");
+    }
+  }
+
+  const patch: Record<string, unknown> = { status };
+  if (status === "AGUARDANDO_RECEBIMENTO" && prazoEntrega) patch.prazo_entrega = prazoEntrega;
+
+  const { error } = await admin.from("pedidos_compra").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 
   // Transição de devolver para edição: REJEITADO → RASCUNHO emite evento próprio

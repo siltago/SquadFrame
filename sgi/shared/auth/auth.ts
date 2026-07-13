@@ -9,6 +9,7 @@ export type UsuarioAtual = {
   email: string;
   foto_url: string | null;
   empresa: string | null;
+  whatsapp: string | null;
   cargo: {
     id: string;
     nome: string;
@@ -41,7 +42,7 @@ export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
   const { data } = await admin
     .from("usuarios")
     .select(
-      `id, auth_id, nome, email, foto_url, empresa,
+      `id, auth_id, nome, email, foto_url, empresa, whatsapp,
        cargo:cargos(id, nome, cor, is_admin, setor:setores(id, nome, cor))`
     )
     .eq("auth_id", user.id)
@@ -55,6 +56,7 @@ export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
       email: user.email ?? "",
       foto_url: user.user_metadata?.foto_url ?? null,
       empresa: user.user_metadata?.empresa ?? null,
+      whatsapp: null,
       cargo: null,
       setor: null,
       permissoes: null,
@@ -85,6 +87,7 @@ export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
     email: data.email,
     foto_url: data.foto_url ?? user.user_metadata?.foto_url ?? null,
     empresa: data.empresa,
+    whatsapp: data.whatsapp ?? null,
     cargo: cargo
       ? { id: cargo.id, nome: cargo.nome, cor: cargo.cor, is_admin: cargo.is_admin }
       : null,

@@ -42,6 +42,9 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const [obs, setObs] = useState("");
   const [showObs, setShowObs] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<string | null>(null);
+  const [showPrazo, setShowPrazo] = useState(false);
+  const [prazoInput, setPrazoInput] = useState(pedido.prazo_entrega ?? "");
+  const [erroPrazo, setErroPrazo] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
@@ -94,20 +97,30 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     if (["CANCELADO", "REJEITADO", "RASCUNHO"].includes(status)) {
       setAcaoPendente(status); setShowObs(true); return;
     }
+    if (status === "AGUARDANDO_RECEBIMENTO" && !pedido.prazo_entrega) {
+      setAcaoPendente(status); setErroPrazo(null); setShowPrazo(true); return;
+    }
     pedirAssinatura(status, "");
   }
 
-  function pedirAssinatura(status: string, observacoes: string) {
+  function pedirAssinatura(status: string, observacoes: string, prazoEntrega?: string) {
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await alterarStatusPedido(pedido.id, status, observacoes || undefined);
+          await alterarStatusPedido(pedido.id, status, observacoes || undefined, prazoEntrega || undefined);
           router.refresh();
           setShowObs(false); setObs(""); setAcaoPendente(null);
+          setShowPrazo(false);
         } catch (e: any) { setErro(e.message); }
       });
     };
     setModalAcao(ACAO_LABEL[status] ?? status);
+  }
+
+  function confirmarPrazo() {
+    if (!prazoInput) { setErroPrazo("Informe o prazo de entrega."); return; }
+    setErroPrazo(null);
+    pedirAssinatura(acaoPendente!, "", prazoInput);
   }
 
   const podeRegistrarRecebimento =
@@ -287,6 +300,31 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {showPrazo && (
+          <div className="w-72 rounded-lg border border-border bg-surface p-3 shadow-sm">
+            <label className="label">Prazo de entrega</label>
+            <p className="mb-2 text-xs text-text-3">
+              Obrigatório para mover o pedido para Aguardando Recebimento.
+            </p>
+            <input
+              type="date"
+              value={prazoInput}
+              onChange={(e) => setPrazoInput(e.target.value)}
+              className="field text-sm"
+              autoFocus
+            />
+            {erroPrazo && <p className="mt-1 text-xs text-danger">{erroPrazo}</p>}
+            <div className="mt-2 flex gap-2">
+              <Button onClick={confirmarPrazo} className="flex-1 text-xs">
+                Continuar
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowPrazo(false); setAcaoPendente(null); }} className="text-xs">
+                Cancelar
+              </Button>
+            </div>
           </div>
         )}
 

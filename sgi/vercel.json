@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/preco-kg-perfis",
       "schedule": "0 6 1,16 * *"
+    },
+    {
+      "path": "/api/cron/cobranca-prazos",
+      "schedule": "0 11 * * 1-5"
     }
   ]
 }

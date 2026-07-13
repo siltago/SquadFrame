@@ -3,16 +3,55 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { MinhaCentral } from "@/modules/squadframe/components/kanban/minha-central";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
+import { CentralTabNav } from "@/modules/squadframe/components/cobranca/tab-nav";
+import { CobrancaDashboard } from "@/modules/squadframe/components/cobranca/cobranca-dashboard";
+import { buscarRelatorioCobranca } from "@/modules/squadframe/services/cobranca/relatorio";
 
 export const dynamic = "force-dynamic";
 
 const PEDIDO_COMPRADOR_SELECT = "id, numero, tipo_linha, fornecedor:fornecedores(nome), obra:obras(nome)";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { aba?: string; periodo?: string };
+}) {
   const usuario = await getUsuarioAtual();
   if (!usuario) redirect("/login");
 
   const admin = createAdminClient();
+
+  const podeAprovarPedidoTab =
+    usuario.permissoes?.includes("*") || usuario.permissoes?.includes("compras.pedido.aprovar") || false;
+  const podeAprovarSolicitacaoTab =
+    usuario.permissoes?.includes("*") || usuario.permissoes?.includes("compras.solicitacao.aprovar") || false;
+  const podeCobranca = podeAprovarPedidoTab || podeAprovarSolicitacaoTab;
+
+  const abaAtual = searchParams.aba === "cobranca" && podeCobranca ? "cobranca" : "central";
+
+  if (abaAtual === "cobranca") {
+    const periodo =
+      searchParams.periodo === "semanal" || searchParams.periodo === "mensal"
+        ? searchParams.periodo
+        : "diario";
+    const relatorio = await buscarRelatorioCobranca(admin, periodo);
+
+    return (
+      <div className="px-8 py-8 max-w-6xl">
+        <div className="border-b border-border mb-6">
+          <CentralTabNav podeCobranca={podeCobranca} />
+        </div>
+        <CobrancaDashboard
+          periodoAtual={periodo}
+          kpis={relatorio.kpis}
+          logsDiario={relatorio.logsDiario}
+          porDiaSemanal={relatorio.porDiaSemanal}
+          porSemanaMensal={relatorio.porSemanaMensal}
+          maisCobrados={relatorio.maisCobrados}
+        />
+      </div>
+    );
+  }
 
   const TAREFA_SELECT = `
     id, titulo, status, prioridade, data_limite, setor_id, coluna_id, origem,
@@ -22,15 +61,8 @@ export default async function HomePage() {
     etiquetas:tarefa_etiquetas(etiqueta:etiquetas(id, nome, cor, setor_id))
   `;
 
-  const podeAprovarPedido =
-    usuario.permissoes?.includes("*") ||
-    usuario.permissoes?.includes("compras.pedido.aprovar") ||
-    false;
-
-  const podeAprovarSolicitacao =
-    usuario.permissoes?.includes("*") ||
-    usuario.permissoes?.includes("compras.solicitacao.aprovar") ||
-    false;
+  const podeAprovarPedido = podeAprovarPedidoTab;
+  const podeAprovarSolicitacao = podeAprovarSolicitacaoTab;
 
   const STATUS_EXCLUIR = '("CONCLUIDA","CANCELADA")';
 
@@ -111,6 +143,11 @@ export default async function HomePage() {
             : []),
         ]}
       />
+      {podeCobranca && (
+        <div className="border-b border-border bg-surface px-5 pt-2">
+          <CentralTabNav podeCobranca={podeCobranca} />
+        </div>
+      )}
       <MinhaCentral
         minhasTarefas={(minhasTarefasRaw ?? []) as any}
         setorTarefas={(setorTarefasData ?? []) as any}

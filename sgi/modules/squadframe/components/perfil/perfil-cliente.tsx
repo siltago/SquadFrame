@@ -4,7 +4,14 @@ import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/shared/database/supabase-client";
 import { BackButton } from "@/modules/squadframe/components/back-button";
-import { salvarFotoUrl, salvarPerfil, salvarAssinatura } from "@/modules/squadframe/actions/perfil/actions";
+import {
+  salvarFotoUrl,
+  salvarPerfil,
+  salvarAssinatura,
+  enviarCodigoWhatsapp,
+  confirmarCodigoWhatsapp,
+  cancelarVerificacaoWhatsapp,
+} from "@/modules/squadframe/actions/perfil/actions";
 import type { UsuarioAtual } from "@/shared/auth/auth";
 import { Avatar } from "@/ui/components/Avatar";
 import { Button } from "@/ui/components/Button";
@@ -107,7 +114,158 @@ function CardAssinatura({ textoAtual, nome, cargo }: { textoAtual: string | null
   );
 }
 
-export function PerfilCliente({ usuario, assinaturaUrl }: { usuario: UsuarioAtual; assinaturaUrl: string | null }) {
+type EstadoWhatsapp = "visualizar" | "editar" | "confirmar";
+
+function CardWhatsapp({
+  numeroVerificado,
+  numeroPendenteInicial,
+}: {
+  numeroVerificado: string | null;
+  numeroPendenteInicial: string | null;
+}) {
+  const [estado, setEstado] = useState<EstadoWhatsapp>(
+    numeroPendenteInicial ? "confirmar" : numeroVerificado ? "visualizar" : "editar"
+  );
+  const [numero, setNumero] = useState(numeroVerificado ?? "");
+  const [numeroPendente, setNumeroPendente] = useState(numeroPendenteInicial);
+  const [codigo, setCodigo] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+  const router = useRouter();
+
+  function handleEnviarCodigo() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const { numeroEnvio } = await enviarCodigoWhatsapp(numero);
+        setNumeroPendente(numeroEnvio);
+        setCodigo("");
+        setEstado("confirmar");
+      } catch (e: any) {
+        setErro(e.message);
+      }
+    });
+  }
+
+  function handleConfirmarCodigo() {
+    if (!codigo.trim()) { setErro("Informe o código recebido."); return; }
+    setErro(null);
+    startTransition(async () => {
+      try {
+        await confirmarCodigoWhatsapp(codigo.trim());
+        setOk(true);
+        setEstado("visualizar");
+        router.refresh();
+      } catch (e: any) {
+        setErro(e.message);
+      }
+    });
+  }
+
+  function handleCancelar() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        await cancelarVerificacaoWhatsapp();
+      } catch {
+        // best-effort — segue trocando a UI mesmo se a limpeza falhar
+      }
+      setNumeroPendente(null);
+      setEstado(numeroVerificado ? "visualizar" : "editar");
+    });
+  }
+
+  return (
+    <div className="card p-6">
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-2">
+        WhatsApp
+      </h2>
+      <p className="mb-5 text-xs text-text-3">
+        Usado para receber cobranças de prazo (pedidos e solicitações aguardando aprovação).
+        Precisa ser confirmado por código antes de valer.
+      </p>
+
+      {estado === "visualizar" && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg px-3 py-2">
+          <span className="text-sm text-text">{numeroVerificado}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 px-3 text-xs shrink-0"
+            onClick={() => { setEstado("editar"); setNumero(numeroVerificado ?? ""); setOk(false); }}
+          >
+            Editar
+          </Button>
+        </div>
+      )}
+
+      {estado === "editar" && (
+        <>
+          <Input
+            label="Número"
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            placeholder="(11) 99999-8888"
+          />
+          {erro && <Alert variant="danger" className="mt-3">{erro}</Alert>}
+          <div className="mt-3 flex gap-2">
+            <Button type="button" onClick={handleEnviarCodigo} disabled={pending || !numero.trim()} className="text-sm">
+              {pending ? "Enviando…" : "Enviar código"}
+            </Button>
+            {numeroVerificado && (
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => { setEstado("visualizar"); setErro(null); }} className="text-sm">
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+
+      {estado === "confirmar" && (
+        <>
+          <p className="mb-3 text-sm text-text-2">
+            Enviamos um código de 6 dígitos para <strong>{numeroPendente}</strong>. Informe abaixo para confirmar.
+          </p>
+          <Input
+            label="Código de verificação"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            className="font-mono tracking-widest"
+            maxLength={6}
+          />
+          {erro && <Alert variant="danger" className="mt-3">{erro}</Alert>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" onClick={handleConfirmarCodigo} disabled={pending || codigo.length !== 6} className="text-sm">
+              {pending ? "Confirmando…" : "Confirmar código"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={pending} onClick={handleEnviarCodigo} className="text-sm">
+              Reenviar código
+            </Button>
+            <Button type="button" variant="ghost" disabled={pending} onClick={handleCancelar} className="text-sm">
+              Cancelar
+            </Button>
+          </div>
+        </>
+      )}
+
+      {ok && estado === "visualizar" && (
+        <Alert variant="success" className="mt-3">WhatsApp confirmado com sucesso.</Alert>
+      )}
+    </div>
+  );
+}
+
+export function PerfilCliente({
+  usuario,
+  assinaturaUrl,
+  whatsappPendente,
+}: {
+  usuario: UsuarioAtual;
+  assinaturaUrl: string | null;
+  whatsappPendente: string | null;
+}) {
   const [nome, setNome] = useState(usuario.nome);
   const [empresa, setEmpresa] = useState(usuario.empresa ?? "");
   const [fotoUrl, setFotoUrl] = useState(usuario.foto_url ?? "");
@@ -302,6 +460,9 @@ export function PerfilCliente({ usuario, assinaturaUrl }: { usuario: UsuarioAtua
 
         {/* Card: assinatura */}
         <CardAssinatura textoAtual={assinaturaUrl} nome={usuario.nome} cargo={usuario.cargo?.nome ?? null} />
+
+        {/* Card: WhatsApp */}
+        <CardWhatsapp numeroVerificado={usuario.whatsapp} numeroPendenteInicial={whatsappPendente} />
 
         {/* Card: senha */}
         <div className="card p-6">

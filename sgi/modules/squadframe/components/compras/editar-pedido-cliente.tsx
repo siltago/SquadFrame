@@ -265,7 +265,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
             )}
             <div>
               <label className="label">Prazo de entrega <span className="text-text-3 font-normal">(opcional)</span></label>
-              <input type="date" name="prazo_entrega" defaultValue={pedido.prazo_entrega ?? ""} className="field" />
+              <input type="date" lang="pt-BR" name="prazo_entrega" defaultValue={pedido.prazo_entrega ?? ""} className="field" />
             </div>
             <div className="sm:col-span-2">
               <label className="label">Observações</label>

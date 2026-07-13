@@ -314,6 +314,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
             <div className="flex items-center gap-2">
               <input
                 type="date"
+                lang="pt-BR"
                 value={prazoEdicaoInput}
                 onChange={(e) => setPrazoEdicaoInput(e.target.value)}
                 className="field h-9 flex-1 text-sm"
@@ -370,6 +371,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
             </p>
             <input
               type="date"
+              lang="pt-BR"
               value={prazoInput}
               onChange={(e) => setPrazoInput(e.target.value)}
               className="field text-sm"

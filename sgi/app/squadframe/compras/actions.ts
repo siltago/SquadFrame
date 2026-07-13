@@ -16,6 +16,7 @@ export {
   excluirPedidos,
   registrarValorFinal,
   confirmarDebitoPedido,
+  atualizarPrazoEntrega,
 } from "@/modules/squadframe/actions/compras/pedidos";
 
 export { registrarRecebimento } from "@/modules/squadframe/actions/compras/recebimentos";

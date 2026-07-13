@@ -345,6 +345,43 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
   }
 }
 
+// Prazo de entrega já é obrigatório para emitir o pedido (ver
+// alterarStatusPedido), mas até aqui não tinha como corrigir depois — se o
+// fornecedor muda a data já com o pedido em Aguardando Recebimento, ficava
+// sem jeito de ajustar pela interface.
+export async function atualizarPrazoEntrega(pedidoId: string, prazoEntrega: string) {
+  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
+  if (!prazoEntrega) throw new Error("Informe o prazo de entrega.");
+  const admin = createAdminClient();
+
+  const { data: ped } = await admin
+    .from("pedidos_compra")
+    .select("status, prazo_entrega")
+    .eq("id", pedidoId)
+    .single();
+
+  if (!ped || ped.status !== "AGUARDANDO_RECEBIMENTO") {
+    throw new Error("O prazo de entrega só pode ser alterado enquanto o pedido está Aguardando Recebimento.");
+  }
+
+  const { error } = await admin
+    .from("pedidos_compra")
+    .update({ prazo_entrega: prazoEntrega })
+    .eq("id", pedidoId);
+  if (error) throw new Error(error.message);
+
+  const usuario_id = await getUsuarioId();
+  await admin.from("compra_historico").insert({
+    entidade: "pedido", entidade_id: pedidoId,
+    acao: "PRAZO_ENTREGA_ATUALIZADO",
+    dados: { prazo_anterior: ped.prazo_entrega, prazo_novo: prazoEntrega },
+    usuario_id,
+  });
+
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
+  revalidatePath("/squadframe");
+}
+
 // Ratia o valor final do pedido entre os itens proporcionalmente ao peso de
 // cada um (kg). Itens sem peso calculável (produto sem tamanho/peso
 // cadastrado) mantêm o preco_unitario atual e ficam de fora do rateio.

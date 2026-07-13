@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alterarStatusPedido, registrarValorFinal, confirmarDebitoPedido } from "@/app/squadframe/compras/actions";
+import { alterarStatusPedido, registrarValorFinal, confirmarDebitoPedido, atualizarPrazoEntrega } from "@/app/squadframe/compras/actions";
 import { recalcularPrecoKgPerfisAction } from "@/modules/squadframe/actions/catalogo/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
@@ -45,6 +45,12 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
   const [showPrazo, setShowPrazo] = useState(false);
   const [prazoInput, setPrazoInput] = useState(pedido.prazo_entrega ?? "");
   const [erroPrazo, setErroPrazo] = useState<string | null>(null);
+  // Edição de prazo depois que o pedido já está Aguardando Recebimento —
+  // fluxo separado do prompt de prazo na emissão (showPrazo/prazoInput acima).
+  const [showPrazoEdicao, setShowPrazoEdicao] = useState(false);
+  const [prazoEdicaoInput, setPrazoEdicaoInput] = useState(pedido.prazo_entrega ?? "");
+  const [pendingPrazoEdicao, startPrazoEdicao] = useTransition();
+  const [erroPrazoEdicao, setErroPrazoEdicao] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
@@ -123,6 +129,22 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     pedirAssinatura(acaoPendente!, "", prazoInput);
   }
 
+  // Prazo de entrega pode mudar depois do pedido já emitido (fornecedor
+  // atrasa/antecipa) — sem status transition envolvida, só o campo mesmo.
+  const podeEditarPrazoEntrega = podeCriar && pedido.status === "AGUARDANDO_RECEBIMENTO";
+
+  function salvarPrazoEdicao() {
+    if (!prazoEdicaoInput) { setErroPrazoEdicao("Informe o prazo de entrega."); return; }
+    setErroPrazoEdicao(null);
+    startPrazoEdicao(async () => {
+      try {
+        await atualizarPrazoEntrega(pedido.id, prazoEdicaoInput);
+        setShowPrazoEdicao(false);
+        router.refresh();
+      } catch (e: any) { setErroPrazoEdicao(e.message); }
+    });
+  }
+
   const podeRegistrarRecebimento =
     podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
 
@@ -170,7 +192,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     });
   }
 
-  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal) return null;
+  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega) return null;
 
   return (
     <>
@@ -226,6 +248,17 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
                 : "Adicionar valor final"}
             </button>
           )}
+          {podeEditarPrazoEntrega && (
+            <button
+              onClick={() => setShowPrazoEdicao((v) => !v)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-2 hover:bg-bg"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {pedido.prazo_entrega
+                ? `Prazo: ${new Date(`${pedido.prazo_entrega}T00:00:00`).toLocaleDateString("pt-BR")}`
+                : "Definir prazo de entrega"}
+            </button>
+          )}
           {podeRegistrarRecebimento && (
             <Button as="a" href={`/squadframe/compras/pedidos/${pedido.id}/receber`}>
               Registrar recebimento
@@ -269,6 +302,32 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
               </Button>
             </div>
             {erroVF && <p className="mt-2 text-xs text-danger">{erroVF}</p>}
+          </div>
+        )}
+
+        {showPrazoEdicao && (
+          <div className="w-72 rounded-xl border border-border bg-surface p-4 shadow-lg">
+            <p className="text-sm font-semibold text-text mb-1">Prazo de entrega</p>
+            <p className="text-xs text-text-2 mb-3">
+              Ajuste se o fornecedor mudou a data combinada.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={prazoEdicaoInput}
+                onChange={(e) => setPrazoEdicaoInput(e.target.value)}
+                className="field h-9 flex-1 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && salvarPrazoEdicao()}
+                autoFocus
+              />
+              <Button onClick={salvarPrazoEdicao} disabled={pendingPrazoEdicao} className="h-9 px-3 text-sm shrink-0">
+                {pendingPrazoEdicao ? "…" : "Salvar"}
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowPrazoEdicao(false); setErroPrazoEdicao(null); }} className="h-9 px-3 text-sm shrink-0">
+                ✕
+              </Button>
+            </div>
+            {erroPrazoEdicao && <p className="mt-2 text-xs text-danger">{erroPrazoEdicao}</p>}
           </div>
         )}
 

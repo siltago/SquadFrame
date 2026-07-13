@@ -33,6 +33,15 @@ export interface ItemMaisCobrado {
   dias_cobrados: number;
 }
 
+export interface PedidoPrazoRow {
+  id: string;
+  numero: string;
+  obra: string;
+  fornecedor: string;
+  prazo_entrega: string; // ISO date
+  dias_atraso: number;
+}
+
 function KpiCard({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: "warning" | "danger" }) {
   const cor = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : "text-text";
   return (
@@ -51,6 +60,7 @@ export function CobrancaDashboard({
   porDiaSemanal,
   porSemanaMensal,
   maisCobrados,
+  pedidosPrazoDetalhe,
 }: {
   periodoAtual: "diario" | "semanal" | "mensal";
   kpis: CobrancaKpis;
@@ -58,10 +68,11 @@ export function CobrancaDashboard({
   porDiaSemanal: DiaAgregado[];
   porSemanaMensal: DiaAgregado[];
   maisCobrados: ItemMaisCobrado[];
+  pedidosPrazoDetalhe: PedidoPrazoRow[];
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Cobrança de Prazos</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
       <p className="mt-1 text-sm text-text-2">
         Pedidos e solicitações parados em Aguardando Aprovação são cobrados diariamente (dias
         úteis) via WhatsApp.
@@ -92,6 +103,48 @@ export function CobrancaDashboard({
           tone={kpis.pedidosPrazoVencido > 0 ? "danger" : undefined}
         />
       </div>
+
+      {/* Pedidos com prazo de entrega vencido */}
+      {pedidosPrazoDetalhe.length > 0 && (
+        <div className="mt-6 card overflow-x-auto">
+          <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text">Pedidos com entrega atrasada</h2>
+            <span className="text-xs text-text-3">
+              {pedidosPrazoDetalhe.length} pedido{pedidosPrazoDetalhe.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+                <th className="px-5 py-2 font-medium">Pedido</th>
+                <th className="px-5 py-2 font-medium">Obra</th>
+                <th className="px-5 py-2 font-medium">Fornecedor</th>
+                <th className="px-5 py-2 font-medium">Prazo de entrega</th>
+                <th className="px-5 py-2 font-medium">Atraso</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pedidosPrazoDetalhe.map((p) => (
+                <tr key={p.id} className="border-b border-border last:border-0">
+                  <td className="px-5 py-2.5">
+                    <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">
+                      {p.numero}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
+                  <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
+                  <td className="px-5 py-2.5 text-text-2">
+                    {new Date(`${p.prazo_entrega}T00:00:00`).toLocaleDateString("pt-BR")}
+                  </td>
+                  <td className="px-5 py-2.5">
+                    <span className="text-danger font-medium">{p.dias_atraso}d</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Sub-abas de período */}
       <div className="mt-8 flex gap-1 border-b border-border">

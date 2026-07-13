@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 const ABAS = [
   { slug: "central", label: "Minha Central" },
-  { slug: "cobranca", label: "Cobrança de Prazos" },
+  { slug: "cobranca", label: "Dashboard" },
 ] as const;
 
 export function CentralTabNav({ podeCobranca }: { podeCobranca: boolean }) {

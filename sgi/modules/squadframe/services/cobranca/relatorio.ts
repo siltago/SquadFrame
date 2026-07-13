@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hojeSaoPaulo } from "./executar-cobranca";
-import type { CobrancaKpis, DiaAgregado, ItemMaisCobrado, LogRow } from "../../components/cobranca/cobranca-dashboard";
+import type { CobrancaKpis, DiaAgregado, ItemMaisCobrado, LogRow, PedidoPrazoRow } from "../../components/cobranca/cobranca-dashboard";
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -43,6 +43,43 @@ async function buscarKpis(admin: SupabaseClient, hojeISO: string): Promise<Cobra
     cobrancasHojeErro: (cobrancasHoje ?? []).filter((c) => !c.sucesso).length,
     pedidosPrazoVencido: pedidosVencidos?.length ?? 0,
   };
+}
+
+// PostgREST não expõe a cardinalidade real do join pro tipo genérico
+// SupabaseClient (uma FK simples sempre volta 1 objeto, mas o tipo inferido
+// permite array) — *Raw modela o shape real da resposta pra normalizar sem `any`.
+type NomeRelacao = { nome: string } | { nome: string }[] | null;
+type PedidoPrazoSelectRow = {
+  id: string;
+  numero: string;
+  prazo_entrega: string;
+  obra: NomeRelacao;
+  fornecedor: NomeRelacao;
+};
+
+function nomeDaRelacao(v: NomeRelacao): string | null {
+  const obj = Array.isArray(v) ? v[0] ?? null : v;
+  return obj?.nome ?? null;
+}
+
+async function buscarPedidosPrazoVencido(admin: SupabaseClient, hojeISO: string): Promise<PedidoPrazoRow[]> {
+  const { data } = await admin
+    .from("pedidos_compra")
+    .select("id, numero, prazo_entrega, obra:obras(nome), fornecedor:fornecedores(nome)")
+    .eq("status", "AGUARDANDO_RECEBIMENTO")
+    .lt("prazo_entrega", hojeISO)
+    .order("prazo_entrega", { ascending: true });
+
+  const linhas = (data ?? []) as unknown as PedidoPrazoSelectRow[];
+
+  return linhas.map((p): PedidoPrazoRow => ({
+    id: p.id,
+    numero: p.numero,
+    obra: nomeDaRelacao(p.obra) ?? "Sem obra",
+    fornecedor: nomeDaRelacao(p.fornecedor) ?? "—",
+    prazo_entrega: p.prazo_entrega,
+    dias_atraso: diasEntre(p.prazo_entrega.slice(0, 10), hojeISO),
+  }));
 }
 
 async function buscarLogsDiario(admin: SupabaseClient, hojeISO: string): Promise<LogRow[]> {
@@ -159,13 +196,14 @@ async function buscarMaisCobrados(admin: SupabaseClient, hojeISO: string): Promi
 export async function buscarRelatorioCobranca(admin: SupabaseClient, periodo: "diario" | "semanal" | "mensal") {
   const hojeISO = hojeSaoPaulo();
 
-  const [kpis, logsDiario, porDiaSemanal, porSemanaMensal, maisCobrados] = await Promise.all([
+  const [kpis, logsDiario, porDiaSemanal, porSemanaMensal, maisCobrados, pedidosPrazoDetalhe] = await Promise.all([
     buscarKpis(admin, hojeISO),
     periodo === "diario" ? buscarLogsDiario(admin, hojeISO) : Promise.resolve([]),
     periodo === "semanal" ? buscarPorDiaSemanal(admin, hojeISO) : Promise.resolve([]),
     periodo === "mensal" ? buscarPorSemanaMensal(admin, hojeISO) : Promise.resolve([]),
     periodo === "mensal" ? buscarMaisCobrados(admin, hojeISO) : Promise.resolve([]),
+    buscarPedidosPrazoVencido(admin, hojeISO),
   ]);
 
-  return { kpis, logsDiario, porDiaSemanal, porSemanaMensal, maisCobrados };
+  return { kpis, logsDiario, porDiaSemanal, porSemanaMensal, maisCobrados, pedidosPrazoDetalhe };
 }

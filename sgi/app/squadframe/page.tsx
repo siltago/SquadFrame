@@ -48,6 +48,7 @@ export default async function HomePage({
           porDiaSemanal={relatorio.porDiaSemanal}
           porSemanaMensal={relatorio.porSemanaMensal}
           maisCobrados={relatorio.maisCobrados}
+          pedidosPrazoDetalhe={relatorio.pedidosPrazoDetalhe}
         />
       </div>
     );

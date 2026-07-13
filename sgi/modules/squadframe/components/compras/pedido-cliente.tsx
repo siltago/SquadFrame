@@ -8,6 +8,7 @@ import { recalcularPrecoKgPerfisAction } from "@/modules/squadframe/actions/cata
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
+import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
 
 type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
 
@@ -312,11 +313,9 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
               Ajuste se o fornecedor mudou a data combinada.
             </p>
             <div className="flex items-center gap-2">
-              <input
-                type="date"
-                lang="pt-BR"
+              <DataInputBr
                 value={prazoEdicaoInput}
-                onChange={(e) => setPrazoEdicaoInput(e.target.value)}
+                onChange={setPrazoEdicaoInput}
                 className="field h-9 flex-1 text-sm"
                 onKeyDown={(e) => e.key === "Enter" && salvarPrazoEdicao()}
                 autoFocus
@@ -369,11 +368,9 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
             <p className="mb-2 text-xs text-text-3">
               Obrigatório para mover o pedido para Aguardando Recebimento.
             </p>
-            <input
-              type="date"
-              lang="pt-BR"
+            <DataInputBr
               value={prazoInput}
-              onChange={(e) => setPrazoInput(e.target.value)}
+              onChange={setPrazoInput}
               className="field text-sm"
               autoFocus
             />

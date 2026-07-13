@@ -6,6 +6,7 @@ import { editarPedido } from "@/app/squadframe/compras/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { calcPrecoUnit } from "@/modules/squadframe/lib/tipo-unidade";
 import { Button } from "@/ui/components/Button";
+import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
 
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm?: number | null; peso_metro?: number | null; preco_metro?: number | null };
 type Fornecedor = { id: string; nome: string; ativo?: boolean };
@@ -265,7 +266,8 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
             )}
             <div>
               <label className="label">Prazo de entrega <span className="text-text-3 font-normal">(opcional)</span></label>
-              <input type="date" lang="pt-BR" name="prazo_entrega" defaultValue={pedido.prazo_entrega ?? ""} className="field" />
+              <input type="hidden" name="prazo_entrega" defaultValue={pedido.prazo_entrega ?? ""} />
+              <DataInputBr name="prazo_entrega" value={pedido.prazo_entrega ?? ""} className="field" />
             </div>
             <div className="sm:col-span-2">
               <label className="label">Observações</label>

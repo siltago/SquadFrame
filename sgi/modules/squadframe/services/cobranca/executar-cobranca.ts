@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendWhatsappMessage } from "@/shared/providers/whatsapp/twilio";
+import { sendWhatsappMessage, type WhatsappCta } from "@/shared/providers/whatsapp/twilio";
 import {
   resolverDestinatariosPedido,
   resolverDestinatariosSolicitacao,
@@ -8,6 +8,11 @@ import {
 } from "./resolver-destinatarios";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://squadframe.vercel.app";
+
+// Templates de botão CTA aprovados na Meta — opcionais. Sem eles, a mensagem
+// cai de volta pro texto livre com o link embutido (comportamento anterior).
+const CTA_PEDIDO_SID = process.env.TWILIO_CONTENT_SID_CTA_PEDIDO;
+const CTA_SOLICITACAO_SID = process.env.TWILIO_CONTENT_SID_CTA_SOLICITACAO;
 
 export function hojeSaoPaulo(): string {
   // America/Sao_Paulo explícito — não depende do cron rodar sempre de manhã em UTC
@@ -43,9 +48,10 @@ async function enviarParaDestinatario(
     dataReferencia: string;
     destinatario: Destinatario;
     mensagem: string;
+    cta?: WhatsappCta;
   },
 ): Promise<{ enviado: boolean; sucesso: boolean }> {
-  const { entidade, entidadeId, numero, dataReferencia, destinatario, mensagem } = params;
+  const { entidade, entidadeId, numero, dataReferencia, destinatario, mensagem, cta } = params;
 
   // Reserva a linha antes de enviar — se já existe (mesmo dia + mesmo destino), pula.
   const { data: reserva, error: reservaErro } = await admin
@@ -69,7 +75,7 @@ async function enviarParaDestinatario(
     return { enviado: false, sucesso: false };
   }
 
-  const resultado = await sendWhatsappMessage(destinatario.destino, mensagem);
+  const resultado = await sendWhatsappMessage(destinatario.destino, mensagem, cta);
 
   await admin
     .from("cobranca_log")
@@ -118,10 +124,17 @@ export async function executarCobrancaPrazos(admin: SupabaseClient): Promise<Res
 
       const dias = diasEmAberto(pedido.criado_em, hojeISO);
       const obraNome = (pedido.obra as any)?.nome ?? "Sem obra";
-      const mensagem =
-        `📦 Pedido #${pedido.numero} aguardando aprovação há ${dias} dia(s).\n` +
-        `Obra: ${obraNome}\n` +
-        `Acesse: ${APP_URL}/squadframe/compras/pedidos/${pedido.id}`;
+      // Com o template CTA aprovado, o link vira botão "Ver Pedido" — não
+      // precisa repetir a URL no corpo do texto. Sem o template (ainda não
+      // aprovado / não configurado), cai no texto livre com o link embutido.
+      const mensagem = CTA_PEDIDO_SID
+        ? `📦 Pedido #${pedido.numero} aguardando aprovação há ${dias} dia(s).\nObra: ${obraNome}`
+        : `📦 Pedido #${pedido.numero} aguardando aprovação há ${dias} dia(s).\n` +
+          `Obra: ${obraNome}\n` +
+          `Acesse: ${APP_URL}/squadframe/compras/pedidos/${pedido.id}`;
+      const cta: WhatsappCta | undefined = CTA_PEDIDO_SID
+        ? { contentSid: CTA_PEDIDO_SID, urlVar: pedido.id }
+        : undefined;
 
       resultado.pedidos_cobrados++;
       for (const destinatario of destinatarios) {
@@ -132,6 +145,7 @@ export async function executarCobrancaPrazos(admin: SupabaseClient): Promise<Res
           dataReferencia: hojeISO,
           destinatario,
           mensagem,
+          cta,
         });
         if (r.enviado) {
           resultado.mensagens_enviadas++;
@@ -150,10 +164,14 @@ export async function executarCobrancaPrazos(admin: SupabaseClient): Promise<Res
 
       const dias = diasEmAberto(solicitacao.criado_em, hojeISO);
       const obraNome = (solicitacao.obra as any)?.nome ?? "Sem obra";
-      const mensagem =
-        `📋 Solicitação #${solicitacao.numero} aguardando aprovação há ${dias} dia(s).\n` +
-        `Obra: ${obraNome}\n` +
-        `Acesse: ${APP_URL}/squadframe/compras/solicitacoes`;
+      const mensagem = CTA_SOLICITACAO_SID
+        ? `📋 Solicitação #${solicitacao.numero} aguardando aprovação há ${dias} dia(s).\nObra: ${obraNome}`
+        : `📋 Solicitação #${solicitacao.numero} aguardando aprovação há ${dias} dia(s).\n` +
+          `Obra: ${obraNome}\n` +
+          `Acesse: ${APP_URL}/squadframe/compras/solicitacoes`;
+      const cta: WhatsappCta | undefined = CTA_SOLICITACAO_SID
+        ? { contentSid: CTA_SOLICITACAO_SID }
+        : undefined;
 
       resultado.solicitacoes_cobradas++;
       for (const destinatario of destinatarios) {
@@ -164,6 +182,7 @@ export async function executarCobrancaPrazos(admin: SupabaseClient): Promise<Res
           dataReferencia: hojeISO,
           destinatario,
           mensagem,
+          cta,
         });
         if (r.enviado) {
           resultado.mensagens_enviadas++;

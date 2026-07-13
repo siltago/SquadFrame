@@ -12,8 +12,19 @@ export interface WhatsappSendResult {
   error?: string;
 }
 
+// Botão CTA (call-to-action) — usa um Content Template do tipo
+// "twilio/call-to-action" aprovado na Meta, com {{1}} = texto do corpo e,
+// se o botão do template tiver URL dinâmica, {{2}} = sufixo da URL (a base
+// é fixa no template — exigência da Meta pra templates de utilidade).
+// urlVar fica de fora quando o botão do template aponta pra uma URL
+// totalmente estática (ex: a lista de solicitações).
+export interface WhatsappCta {
+  contentSid: string;
+  urlVar?: string;
+}
+
 // numero em E.164 sem "+" (ex "5511999998888")
-export async function sendWhatsappMessage(numero: string, texto: string): Promise<WhatsappSendResult> {
+export async function sendWhatsappMessage(numero: string, texto: string, cta?: WhatsappCta): Promise<WhatsappSendResult> {
   if (!configured) return { ok: false, error: "not_configured" };
 
   const params = new URLSearchParams();
@@ -22,10 +33,14 @@ export async function sendWhatsappMessage(numero: string, texto: string): Promis
 
   // Fora da janela de 24h após msg do usuário, o WhatsApp Business Platform só
   // aceita mensagens iniciadas pela empresa via template aprovado na Meta.
-  // Com TWILIO_CONTENT_SID configurado, manda como template (1 variável = texto
-  // inteiro); sem isso, manda como Body livre (funciona no Sandbox e dentro da
-  // janela de 24h de conversas já iniciadas pelo usuário).
-  if (TWILIO_CONTENT_SID) {
+  // Prioridade: CTA (se pedido e configurado) > texto simples via template >
+  // Body livre (funciona no Sandbox e dentro da janela de 24h já iniciada).
+  if (cta) {
+    params.set("ContentSid", cta.contentSid);
+    const variaveis: Record<string, string> = { "1": texto };
+    if (cta.urlVar != null) variaveis["2"] = cta.urlVar;
+    params.set("ContentVariables", JSON.stringify(variaveis));
+  } else if (TWILIO_CONTENT_SID) {
     params.set("ContentSid", TWILIO_CONTENT_SID);
     params.set("ContentVariables", JSON.stringify({ "1": texto }));
   } else {

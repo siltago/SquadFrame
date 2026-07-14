@@ -160,14 +160,15 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
   const precoKgMedio = usaPrecoKg && totalKgPedido > 0 ? Number(ped.valor_final) / totalKgPedido : null;
 
   const linhas = itens.map((item: any) => {
-    const tamanhoM = (item.produto?.tamanho_mm ?? 6000) / 1000;
-    const temTamanho = !!(item.produto?.tamanho_mm);
     const totalItemKg = calcTotalItemKg(item);
+    // preco_unitario já vem pronto por unidade pedida (R$/barra, R$/peça de
+    // chapa, R$/m, R$/un — ver calcPrecoUnit e o preenchimento de itens em
+    // novo-pedido-cliente.tsx), então o total do item é sempre
+    // quantidade × preco_unitario, sem multiplicar pelo comprimento de novo
+    // (fazia isso e inflava o total de perfis pelo tamanho da barra).
     const totalItem = precoKgMedio != null
       ? totalItemKg * precoKgMedio
-      : temTamanho
-        ? item.quantidade_pedida * tamanhoM * (item.preco_unitario ?? 0)
-        : item.quantidade_pedida * (item.preco_unitario ?? 0);
+      : item.quantidade_pedida * (item.preco_unitario ?? 0);
     totalProduto += totalItem;
     totalKg += totalItemKg;
     // cor por item → cor única do pedido → "Natural"

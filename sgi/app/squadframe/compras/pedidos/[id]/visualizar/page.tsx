@@ -10,6 +10,23 @@ function fmt(v: number, casas = 3) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
+// preco_unitario é sempre o preço da unidade pedida (ver calcPrecoUnit e
+// novo-pedido-cliente.tsx) — pra barra isso é o preço da barra inteira, não
+// R$/m, então o rótulo da coluna precisa refletir a unidade real do item.
+function labelUnidadePreco(unidade?: string | null): string {
+  switch ((unidade ?? "").toUpperCase()) {
+    case "BARRA": return "R$/barra";
+    case "CHAPA":
+    case "M2":
+    case "M²": return "R$/peça";
+    case "ML":
+    case "M": return "R$/m";
+    case "KG": return "R$/kg";
+    case "CX": return "R$/cx";
+    default: return "R$/un";
+  }
+}
+
 // Nome sugerido pro arquivo salvo: "<número>-<obra> [AAAA-MM-DD HHmm].pdf" —
 // sem caracteres inválidos em nome de arquivo (Windows/macOS/Android/iOS).
 function nomeArquivoPdf(numero: string, obraNome: string): string {
@@ -180,6 +197,10 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
     return { ...item, totalItem, totalItemKg, corNome, thumb, codigoExibir };
   });
 
+  const unidadesItens = new Set(itens.map((i: any) => (i.unidade ?? "").toUpperCase()));
+  const unidadePedido = unidadesItens.size === 1 ? [...unidadesItens][0] : null;
+  const vlrUnitLabel = precoKgMedio != null ? "(R$/kg)" : `(${labelUnidadePreco(unidadePedido)})`;
+
   const pcNum = ped.numero ?? "—";
   const dataEmissao = new Date().toLocaleDateString("pt-BR");
   // Valor final confirmado com o fornecedor prevalece sobre a soma dos itens
@@ -331,7 +352,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
                 <th style={{ ...thStyle, width: "11%" }}>LARG X ALT{"\n"}(mm)</th>
               )}
               <th style={{ ...thStyle, width: "9%" }}>QTD</th>
-              <th style={{ ...thStyle, width: "11%" }}>VLR UNIT{"\n"}{precoKgMedio != null ? "(R$/kg)" : "(R$/m)"}</th>
+              <th style={{ ...thStyle, width: "11%" }}>VLR UNIT{"\n"}{vlrUnitLabel}</th>
               {!isVidro && (
                 <th style={{ ...thStyle, width: "10%" }}>PESO UNIT{"\n"}kg/m</th>
               )}

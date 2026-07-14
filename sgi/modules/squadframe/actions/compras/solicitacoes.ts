@@ -58,7 +58,7 @@ export async function criarSolicitacao(formData: FormData) {
     p_justificativa:    justificativa,
     p_observacoes:      observacoes,
     p_solicitante_id:   usuario.id,
-    p_itens:            JSON.stringify(itens),
+    p_itens:            itens,
     p_lote_id:          lote_id,
     p_origem_contexto:  origem_contexto,
   });

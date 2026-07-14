@@ -71,6 +71,7 @@ const COMPRAS_GRUPOS: { key: string; label: string }[] = [
   { key: "compras.documento",      label: "Documentos" },
   { key: "compras.anotacao",       label: "Anotações" },
   { key: "compras.formapagamento", label: "Formas de pagamento" },
+  { key: "compras.notificacao",    label: "Notificações (WhatsApp)" },
 ];
 
 const CATALOGO_GRUPOS: { key: string; label: string }[] = [

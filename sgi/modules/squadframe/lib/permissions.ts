@@ -25,6 +25,9 @@ export const PERMISSIONS = {
   // Formas de pagamento
   COMPRAS_FORMA_PAGAMENTO_GERENCIAR: "compras.formapagamento.gerenciar",
 
+  // Notificações WhatsApp
+  COMPRAS_NOTIFICACAO_RELATORIO_DIARIO: "compras.notificacao.relatorio_diario",
+
   // Fornecedores (compras — mantido para compatibilidade)
   COMPRAS_FORNECEDOR_CRIAR:   "compras.fornecedor.criar",
   COMPRAS_FORNECEDOR_EDITAR:  "compras.fornecedor.editar",

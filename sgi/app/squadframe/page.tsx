@@ -47,7 +47,6 @@ export default async function HomePage({
           kpis={relatorio.kpis}
           statusPedidos={relatorio.statusPedidos}
           statusSolicitacoes={relatorio.statusSolicitacoes}
-          tendencia={relatorio.tendencia}
           pedidosAprovacao={relatorio.pedidosAprovacao}
           solicitacoesAprovacao={relatorio.solicitacoesAprovacao}
           pedidosEmEntrega={relatorio.pedidosEmEntrega}

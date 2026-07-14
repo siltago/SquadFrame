@@ -7,9 +7,8 @@ import type {
   SolicitacaoAprovacaoRow,
   PedidoEntregaRow,
   PedidoPrazoRow,
-  StatusCount,
-  TendenciaPonto,
 } from "../../components/cobranca/cobranca-dashboard";
+import type { PedidoStatusCount, SolicitacaoStatusCount } from "../../components/cobranca/status-bar-chart";
 
 function diasEntre(dataISO: string, hojeISO: string): number {
   const diffMs = new Date(`${hojeISO}T00:00:00Z`).getTime() - new Date(`${dataISO}T00:00:00Z`).getTime();
@@ -161,60 +160,70 @@ const LABEL_STATUS_SOLICITACAO: Record<string, string> = {
   EM_PEDIDO: "Em pedido",
 };
 
-function contarPorStatus(rows: { status: string }[], labels: Record<string, string>): StatusCount[] {
-  const contagem: Record<string, number> = {};
-  for (const row of rows) contagem[row.status] = (contagem[row.status] ?? 0) + 1;
-  return Object.entries(contagem)
-    .map(([status, total]) => ({ status, label: labels[status] ?? status, total }))
+type PedidoStatusSelectRow = {
+  id: string;
+  numero: string;
+  criado_em: string;
+  status: string;
+  obra: NomeRelacao;
+  fornecedor: NomeRelacao;
+};
+
+async function buscarStatusPedidos(admin: SupabaseClient, hojeISO: string): Promise<PedidoStatusCount[]> {
+  const { data } = await admin
+    .from("pedidos_compra")
+    .select("id, numero, criado_em, status, obra:obras(nome), fornecedor:fornecedores(nome)")
+    .order("criado_em", { ascending: false });
+
+  const linhas = (data ?? []) as unknown as PedidoStatusSelectRow[];
+
+  const porStatus: Record<string, PedidoStatusCount["itens"]> = {};
+  for (const p of linhas) {
+    (porStatus[p.status] ??= []).push({
+      id: p.id,
+      numero: p.numero,
+      obra: nomeDaRelacao(p.obra) ?? "Sem obra",
+      fornecedor: nomeDaRelacao(p.fornecedor) ?? "—",
+      dias: diasEntre(p.criado_em.slice(0, 10), hojeISO),
+    });
+  }
+
+  return Object.entries(porStatus)
+    .map(([status, itens]) => ({ status, label: LABEL_STATUS_PEDIDO[status] ?? status, total: itens.length, itens }))
     .sort((a, b) => b.total - a.total);
 }
 
-async function buscarStatusPedidos(admin: SupabaseClient): Promise<StatusCount[]> {
-  const { data } = await admin.from("pedidos_compra").select("status");
-  return contarPorStatus(data ?? [], LABEL_STATUS_PEDIDO);
-}
+type SolicitacaoStatusSelectRow = {
+  id: string;
+  numero: string;
+  criado_em: string;
+  status: string;
+  obra: NomeRelacao;
+  solicitante: NomeRelacao;
+};
 
-async function buscarStatusSolicitacoes(admin: SupabaseClient): Promise<StatusCount[]> {
-  const { data } = await admin.from("solicitacoes_compra").select("status");
-  return contarPorStatus(data ?? [], LABEL_STATUS_SOLICITACAO);
-}
+async function buscarStatusSolicitacoes(admin: SupabaseClient, hojeISO: string): Promise<SolicitacaoStatusCount[]> {
+  const { data } = await admin
+    .from("solicitacoes_compra")
+    .select("id, numero, criado_em, status, obra:obras(nome), solicitante:usuarios!solicitante_id(nome)")
+    .order("criado_em", { ascending: false });
 
-function ultimosNDias(hojeISO: string, n: number): string[] {
-  const base = new Date(`${hojeISO}T00:00:00Z`);
-  const dias: string[] = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const dia = new Date(base);
-    dia.setUTCDate(base.getUTCDate() - i);
-    dias.push(dia.toISOString().slice(0, 10));
-  }
-  return dias;
-}
+  const linhas = (data ?? []) as unknown as SolicitacaoStatusSelectRow[];
 
-async function buscarTendenciaCriacao(admin: SupabaseClient, hojeISO: string): Promise<TendenciaPonto[]> {
-  const dias = ultimosNDias(hojeISO, 14);
-  const inicio = dias[0];
-
-  const [{ data: pedidos }, { data: solicitacoes }] = await Promise.all([
-    admin.from("pedidos_compra").select("criado_em").gte("criado_em", inicio),
-    admin.from("solicitacoes_compra").select("criado_em").gte("criado_em", inicio),
-  ]);
-
-  const porDiaPedidos: Record<string, number> = {};
-  for (const p of pedidos ?? []) {
-    const dia = p.criado_em.slice(0, 10);
-    porDiaPedidos[dia] = (porDiaPedidos[dia] ?? 0) + 1;
-  }
-  const porDiaSolicitacoes: Record<string, number> = {};
-  for (const s of solicitacoes ?? []) {
-    const dia = s.criado_em.slice(0, 10);
-    porDiaSolicitacoes[dia] = (porDiaSolicitacoes[dia] ?? 0) + 1;
+  const porStatus: Record<string, SolicitacaoStatusCount["itens"]> = {};
+  for (const s of linhas) {
+    (porStatus[s.status] ??= []).push({
+      id: s.id,
+      numero: s.numero,
+      obra: nomeDaRelacao(s.obra) ?? "Sem obra",
+      solicitante: nomeDaRelacao(s.solicitante) ?? "—",
+      dias: diasEntre(s.criado_em.slice(0, 10), hojeISO),
+    });
   }
 
-  return dias.map((dia) => ({
-    data: dia,
-    pedidos: porDiaPedidos[dia] ?? 0,
-    solicitacoes: porDiaSolicitacoes[dia] ?? 0,
-  }));
+  return Object.entries(porStatus)
+    .map(([status, itens]) => ({ status, label: LABEL_STATUS_SOLICITACAO[status] ?? status, total: itens.length, itens }))
+    .sort((a, b) => b.total - a.total);
 }
 
 async function buscarKpis(
@@ -241,15 +250,13 @@ export async function buscarRelatorioCobranca(admin: SupabaseClient) {
     pedidosAtrasados,
     statusPedidos,
     statusSolicitacoes,
-    tendencia,
   ] = await Promise.all([
     buscarPedidosAprovacaoDetalhe(admin, hojeISO),
     buscarSolicitacoesAprovacaoDetalhe(admin, hojeISO),
     buscarPedidosEmEntrega(admin, hojeISO),
     buscarPedidosPrazoVencido(admin, hojeISO),
-    buscarStatusPedidos(admin),
-    buscarStatusSolicitacoes(admin),
-    buscarTendenciaCriacao(admin, hojeISO),
+    buscarStatusPedidos(admin, hojeISO),
+    buscarStatusSolicitacoes(admin, hojeISO),
   ]);
 
   const kpis = await buscarKpis(pedidosAprovacao, solicitacoesAprovacao, pedidosEmEntrega, pedidosAtrasados);
@@ -262,6 +269,5 @@ export async function buscarRelatorioCobranca(admin: SupabaseClient) {
     pedidosAtrasados,
     statusPedidos,
     statusSolicitacoes,
-    tendencia,
   };
 }

@@ -60,7 +60,9 @@ export async function recalcularPrecoKgPerfis(
   }
   if (!precosKg.length) return null;
 
-  const mediaKg = precosKg.reduce((a, b) => a + b, 0) / precosKg.length;
+  // Arredonda pra 2 casas — sem isso, o preço propaga pro catálogo (e daí
+  // pros itens de pedidos novos) com muitas casas decimais.
+  const mediaKg = Math.round((precosKg.reduce((a, b) => a + b, 0) / precosKg.length) * 100) / 100;
 
   const { data: produtos } = await admin
     .from("produtos")
@@ -76,7 +78,7 @@ export async function recalcularPrecoKgPerfis(
   // paralelo já causou "fetch failed" por saturar conexões no dev (Windows).
   for (const p of produtosPerfil as any[]) {
     const patch: Record<string, unknown> = { preco_kg: mediaKg };
-    if (p.peso_metro != null) patch.preco_metro = Number(p.peso_metro) * mediaKg;
+    if (p.peso_metro != null) patch.preco_metro = Math.round(Number(p.peso_metro) * mediaKg * 100) / 100;
     const { error } = await admin.from("produtos").update(patch).eq("id", p.id);
     if (error) {
       const colunaFaltando = /column|42703/i.test(error.message);

@@ -424,7 +424,7 @@ async function distribuirValorFinalPorPeso(
   await Promise.all(
     comPeso.map((it) => {
       const valorItem = (it.peso / pesoTotal) * valorFinal;
-      const precoUnitario = valorItem / it.peso;
+      const precoUnitario = Math.round((valorItem / it.peso) * 100) / 100;
       return admin.from("pedido_itens").update({ preco_unitario: precoUnitario }).eq("id", it.id);
     })
   );

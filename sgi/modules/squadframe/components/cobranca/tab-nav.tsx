@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const ABAS = [
-  { slug: "central", label: "Minha Central" },
   { slug: "cobranca", label: "Dashboard" },
+  { slug: "central", label: "Minha Central" },
 ] as const;
 
 export function CentralTabNav({ podeCobranca }: { podeCobranca: boolean }) {
   const searchParams = useSearchParams();
-  const abaAtual = searchParams.get("aba") ?? "central";
+  const abaAtual = searchParams.get("aba") ?? (podeCobranca ? "cobranca" : "central");
 
   if (!podeCobranca) return null;
 

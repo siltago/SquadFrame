@@ -27,18 +27,27 @@ export default async function HomePage({
     usuario.permissoes?.includes("*") || usuario.permissoes?.includes("compras.solicitacao.aprovar") || false;
   const podeCobranca = podeAprovarPedidoTab || podeAprovarSolicitacaoTab;
 
-  const abaAtual = searchParams.aba === "cobranca" && podeCobranca ? "cobranca" : "central";
+  // Dashboard é a aba inicial padrão pra quem tem acesso a ela — só cai em
+  // "central" se o usuário pedir explicitamente ou não tiver permissão de
+  // cobrança nenhuma.
+  const abaAtual =
+    searchParams.aba === "central" ? "central"
+    : searchParams.aba === "cobranca" && podeCobranca ? "cobranca"
+    : podeCobranca ? "cobranca" : "central";
 
   if (abaAtual === "cobranca") {
     const relatorio = await buscarRelatorioCobranca(admin);
 
     return (
-      <div className="px-8 py-8 max-w-6xl">
+      <div className="px-8 py-8 max-w-7xl">
         <div className="border-b border-border mb-6">
           <CentralTabNav podeCobranca={podeCobranca} />
         </div>
         <CobrancaDashboard
           kpis={relatorio.kpis}
+          statusPedidos={relatorio.statusPedidos}
+          statusSolicitacoes={relatorio.statusSolicitacoes}
+          tendencia={relatorio.tendencia}
           pedidosAprovacao={relatorio.pedidosAprovacao}
           solicitacoesAprovacao={relatorio.solicitacoesAprovacao}
           pedidosEmEntrega={relatorio.pedidosEmEntrega}

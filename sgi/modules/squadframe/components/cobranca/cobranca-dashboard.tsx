@@ -1,8 +1,7 @@
 import Link from "next/link";
 import {
-  StatusBarChart,
-  PedidoStatusItemRow,
-  SolicitacaoStatusItemRow,
+  PedidoStatusBarChart,
+  SolicitacaoStatusBarChart,
   type PedidoStatusCount,
   type SolicitacaoStatusCount,
 } from "./status-bar-chart";
@@ -113,16 +112,8 @@ export function CobrancaDashboard({
 
       {/* Gráficos */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <StatusBarChart
-          titulo="Pedidos por status"
-          dados={statusPedidos}
-          renderItem={(item) => <PedidoStatusItemRow item={item} />}
-        />
-        <StatusBarChart
-          titulo="Solicitações por status"
-          dados={statusSolicitacoes}
-          renderItem={(item) => <SolicitacaoStatusItemRow item={item} />}
-        />
+        <PedidoStatusBarChart titulo="Pedidos por status" dados={statusPedidos} />
+        <SolicitacaoStatusBarChart titulo="Solicitações por status" dados={statusSolicitacoes} />
       </div>
 
       {/* Pedidos aguardando aprovação */}

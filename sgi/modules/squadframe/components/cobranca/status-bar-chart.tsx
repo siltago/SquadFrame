@@ -48,7 +48,11 @@ function Chevron({ aberto }: { aberto: boolean }) {
 // Comparação de magnitude entre categorias — um hue só (sequencial), barra
 // com extremidade arredondada, valor direto na ponta. Cada linha é clicável
 // e expande a lista de itens daquele status (refinamento).
-export function StatusBarChart<T extends { id: string; numero: string }>({
+// `renderItem` só pode ser passado por um componente client (funções não
+// atravessam a fronteira server→client) — por isso os wrappers exportados
+// no fim do arquivo (PedidoStatusBarChart/SolicitacaoStatusBarChart) fixam
+// o renderItem aqui dentro e só recebem dados serializáveis de fora.
+function StatusBarChart<T extends { id: string; numero: string }>({
   titulo,
   dados,
   renderItem,
@@ -104,7 +108,7 @@ export function StatusBarChart<T extends { id: string; numero: string }>({
   );
 }
 
-export function PedidoStatusItemRow({ item }: { item: PedidoStatusItem }) {
+function PedidoStatusItemRow({ item }: { item: PedidoStatusItem }) {
   return (
     <Link
       href={`/squadframe/compras/pedidos/${item.id}`}
@@ -117,7 +121,7 @@ export function PedidoStatusItemRow({ item }: { item: PedidoStatusItem }) {
   );
 }
 
-export function SolicitacaoStatusItemRow({ item }: { item: SolicitacaoStatusItem }) {
+function SolicitacaoStatusItemRow({ item }: { item: SolicitacaoStatusItem }) {
   return (
     <Link
       href={`/squadframe/compras/solicitacoes/${item.id}`}
@@ -128,4 +132,12 @@ export function SolicitacaoStatusItemRow({ item }: { item: SolicitacaoStatusItem
       <span className="shrink-0 text-text-3">{item.dias}d</span>
     </Link>
   );
+}
+
+export function PedidoStatusBarChart({ titulo, dados }: { titulo: string; dados: PedidoStatusCount[] }) {
+  return <StatusBarChart titulo={titulo} dados={dados} renderItem={(item) => <PedidoStatusItemRow item={item} />} />;
+}
+
+export function SolicitacaoStatusBarChart({ titulo, dados }: { titulo: string; dados: SolicitacaoStatusCount[] }) {
+  return <StatusBarChart titulo={titulo} dados={dados} renderItem={(item) => <SolicitacaoStatusItemRow item={item} />} />;
 }

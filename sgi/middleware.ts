@@ -30,8 +30,13 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const ROTAS_PUBLICAS = ["/login", "/cadastro"];
+  const ROTAS_PUBLICAS = ["/login", "/cadastro", "/esqueci-senha"];
   const isPublic = ROTAS_PUBLICAS.some((r) => pathname.startsWith(r));
+
+  // O link de recuperação de senha já chega autenticando uma sessão
+  // temporária — essa rota precisa ficar acessível com ou sem sessão, sem
+  // cair em nenhuma das duas regras de redirecionamento abaixo.
+  if (pathname.startsWith("/redefinir-senha")) return response;
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

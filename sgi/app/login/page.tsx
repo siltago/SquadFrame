@@ -55,6 +55,11 @@ export default function LoginPage() {
           autoComplete="current-password"
           placeholder="••••••••"
         />
+        <p className="-mt-2 text-right text-sm">
+          <a href="/esqueci-senha" className="text-primary hover:underline font-medium">
+            Esqueci minha senha
+          </a>
+        </p>
         {erro && <Alert variant="danger">{erro}</Alert>}
         <Button type="submit" disabled={pending} fullWidth>
           {pending ? "Entrando…" : "Entrar"}

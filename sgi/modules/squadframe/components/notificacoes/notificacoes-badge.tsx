@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BellIcon } from "@/ui/icons";
+import { BellIcon, BellDotIcon, CloseIcon } from "@/ui/icons";
 import { createClient } from "@/shared/database/supabase-client";
 import {
   buscarNotificacoes,
@@ -82,9 +82,22 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [naoLidas, setNaoLidas] = useState(naoLidasIniciais);
   const [carregado, setCarregado] = useState(false);
+  const [banners, setBanners] = useState<Notificacao[]>([]);
   const [, startTransition] = useTransition();
 
   const tiposDoEscopo = TIPOS_NOTIFICACAO_POR_ESCOPO[escopo];
+
+  function dispensarBanner(id: string) {
+    setBanners((prev) => prev.filter((n) => n.id !== id));
+  }
+
+  function abrirBanner(n: Notificacao) {
+    dispensarBanner(n.id);
+    const link = resolverLink(n);
+    if (!link) return;
+    if (!n.lida) handleMarcarLida(n.id);
+    router.push(link.href);
+  }
 
   // Subscrição realtime para novos registros na tabela notificacoes. O
   // filtro do Realtime só suporta igualdade simples (usuario_id=eq.X), então
@@ -106,6 +119,11 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
           if (!tiposDoEscopo.includes(nova.tipo)) return;
           setNotificacoes((prev) => [nova, ...prev]);
           setNaoLidas((n) => n + 1);
+          // Banner efêmero — some sozinho depois de um tempo, mas o sino
+          // (acima) já ficou marcado, então nada se perde se o usuário não
+          // ver a tempo.
+          setBanners((prev) => [...prev, nova]);
+          setTimeout(() => dispensarBanner(nova.id), 7000);
         }
       )
       .on(
@@ -173,6 +191,39 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
           </span>
         )}
       </button>
+
+      {/* Banners efêmeros — surgem no realtime, somem sozinhos. O sino acima
+          já registrou a notificação, então perder o banner não perde nada. */}
+      <div
+        className="fixed z-[190] flex flex-col gap-2 pointer-events-none"
+        style={{ top: "calc(1rem + env(safe-area-inset-top))", right: "calc(1rem + env(safe-area-inset-right))" }}
+      >
+        {banners.map((n) => {
+          const link = resolverLink(n);
+          return (
+            <div
+              key={n.id}
+              onClick={() => abrirBanner(n)}
+              className={`pointer-events-auto flex w-72 items-start gap-2.5 rounded-xl border border-border bg-surface p-3 shadow-lg sm:w-80 ${link ? "cursor-pointer" : ""}`}
+              style={{ animation: "slideDownBanner 0.2s ease-out" }}
+            >
+              <span className="mt-0.5 shrink-0 text-primary"><BellDotIcon size={16} /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-text">{TIPO_LABEL[n.tipo] ?? n.tipo}</p>
+                {link && <p className="truncate text-xs text-primary">{link.label} →</p>}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); dispensarBanner(n.id); }}
+                className="shrink-0 text-text-3 hover:text-text-2"
+                aria-label="Fechar"
+              >
+                <CloseIcon size={12} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <style>{`@keyframes slideDownBanner { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
       {aberto && (
         <>

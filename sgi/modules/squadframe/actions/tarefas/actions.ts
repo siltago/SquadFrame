@@ -6,10 +6,29 @@ import { revalidatePath } from "next/cache";
 import { criarTarefaAutomatica } from "@/modules/squadframe/lib/tarefas";
 import { garantirColunasCompras } from "@/modules/squadframe/lib/kanban-compras";
 import { TIPOS_NOTIFICACAO_POR_ESCOPO, type EscopoNotificacao } from "@/modules/squadframe/types/kanban";
+import { sendPushToSubscriptions, type PushPayload, type PushSubscription } from "@/shared/providers/push/web-push";
 
 async function usuarioAtualId(): Promise<string | null> {
   const u = await getUsuarioAtual();
   return u?.id ?? null;
+}
+
+// Grava a notificação in-app (sino + banner realtime, já que a tabela
+// notificacoes tem Realtime habilitado) e manda push nativo (PC/PWA e
+// celular) na mesma chamada — sem isso, o push nunca disparava pra
+// notificações de tarefa (só o SquadBoard já fazia os dois juntos).
+async function notificarUsuario(
+  admin: ReturnType<typeof createAdminClient>,
+  usuarioId: string,
+  tipo: string,
+  tarefaId: string,
+  payload: Record<string, unknown>,
+  push: PushPayload,
+) {
+  await admin.from("notificacoes").insert({ usuario_id: usuarioId, tipo, tarefa_id: tarefaId, payload });
+  const { data } = await admin.from("push_subscriptions").select("endpoint, p256dh, auth").eq("user_id", usuarioId);
+  const subs = (data ?? []) as PushSubscription[];
+  if (subs.length) await sendPushToSubscriptions(subs, push).catch(() => {});
 }
 
 export async function criarTarefa(formData: FormData) {
@@ -208,12 +227,16 @@ export async function atribuirTarefa(tarefaId: string, novoUsuarioId: string) {
 
   // Notifica o novo responsável se não for o próprio usuário
   if (novoUsuarioId !== uid) {
-    await admin.from("notificacoes").insert({
-      usuario_id: novoUsuarioId,
-      tipo: "tarefa_atribuida",
-      tarefa_id: tarefaId,
-      payload: { titulo: tarefa?.titulo ?? "", atribuido_por: uid },
-    }).then(() => {});
+    await notificarUsuario(
+      admin, novoUsuarioId, "tarefa_atribuida", tarefaId,
+      { titulo: tarefa?.titulo ?? "", atribuido_por: uid },
+      {
+        title: "Tarefa atribuída a você",
+        body: tarefa?.titulo ?? "Nova tarefa",
+        url: `/squadframe/tarefas?tarefa=${tarefaId}`,
+        tag: `tarefa-atribuida-${tarefaId}`,
+      },
+    );
   }
 
   revalidatePath("/squadframe/tarefas");
@@ -326,12 +349,16 @@ export async function adicionarComentario(tarefaId: string, texto: string) {
     .eq("id", tarefaId)
     .single();
   if (tarefa?.usuario_responsavel_id && tarefa.usuario_responsavel_id !== uid) {
-    await admin.from("notificacoes").insert({
-      usuario_id: tarefa.usuario_responsavel_id,
-      tipo: "tarefa_comentario",
-      tarefa_id: tarefaId,
-      payload: { titulo: tarefa.titulo ?? "", comentado_por: uid },
-    }).then(() => {});
+    await notificarUsuario(
+      admin, tarefa.usuario_responsavel_id, "tarefa_comentario", tarefaId,
+      { titulo: tarefa.titulo ?? "", comentado_por: uid },
+      {
+        title: "Novo comentário na tarefa",
+        body: tarefa.titulo ?? "",
+        url: `/squadframe/tarefas?tarefa=${tarefaId}`,
+        tag: `tarefa-comentario-${tarefaId}-${Date.now()}`,
+      },
+    );
   }
 
   revalidatePath("/squadframe/tarefas");
@@ -815,12 +842,16 @@ export async function adicionarParticipante(
       .select("titulo")
       .eq("id", tarefaId)
       .single();
-    await admin.from("notificacoes").insert({
-      usuario_id: usuarioId,
-      tipo: "tarefa_atribuida",
-      tarefa_id: tarefaId,
-      payload: { titulo: tarefa?.titulo ?? "", atribuido_por: uid, papel },
-    }).then(() => {});
+    await notificarUsuario(
+      admin, usuarioId, "tarefa_atribuida", tarefaId,
+      { titulo: tarefa?.titulo ?? "", atribuido_por: uid, papel },
+      {
+        title: "Você foi adicionado a uma tarefa",
+        body: tarefa?.titulo ?? "",
+        url: `/squadframe/tarefas?tarefa=${tarefaId}`,
+        tag: `tarefa-participante-${tarefaId}-${usuarioId}`,
+      },
+    );
   }
 
   revalidatePath("/squadframe/tarefas");

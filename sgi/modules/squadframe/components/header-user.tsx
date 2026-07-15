@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/shared/database/supabase-client";
 import { usePwa } from "@/modules/squadframe/components/pwa-provider";
+import { useToast } from "@/modules/squadframe/components/toast";
 import type { UsuarioAtual } from "@/shared/auth/auth";
 import {
   ChevronDownIcon, UserIcon, LogoutIcon, BellIcon, PhoneIcon, UploadIcon,
@@ -15,6 +16,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
   const [imgError, setImgError] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
   const router = useRouter();
+  const toast = useToast();
   const { isOnline, canInstall, isInstalled, installApp, showIOSInstructions, isPushSupported, pushPermission, requestPushPermission } = usePwa();
 
   async function handleLogout() {
@@ -177,9 +179,16 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
                 </button>
               )}
 
-              {(isInstalled || isPushSupported) && pushPermission !== "granted" && pushPermission !== "denied" && (
+              {(isInstalled || isPushSupported) && pushPermission !== "granted" && (
                 <button
-                  onClick={async () => { setAberto(false); await requestPushPermission(); }}
+                  onClick={async () => {
+                    setAberto(false);
+                    if (pushPermission === "denied") {
+                      toast("Notificações bloqueadas no navegador. Abra as configurações do site (ícone de cadeado na barra de endereço) e permita notificações.", "info");
+                      return;
+                    }
+                    await requestPushPermission();
+                  }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-2 hover:bg-bg hover:text-text"
                 >
                   <BellIcon size={14} />

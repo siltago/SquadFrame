@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createClient } from "@/shared/database/supabase-client";
+import { redefinirSenhaSemEmail } from "./actions";
 import { Input } from "@/ui/components/Input";
 import { Button } from "@/ui/components/Button";
 import { Alert } from "@/ui/components/Alert";
@@ -9,23 +9,26 @@ import { AuthLayout } from "@/ui/layouts/AuthLayout";
 
 export default function EsqueciSenhaPage() {
   const [erro, setErro] = useState<string | null>(null);
-  const [enviado, setEnviado] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
   const [pending, start] = useTransition();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const email = String(new FormData(e.currentTarget).get("email") || "").trim();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") || "").trim();
+    const senha = String(fd.get("senha") || "");
+    const confirmar = String(fd.get("confirmar") || "");
+
+    if (senha !== confirmar) { setErro("As senhas não coincidem."); return; }
     setErro(null);
 
     start(async () => {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/redefinir-senha`,
-      });
-      // Não revela se o e-mail existe ou não — mesma mensagem em qualquer caso,
-      // pra não dar pista de quais e-mails têm conta no sistema.
-      if (error && error.status && error.status >= 500) { setErro("Não foi possível enviar o e-mail agora. Tente novamente em instantes."); return; }
-      setEnviado(true);
+      try {
+        await redefinirSenhaSemEmail(email, senha);
+        setSucesso(true);
+      } catch (err: any) {
+        setErro(err.message);
+      }
     });
   }
 
@@ -34,22 +37,20 @@ export default function EsqueciSenhaPage() {
       logoSrc="/logo-system.png"
       logoAlt="SquadSystem"
       title="SquadSystem"
-      description="Recuperar senha"
+      description="Redefinir senha"
       cardSize="sm"
     >
-      {enviado ? (
+      {sucesso ? (
         <div className="flex flex-col gap-4 text-center">
-          <p className="text-sm text-text-2">
-            Se esse e-mail estiver cadastrado, você vai receber um link pra criar uma senha nova.
-          </p>
-          <a href="/login" className="text-sm font-medium text-primary hover:underline">
-            Voltar para o login
-          </a>
+          <p className="text-sm text-text-2">Senha atualizada! Já pode entrar com a senha nova.</p>
+          <Button as="a" href="/login" fullWidth>
+            Ir para o login
+          </Button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <p className="text-sm text-text-2">
-            Informe o e-mail da sua conta. Vamos mandar um link pra você criar uma senha nova.
+            Informe seu e-mail e a senha nova.
           </p>
           <Input
             label="E-mail"
@@ -59,9 +60,27 @@ export default function EsqueciSenhaPage() {
             autoComplete="email"
             placeholder="seu@email.com"
           />
+          <Input
+            label="Nova senha"
+            name="senha"
+            type="password"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            placeholder="••••••••"
+          />
+          <Input
+            label="Confirmar nova senha"
+            name="confirmar"
+            type="password"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            placeholder="••••••••"
+          />
           {erro && <Alert variant="danger">{erro}</Alert>}
           <Button type="submit" disabled={pending} fullWidth>
-            {pending ? "Enviando…" : "Enviar link de recuperação"}
+            {pending ? "Salvando…" : "Redefinir senha"}
           </Button>
           <p className="text-center text-sm text-text-2">
             <a href="/login" className="text-primary hover:underline font-medium">

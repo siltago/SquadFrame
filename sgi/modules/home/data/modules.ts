@@ -2,6 +2,14 @@ import type { Modulo } from "@/modules/home/types/module";
 
 export const MODULOS: Modulo[] = [
   {
+    slug: "squadwise",
+    nome: "SquadWise",
+    descricao: "Empresas, usuários, papéis e permissões — o núcleo de governança do SquadSystem.",
+    ativo: false,
+    cor: "info",
+    logo: "/squadwise.png",
+  },
+  {
     slug: "squadframe",
     nome: "SquadFrame",
     descricao: "Compras, obras, catálogo, tarefas e financeiro operacional.",

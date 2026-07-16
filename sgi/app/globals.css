@@ -267,6 +267,101 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SQUADWISE THEME — identidade violeta (#60519B), módulo de
+   governança/identidade/permissões. Escopado via classe, igual
+   .frame/.squadboard/.squadsystem. --color-sidebar-* fica fixo
+   (sidebar sempre escura #1E202C/#31323E), só declarado no bloco
+   light, o dark herda por cascata — mesmo padrão do .squadboard.
+═══════════════════════════════════════════════════════════════ */
+.squadwise {
+  /* Superfícies — cinza frio levemente violeta, não branco puro */
+  --color-bg:            247 247 251;  /* #F7F7FB */
+  --color-surface:       255 255 255;  /* #FFFFFF */
+  --color-surface-2:     237 237 245;  /* #EDEDF5 */
+  --color-surface-3:     220 220 232;  /* #DCDCE8 */
+
+  /* Texto — cinza profundo próximo da identidade #1E202C, não preto puro */
+  --color-text:          30  32  44;   /* #1E202C */
+  --color-text-2:        91  92  110;  /* #5B5C6E */
+  --color-text-3:        139 140 158;  /* #8B8C9E */
+
+  /* Bordas */
+  --color-border:        226 226 237; /* #E2E2ED */
+  --color-divider:       237 237 245; /* #EDEDF5 */
+
+  /* Primária — o violeta identitário do Wise */
+  --color-primary:        96  81  155; /* #60519B */
+  --color-primary-hover:  80  67  129; /* #504181 */
+  --color-primary-active: 64  53  101; /* #403565 */
+  --color-primary-soft:   235 232 245; /* #EBE8F5 */
+
+  /* Semânticas — nunca a cor identitária, só significado de estado */
+  --color-success:       46  139 92;  /* #2E8B5C */
+  --color-success-hover: 38  118 78;
+  --color-success-soft:  224 242 232; /* #E0F2E8 */
+  --color-warning:       181 122 26;  /* #B57A1A */
+  --color-warning-hover: 158 106 22;
+  --color-warning-soft:  250 238 217; /* #FAEED9 */
+  --color-danger:        190 66  66;  /* #BE4242 */
+  --color-danger-hover:  166 54  54;
+  --color-danger-soft:   248 226 226; /* #F8E2E2 */
+  --color-info:          63  110 199; /* #3F6EC7 */
+  --color-info-soft:     224 234 251; /* #E0EAFB */
+
+  /* Sidebar — sempre escura, fixa em qualquer tema (identidade do módulo) */
+  --color-sidebar-bg:          30  32  44;  /* #1E202C */
+  --color-sidebar-surface:     49  50  62;  /* #31323E */
+  --color-sidebar-text:        237 237 243; /* #EDEDF3 */
+  --color-sidebar-text-muted:  191 192 209; /* #BFC0D1 */
+  --color-sidebar-border:      56  58  74;  /* #383A4A */
+  /* Acento da sidebar (ícone/texto do item ativo) — fixo, calibrado pro
+     fundo escuro da sidebar, independente do tema claro/escuro do app.
+     Não reusa --color-primary porque esse token troca de valor entre
+     light/dark .squadwise, e o violeta do modo claro (#60519B) não tem
+     contraste suficiente sobre o fundo sempre-escuro da sidebar. */
+  --color-sidebar-active:      148 133 209; /* #9485D1 */
+
+  /* Topbar — cor de marca fixa (pedido explícito), independente do
+     tema claro/escuro, igual --color-sidebar-*. */
+  --color-topbar:              41  9   64;  /* #290940 */
+
+  --radius-md: 10px;
+  --radius-lg: 12px;
+}
+
+/* Espaço (descendente), não composto — mesma lógica do .squadboard. */
+.dark .squadwise {
+  --color-bg:            30  32  44;   /* #1E202C */
+  --color-surface:       49  50  62;   /* #31323E */
+  --color-surface-2:     61  63  77;   /* #3D3F4D */
+  --color-surface-3:     74  76  92;   /* #4A4C5C */
+
+  --color-text:          237 237 243; /* #EDEDF3 */
+  --color-text-2:        191 192 209; /* #BFC0D1 */
+  --color-text-3:        139 140 158; /* #8B8C9E */
+
+  --color-border:        61  63  77;  /* #3D3F4D */
+  --color-divider:       49  50  62;  /* #31323E */
+
+  --color-primary:        148 133 209; /* #9485D1 — clareado p/ contraste no escuro */
+  --color-primary-hover:  170 158 220; /* #AA9EDC */
+  --color-primary-active: 191 181 230; /* #BFB5E6 */
+  --color-primary-soft:   44  39  64;  /* #2C2740 */
+
+  --color-success:       130 201 162; /* #82C9A2 */
+  --color-success-hover: 154 214 182;
+  --color-success-soft:  30  51  40;
+  --color-warning:       232 193 122; /* #E8C17A */
+  --color-warning-hover: 237 209 155;
+  --color-warning-soft:  51  42  20;
+  --color-danger:        216 124 124; /* #D87C7C */
+  --color-danger-hover:  224 152 152;
+  --color-danger-soft:   51  28  28;
+  --color-info:          146 184 245; /* #92B8F5 */
+  --color-info-soft:     22  34  51;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BASE
 ═══════════════════════════════════════════════════════════════ */
 @layer base {

@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const ROTAS_PUBLICAS = ["/login", "/cadastro", "/esqueci-senha"];
+  const ROTAS_PUBLICAS = ["/login", "/cadastro", "/esqueci-senha", "/squadwise/ativar"];
   const isPublic = ROTAS_PUBLICAS.some((r) => pathname.startsWith(r));
 
   if (!user && !isPublic) {

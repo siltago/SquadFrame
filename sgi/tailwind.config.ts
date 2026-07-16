@@ -65,7 +65,9 @@ const config: Config = {
           text:    "rgb(var(--color-sidebar-text)       / <alpha-value>)",
           muted:   "rgb(var(--color-sidebar-text-muted) / <alpha-value>)",
           border:  "rgb(var(--color-sidebar-border)     / <alpha-value>)",
+          active:  "rgb(var(--color-sidebar-active, var(--color-primary)) / <alpha-value>)",
         },
+        topbar: "rgb(var(--color-topbar, var(--color-primary)) / <alpha-value>)",
 
         /* ── Aliases legados ── */
         canvas: "rgb(var(--color-bg)      / <alpha-value>)",

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { buscarUsuarioPorAuthId } from "@/modules/wise/identity/service";
+import { verificarPermissaoWise } from "@/modules/wise/access/service";
 import * as service from "./service";
 import type { WiseObraInput, WiseEstruturaInput } from "./types";
 
@@ -116,7 +117,19 @@ export async function atualizarLoteAction(
     prioridade?: string | null;
   },
 ) {
-  await contexto();
+  const { usuarioId } = await contexto();
+
+  // Portões institucionais — exige permissão dedicada, distinta de
+  // apenas "ver a página do lote" (ver seção 16.35 do documento mestre).
+  if (dados.liberado_compras !== undefined) {
+    const pode = await verificarPermissaoWise(usuarioId, "wise.pacotes.liberar_compras");
+    if (!pode) return { ok: false as const, erro: "Sem permissão para liberar/revogar Compras neste pacote" };
+  }
+  if (dados.liberado_producao !== undefined) {
+    const pode = await verificarPermissaoWise(usuarioId, "wise.pacotes.liberar_producao");
+    if (!pode) return { ok: false as const, erro: "Sem permissão para liberar/revogar Produção neste pacote" };
+  }
+
   const resultado = await service.atualizarLote(loteId, dados);
   if (resultado.ok) {
     revalidatePath(`/squadwise/obras/${obraId}/lotes/${loteId}`);

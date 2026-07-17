@@ -9,6 +9,7 @@ import {
   DashboardIcon, BuildingIcon, LayersIcon, BriefcaseIcon,
   UsersIcon, ShieldIcon, GridIcon, ActivityIcon,
   ChevronLeftIcon, ChevronRightIcon, MenuIcon, CloseIcon,
+  HomeIcon,
 } from "@/ui/icons";
 
 type NavItem = { href: string; label: string; icon: React.ReactNode; exact?: boolean };
@@ -40,6 +41,12 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/squadwise/usuarios", label: "Usuários", icon: <UsersIcon size={18} /> },
       { href: "/squadwise/papeis",   label: "Papéis",   icon: <ShieldIcon size={18} /> },
+    ],
+  },
+  {
+    label: "Planejamento",
+    items: [
+      { href: "/squadwise/obras",   label: "Obras",   icon: <HomeIcon size={18} /> },
     ],
   },
   {

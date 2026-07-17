@@ -1,8 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { atualizarLoteAction } from "@/modules/wise/works/actions";
+import {
+  ensureContextoAction,
+  adicionarNecessidadeAction,
+  cancelarNecessidadeAction,
+  bloquearContextoAction,
+  desbloquearContextoAction,
+  alocarItemPedidoAction,
+  cancelarAlocacaoPedidoAction,
+  listarItensSolicitacaoDoPacoteAction,
+  alocarItemSolicitacaoAction,
+  listarRecebimentosDaNecessidadeAction,
+  alocarItemRecebimentoAction,
+  estornarAlocacaoRecebimentoAction,
+} from "@/modules/squadframe/package-procurement/actions";
+import type {
+  WisePacoteCompras, WiseNecessidade, CoberturaNecessidade,
+  PedidoItemDisponivel, StatusSuprimentosCalculado,
+  SolicitacaoItemDisponivel, RecebimentoItemDisponivel,
+} from "@/modules/squadframe/package-procurement/types";
 import type {
   WiseLoteComTipologias,
   WiseTipologia,
@@ -622,6 +641,623 @@ function TabLiberacao({
   );
 }
 
+// ── Aba: Compras (necessidades de material) ───────────────────────────────
+// Fonte de verdade é o SquadFrame (frame_pacote_compras/frame_pacote_necessidades)
+// — esta aba só existe fisicamente aqui porque o Frame ainda não tem uma
+// página própria de pacote; a lógica de domínio inteira vive em
+// modules/squadframe/package-procurement/.
+
+const CRITICIDADE_CLS: Record<string, string> = {
+  BAIXA:      "bg-slate-100 text-slate-600",
+  NORMAL:     "bg-blue-100 text-blue-700",
+  ALTA:       "bg-orange-100 text-orange-700",
+  BLOQUEANTE: "bg-red-100 text-red-600",
+};
+
+const ETAPA_NECESSIDADE_OPTS = [
+  { value: "",            label: "—"          },
+  { value: "corte",       label: "Corte"      },
+  { value: "usinagem",    label: "Usinagem"   },
+  { value: "montagem",    label: "Montagem"   },
+  { value: "vedacao",     label: "Vedação"    },
+  { value: "vidro",       label: "Vidro"      },
+  { value: "embalagem",   label: "Embalagem"  },
+  { value: "expedicao",   label: "Expedição"  },
+];
+
+function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriada: (n: WiseNecessidade) => void }) {
+  const [descricao, setDescricao] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [unidade, setUnidade] = useState("");
+  const [criticidade, setCriticidade] = useState("NORMAL");
+  const [etapa, setEtapa] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function submeter() {
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await adicionarNecessidadeAction({
+        pacote_id: pacoteId,
+        descricao_livre: descricao,
+        quantidade: parseFloat(quantidade.replace(",", ".")) || 0,
+        unidade,
+        criticidade,
+        etapa_necessaria: etapa || null,
+      });
+      if (!resultado.ok) { setErro(resultado.erro); return; }
+      onCriada({
+        id: resultado.dados,
+        pacote_id: pacoteId,
+        produto_id: null,
+        descricao_livre: descricao,
+        quantidade_necessaria: parseFloat(quantidade.replace(",", ".")) || 0,
+        unidade,
+        criticidade: criticidade as WiseNecessidade["criticidade"],
+        etapa_necessaria: (etapa || null) as WiseNecessidade["etapa_necessaria"],
+        estado_administrativo: "ATIVA",
+        motivo_cancelamento: null,
+        criado_por: null,
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+      });
+      setDescricao(""); setQuantidade(""); setUnidade(""); setCriticidade("NORMAL"); setEtapa("");
+    });
+  }
+
+  return (
+    <div className="card px-4 py-4 space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-text-3">Nova necessidade de material</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <input
+          className="col-span-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm sm:col-span-2"
+          placeholder="Descrição (ex: Perfil montante Suprema)"
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)}
+        />
+        <input
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          placeholder="Quantidade"
+          value={quantidade}
+          onChange={(e) => setQuantidade(e.target.value)}
+        />
+        <input
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          placeholder="Unidade (ex: barra)"
+          value={unidade}
+          onChange={(e) => setUnidade(e.target.value)}
+        />
+        <select
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          value={criticidade}
+          onChange={(e) => setCriticidade(e.target.value)}
+        >
+          <option value="BAIXA">Baixa</option>
+          <option value="NORMAL">Normal</option>
+          <option value="ALTA">Alta</option>
+          <option value="BLOQUEANTE">Bloqueante</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-3">
+        <select
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          value={etapa}
+          onChange={(e) => setEtapa(e.target.value)}
+        >
+          {ETAPA_NECESSIDADE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <button
+          type="button"
+          disabled={isPending || !descricao.trim() || !quantidade.trim() || !unidade.trim()}
+          onClick={submeter}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          {isPending ? "Adicionando…" : "Adicionar"}
+        </button>
+        {erro && <span className="text-sm text-red-500">{erro}</span>}
+      </div>
+    </div>
+  );
+}
+
+const STATUS_SUPRIMENTOS_LABEL: Record<StatusSuprimentosCalculado, string> = {
+  SEM_NECESSIDADES:   "Sem necessidades",
+  PENDENTE_DE_COMPRA: "Pendente de compra",
+  COMPRA_PARCIAL:     "Compra parcial",
+  PEDIDOS_EMITIDOS:   "Pedidos emitidos",
+  RECEBIMENTO_PARCIAL:"Recebimento parcial",
+  MATERIAL_RECEBIDO:  "Material recebido",
+};
+
+function AlocarPedidoForm({
+  necessidadeId,
+  itensDisponiveis,
+  onAlocado,
+  onFechar,
+}: {
+  necessidadeId: string;
+  itensDisponiveis: PedidoItemDisponivel[];
+  onAlocado: () => void;
+  onFechar: () => void;
+}) {
+  const [itemId, setItemId] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [justificativa, setJustificativa] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const itemSelecionado = itensDisponiveis.find((i) => i.id === itemId);
+  const saldo = itemSelecionado ? itemSelecionado.quantidade_pedida - itemSelecionado.ja_alocado : 0;
+
+  function submeter() {
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await alocarItemPedidoAction({
+        pedido_item_id: itemId,
+        necessidade_id: necessidadeId,
+        quantidade: parseFloat(quantidade.replace(",", ".")) || 0,
+        justificativa,
+      });
+      if (!resultado.ok) { setErro(resultado.erro); return; }
+      onAlocado();
+    });
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-border bg-bg p-3">
+      <select
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+        value={itemId}
+        onChange={(e) => setItemId(e.target.value)}
+      >
+        <option value="">Selecione um item de pedido…</option>
+        {itensDisponiveis.filter((i) => i.quantidade_pedida - i.ja_alocado > 0).map((i) => (
+          <option key={i.id} value={i.id}>
+            #{i.pedido_numero} — {i.descricao_snapshot} (saldo: {(i.quantidade_pedida - i.ja_alocado).toFixed(3)} {i.unidade})
+          </option>
+        ))}
+      </select>
+      {itemId && (
+        <>
+          <div className="flex items-center gap-2">
+            <input
+              className="w-32 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder={`Qtd (máx ${saldo.toFixed(3)})`}
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value)}
+            />
+            <span className="text-xs text-text-3">{itemSelecionado?.unidade}</span>
+          </div>
+          <input
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+            placeholder="Justificativa (compra direta, sem solicitação vinculada)"
+            value={justificativa}
+            onChange={(e) => setJustificativa(e.target.value)}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isPending || !quantidade.trim() || !justificativa.trim()}
+              onClick={submeter}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isPending ? "Alocando…" : "Confirmar alocação"}
+            </button>
+            <button type="button" onClick={onFechar} className="text-xs text-text-3 hover:text-text-2">
+              Cancelar
+            </button>
+            {erro && <span className="text-xs text-red-500">{erro}</span>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AlocarSolicitacaoForm({
+  necessidadeId,
+  itensDisponiveis,
+  onAlocado,
+  onFechar,
+}: {
+  necessidadeId: string;
+  itensDisponiveis: SolicitacaoItemDisponivel[];
+  onAlocado: () => void;
+  onFechar: () => void;
+}) {
+  const [itemId, setItemId] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const itemSelecionado = itensDisponiveis.find((i) => i.id === itemId);
+  const saldo = itemSelecionado ? itemSelecionado.quantidade - itemSelecionado.ja_alocado : 0;
+
+  function submeter() {
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await alocarItemSolicitacaoAction({
+        solicitacao_item_id: itemId,
+        necessidade_id: necessidadeId,
+        quantidade: parseFloat(quantidade.replace(",", ".")) || 0,
+      });
+      if (!resultado.ok) { setErro(resultado.erro); return; }
+      onAlocado();
+    });
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-border bg-bg p-3">
+      <select
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+        value={itemId}
+        onChange={(e) => setItemId(e.target.value)}
+      >
+        <option value="">Selecione um item de solicitação…</option>
+        {itensDisponiveis.filter((i) => i.quantidade - i.ja_alocado > 0).map((i) => (
+          <option key={i.id} value={i.id}>
+            #{i.solicitacao_numero} — {i.descricao} (saldo: {(i.quantidade - i.ja_alocado).toFixed(3)} {i.unidade})
+          </option>
+        ))}
+      </select>
+      {itemId && (
+        <>
+          <div className="flex items-center gap-2">
+            <input
+              className="w-32 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder={`Qtd (máx ${saldo.toFixed(3)})`}
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value)}
+            />
+            <span className="text-xs text-text-3">{itemSelecionado?.unidade}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isPending || !quantidade.trim()}
+              onClick={submeter}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isPending ? "Alocando…" : "Confirmar alocação"}
+            </button>
+            <button type="button" onClick={onFechar} className="text-xs text-text-3 hover:text-text-2">
+              Cancelar
+            </button>
+            {erro && <span className="text-xs text-red-500">{erro}</span>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AlocarRecebimentoForm({
+  necessidadeId,
+  onAlocado,
+  onFechar,
+}: {
+  necessidadeId: string;
+  onAlocado: () => void;
+  onFechar: () => void;
+}) {
+  const [itens, setItens] = useState<RecebimentoItemDisponivel[] | null>(null);
+  const [itemId, setItemId] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    listarRecebimentosDaNecessidadeAction(necessidadeId).then(setItens);
+  }, [necessidadeId]);
+
+  if (itens === null) {
+    return <div className="mt-2 rounded-lg border border-border bg-bg p-3 text-xs text-text-3">Carregando recebimentos…</div>;
+  }
+
+  const itemSelecionado = itens.find((i) => i.id === itemId);
+  const saldo = itemSelecionado ? itemSelecionado.quantidade_recebida - itemSelecionado.ja_alocado : 0;
+
+  function submeter() {
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await alocarItemRecebimentoAction({
+        recebimento_item_id: itemId,
+        pedido_item_alocacao_id: itemSelecionado!.pedido_item_alocacao_id,
+        quantidade: parseFloat(quantidade.replace(",", ".")) || 0,
+      });
+      if (!resultado.ok) { setErro(resultado.erro); return; }
+      onAlocado();
+    });
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-border bg-bg p-3">
+      {itens.length === 0 ? (
+        <p className="text-xs text-text-3">Nenhum recebimento disponível — só entram itens de pedidos já alocados a esta necessidade.</p>
+      ) : (
+        <select
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          value={itemId}
+          onChange={(e) => setItemId(e.target.value)}
+        >
+          <option value="">Selecione um item recebido…</option>
+          {itens.filter((i) => i.quantidade_recebida - i.ja_alocado > 0).map((i) => (
+            <option key={i.id} value={i.id}>
+              #{i.pedido_numero} (saldo: {(i.quantidade_recebida - i.ja_alocado).toFixed(3)} {i.unidade})
+            </option>
+          ))}
+        </select>
+      )}
+      {itemId && (
+        <>
+          <div className="flex items-center gap-2">
+            <input
+              className="w-32 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder={`Qtd (máx ${saldo.toFixed(3)})`}
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value)}
+            />
+            <span className="text-xs text-text-3">{itemSelecionado?.unidade}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isPending || !quantidade.trim()}
+              onClick={submeter}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isPending ? "Alocando…" : "Confirmar alocação"}
+            </button>
+            <button type="button" onClick={onFechar} className="text-xs text-text-3 hover:text-text-2">
+              Cancelar
+            </button>
+            {erro && <span className="text-xs text-red-500">{erro}</span>}
+          </div>
+        </>
+      )}
+      {!itemId && (
+        <button type="button" onClick={onFechar} className="text-xs text-text-3 hover:text-text-2">
+          Fechar
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TabCompras({
+  loteId,
+  contextoInicial,
+  necessidadesIniciais,
+  coberturaInicial,
+  statusSuprimentos,
+  itensPedidoDisponiveis,
+  itensSolicitacaoDisponiveis,
+}: {
+  loteId: string;
+  contextoInicial: WisePacoteCompras | null;
+  necessidadesIniciais: WiseNecessidade[];
+  coberturaInicial: CoberturaNecessidade[];
+  statusSuprimentos: StatusSuprimentosCalculado;
+  itensPedidoDisponiveis: PedidoItemDisponivel[];
+  itensSolicitacaoDisponiveis: SolicitacaoItemDisponivel[];
+}) {
+  const [contexto, setContexto] = useState(contextoInicial);
+  const [necessidades, setNecessidades] = useState(necessidadesIniciais);
+  const [motivoBloqueio, setMotivoBloqueio] = useState("");
+  const [alocandoNecessidadeId, setAlocandoNecessidadeId] = useState<string | null>(null);
+  const [modoAlocacao, setModoAlocacao] = useState<"pedido" | "solicitacao" | "recebimento" | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [precisaAtualizar, setPrecisaAtualizar] = useState(false);
+
+  const ativas = necessidades.filter((n) => n.estado_administrativo === "ATIVA");
+  const coberturaPorNecessidade = new Map(coberturaInicial.map((c) => [c.necessidade_id, c]));
+
+  function preparar() {
+    startTransition(async () => {
+      const resultado = await ensureContextoAction(loteId);
+      if (resultado.ok) {
+        setContexto((prev) => prev ?? {
+          id: resultado.dados, pacote_id: loteId, responsavel_id: null,
+          bloqueado: false, motivo_bloqueio: null, bloqueado_por: null, bloqueado_em: null,
+          criado_por: null, criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  function cancelar(necessidadeId: string) {
+    const motivo = window.prompt("Motivo do cancelamento:");
+    if (!motivo) return;
+    startTransition(async () => {
+      const resultado = await cancelarNecessidadeAction(necessidadeId, motivo);
+      if (resultado.ok) {
+        setNecessidades((prev) => prev.map((n) => n.id === necessidadeId
+          ? { ...n, estado_administrativo: "CANCELADA", motivo_cancelamento: motivo }
+          : n));
+      }
+    });
+  }
+
+  function toggleBloqueio() {
+    startTransition(async () => {
+      if (contexto?.bloqueado) {
+        const resultado = await desbloquearContextoAction(loteId);
+        if (resultado.ok) setContexto((prev) => prev && { ...prev, bloqueado: false, motivo_bloqueio: null });
+      } else {
+        if (!motivoBloqueio.trim()) return;
+        const resultado = await bloquearContextoAction(loteId, motivoBloqueio);
+        if (resultado.ok) {
+          setContexto((prev) => prev && { ...prev, bloqueado: true, motivo_bloqueio: motivoBloqueio });
+          setMotivoBloqueio("");
+        }
+      }
+    });
+  }
+
+  if (!contexto) {
+    return (
+      <div className="card px-5 py-8 text-center space-y-3">
+        <p className="text-sm text-text-3">Este pacote ainda não tem contexto de Compras.</p>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={preparar}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+        >
+          {isPending ? "Preparando…" : "Preparar contexto de Compras"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="card px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-text-3">Situação calculada</p>
+          <p className="mt-1 text-lg font-bold text-text">{STATUS_SUPRIMENTOS_LABEL[statusSuprimentos]}</p>
+          <p className="text-xs text-text-3 mt-0.5">{ativas.length} necessidade(s) ativa(s)</p>
+        </div>
+        {contexto.bloqueado ? (
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              Bloqueado: {contexto.motivo_bloqueio}
+            </div>
+            <button type="button" disabled={isPending} onClick={toggleBloqueio}
+              className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-bg disabled:opacity-50">
+              Desbloquear
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder="Motivo do bloqueio"
+              value={motivoBloqueio}
+              onChange={(e) => setMotivoBloqueio(e.target.value)}
+            />
+            <button type="button" disabled={isPending || !motivoBloqueio.trim()} onClick={toggleBloqueio}
+              className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-bg disabled:opacity-50">
+              Bloquear
+            </button>
+          </div>
+        )}
+      </div>
+
+      <NovaNecessidadeForm pacoteId={loteId} onCriada={(n) => setNecessidades((prev) => [...prev, n])} />
+
+      {precisaAtualizar && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          Alocação registrada — recarregue a página pra ver a cobertura atualizada.
+        </div>
+      )}
+
+      {necessidades.length === 0 ? (
+        <div className="card p-10 text-center">
+          <p className="text-sm text-text-3">Nenhuma necessidade de material cadastrada.</p>
+        </div>
+      ) : (
+        <div className="card divide-y divide-border">
+          {necessidades.map((n) => {
+            const cob = coberturaPorNecessidade.get(n.id);
+            return (
+              <div key={n.id} className={`px-4 py-3 ${n.estado_administrativo === "CANCELADA" ? "opacity-50" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${CRITICIDADE_CLS[n.criticidade]}`}>
+                    {n.criticidade}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text truncate">
+                      {n.produto?.nome ?? n.descricao_livre}
+                    </p>
+                    <p className="text-xs text-text-3">
+                      {n.quantidade_necessaria} {n.unidade}
+                      {n.etapa_necessaria ? ` · ${n.etapa_necessaria}` : ""}
+                      {n.estado_administrativo === "CANCELADA" ? ` · cancelada: ${n.motivo_cancelamento}` : ""}
+                    </p>
+                    {cob && (
+                      <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+                        <span className="rounded bg-bg px-1.5 py-0.5 text-text-3">Solicitado: {cob.solicitado}</span>
+                        <span className="rounded bg-bg px-1.5 py-0.5 text-text-3">Pedido: {cob.pedido}</span>
+                        <span className="rounded bg-bg px-1.5 py-0.5 text-text-3">Recebido: {cob.recebido}</span>
+                      </div>
+                    )}
+                  </div>
+                  {n.estado_administrativo === "ATIVA" && (
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAlocandoNecessidadeId((prev) => (prev === n.id && modoAlocacao === "solicitacao" ? null : n.id));
+                          setModoAlocacao("solicitacao");
+                        }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Alocar solicitação
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAlocandoNecessidadeId((prev) => (prev === n.id && modoAlocacao === "pedido" ? null : n.id));
+                          setModoAlocacao("pedido");
+                        }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Alocar pedido
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAlocandoNecessidadeId((prev) => (prev === n.id && modoAlocacao === "recebimento" ? null : n.id));
+                          setModoAlocacao("recebimento");
+                        }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Alocar recebimento
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => cancelar(n.id)}
+                        className="text-xs text-text-3 hover:text-red-500"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {alocandoNecessidadeId === n.id && modoAlocacao === "solicitacao" && (
+                  <AlocarSolicitacaoForm
+                    necessidadeId={n.id}
+                    itensDisponiveis={itensSolicitacaoDisponiveis}
+                    onFechar={() => setAlocandoNecessidadeId(null)}
+                    onAlocado={() => { setAlocandoNecessidadeId(null); setPrecisaAtualizar(true); }}
+                  />
+                )}
+                {alocandoNecessidadeId === n.id && modoAlocacao === "pedido" && (
+                  <AlocarPedidoForm
+                    necessidadeId={n.id}
+                    itensDisponiveis={itensPedidoDisponiveis}
+                    onFechar={() => setAlocandoNecessidadeId(null)}
+                    onAlocado={() => { setAlocandoNecessidadeId(null); setPrecisaAtualizar(true); }}
+                  />
+                )}
+                {alocandoNecessidadeId === n.id && modoAlocacao === "recebimento" && (
+                  <AlocarRecebimentoForm
+                    necessidadeId={n.id}
+                    onFechar={() => setAlocandoNecessidadeId(null)}
+                    onAlocado={() => { setAlocandoNecessidadeId(null); setPrecisaAtualizar(true); }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Componente principal ───────────────────────────────────────────────────
 
 interface Props {
@@ -630,17 +1266,28 @@ interface Props {
   obraNome: string;
   pedidos: WiseLotePedido[];
   solicitacoes: WiseLoteSolicitacao[];
+  contextoCompras: WisePacoteCompras | null;
+  necessidades: WiseNecessidade[];
+  cobertura: CoberturaNecessidade[];
+  statusSuprimentos: StatusSuprimentosCalculado;
+  itensPedidoDisponiveis: PedidoItemDisponivel[];
+  itensSolicitacaoDisponiveis: SolicitacaoItemDisponivel[];
 }
 
-type Aba = "dashboard" | "itens" | "liberacao";
+type Aba = "dashboard" | "itens" | "compras" | "liberacao";
 
 const ABAS: { key: Aba; label: string }[] = [
   { key: "dashboard",  label: "Dashboard"  },
   { key: "itens",      label: "Itens"      },
+  { key: "compras",    label: "Compras"    },
   { key: "liberacao",  label: "Liberação"  },
 ];
 
-export function LoteDetalhe({ lote, obraId, obraNome, pedidos, solicitacoes }: Props) {
+export function LoteDetalhe({
+  lote, obraId, obraNome, pedidos, solicitacoes,
+  contextoCompras, necessidades, cobertura, statusSuprimentos, itensPedidoDisponiveis,
+  itensSolicitacaoDisponiveis,
+}: Props) {
   const [aba, setAba] = useState<Aba>("dashboard");
 
   return (
@@ -702,6 +1349,17 @@ export function LoteDetalhe({ lote, obraId, obraNome, pedidos, solicitacoes }: P
           <TabDashboard lote={lote} pedidos={pedidos} solicitacoes={solicitacoes} />
         )}
         {aba === "itens" && <TabItens lote={lote} />}
+        {aba === "compras" && (
+          <TabCompras
+            loteId={lote.id}
+            contextoInicial={contextoCompras}
+            necessidadesIniciais={necessidades}
+            coberturaInicial={cobertura}
+            statusSuprimentos={statusSuprimentos}
+            itensPedidoDisponiveis={itensPedidoDisponiveis}
+            itensSolicitacaoDisponiveis={itensSolicitacaoDisponiveis}
+          />
+        )}
         {aba === "liberacao" && <TabLiberacao lote={lote} obraId={obraId} />}
       </div>
     </div>

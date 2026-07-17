@@ -61,6 +61,10 @@ export const PERMISSIONS = {
   COMPRAS_PEDIDO_APROVAR_RETORNO:   "compras.pedido.aprovar_retorno",
   COMPRAS_PEDIDO_DEVOLVER:          "compras.pedido.devolver",
   COMPRAS_PEDIDO_APROVAR_DEVOLUCAO: "compras.pedido.aprovar_devolucao",
+
+  // Contexto de Compras do Pacote de Trabalho (necessidades de material)
+  FRAME_PACOTES_COMPRAS_VISUALIZAR: "frame.pacotes.compras.visualizar",
+  FRAME_PACOTES_COMPRAS_GERENCIAR:  "frame.pacotes.compras.gerenciar",
 } as const;
 
 export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS];

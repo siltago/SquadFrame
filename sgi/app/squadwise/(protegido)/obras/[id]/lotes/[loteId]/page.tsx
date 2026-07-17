@@ -5,6 +5,10 @@ import { buscarObra } from "@/modules/wise/works/service";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { LoteDetalhe } from "@/modules/wise/works/components/lote-detalhe";
 import { createAdminClient } from "@/shared/database/supabase-admin";
+import {
+  obterContexto, listarNecessidades, obterCobertura, calcularStatusSuprimentos,
+  listarItensPedidoDoPacote, listarItensSolicitacaoDoPacote,
+} from "@/modules/squadframe/package-procurement/service";
 import type {
   WiseLoteComTipologias,
   WiseLotePedido,
@@ -104,13 +108,20 @@ export default async function LotePage({
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) redirect("/");
 
-  const [obra, lote, { pedidos, solicitacoes }] = await Promise.all([
+  const [obra, lote, { pedidos, solicitacoes }, contextoCompras, necessidades, itensPedidoDisponiveis, itensSolicitacaoDisponiveis] = await Promise.all([
     buscarObra(params.id, wiseUsuario.empresa_id),
     buscarLote(params.loteId, params.id),
     buscarPedidosEsolicitacoes(params.loteId),
+    obterContexto(params.loteId),
+    listarNecessidades(params.loteId),
+    listarItensPedidoDoPacote(params.loteId),
+    listarItensSolicitacaoDoPacote(params.loteId),
   ]);
 
   if (!obra || !lote) notFound();
+
+  const cobertura = await obterCobertura(necessidades);
+  const statusSuprimentos = calcularStatusSuprimentos(necessidades, cobertura);
 
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">
@@ -122,6 +133,12 @@ export default async function LotePage({
           obraNome={obra.nome}
           pedidos={pedidos}
           solicitacoes={solicitacoes}
+          contextoCompras={contextoCompras}
+          necessidades={necessidades}
+          cobertura={cobertura}
+          statusSuprimentos={statusSuprimentos}
+          itensPedidoDisponiveis={itensPedidoDisponiveis}
+          itensSolicitacaoDisponiveis={itensSolicitacaoDisponiveis}
         />
       </div>
     </div>

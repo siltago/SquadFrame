@@ -401,6 +401,50 @@ function CargoCard({
             );
           })()}
 
+          {/* Pacotes de Trabalho — contexto de Compras (necessidades de material) */}
+          {!isAdmin && (() => {
+            const todosPacoteCompras = permissoes.filter((p) => p.chave.startsWith("frame.pacotes.compras."));
+            if (!todosPacoteCompras.length) return null;
+            const todosMarcados = todosPacoteCompras.every((p) => permsIds.has(p.id));
+            return (
+              <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border bg-bg px-3 py-2">
+                  <span className="text-xs font-medium text-text-2">Pacotes de Trabalho (Compras)</span>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
+                    <input type="checkbox"
+                      checked={todosMarcados}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const ids = todosPacoteCompras.map((p) => p.id);
+                        setPermsIds((prev) => {
+                          const n = new Set(prev);
+                          ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
+                          return n;
+                        });
+                      }}
+                      className="h-3.5 w-3.5 rounded accent-primary"
+                    />
+                    Tudo
+                  </label>
+                </div>
+                <div className="px-3 py-2">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                    {todosPacoteCompras.map((p) => (
+                      <label key={p.id} className="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox"
+                          checked={permsIds.has(p.id)}
+                          onChange={() => togglePerm(p.id)}
+                          className="h-3.5 w-3.5 rounded accent-primary"
+                        />
+                        <span className="text-xs text-text">{p.nome}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Financeiro — permissões granulares */}
           {!isAdmin && (() => {
             const todosFinanceiro = permissoes.filter((p) => p.chave.startsWith("financeiro."));

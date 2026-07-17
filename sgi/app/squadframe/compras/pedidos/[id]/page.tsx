@@ -7,7 +7,10 @@ import { BackButton } from "@/modules/squadframe/components/back-button";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 import { PedidoCliente } from "@/modules/squadframe/components/compras/pedido-cliente";
 import { PedidoTabs } from "@/modules/squadframe/components/compras/pedido-tabs";
+import { RetornoAprovacao } from "@/modules/squadframe/components/compras/retorno-aprovacao";
+import { DevolucoesList } from "@/modules/squadframe/components/compras/devolucoes-lista";
 import { STATUS_PED_COR, STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
+import type { RetornoPendente, DevolucaoCompra } from "@/modules/squadframe/types/compras";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +42,8 @@ export default async function PedidoPage({ params }: { params: { id: string } })
   const [
     [{ data: anotacoes }, { data: documentos }],
     coresRalResult,
+    retornoResult,
+    devolucaoResult,
   ] = await Promise.all([
     Promise.all([
       admin.from("pedido_anotacoes")
@@ -49,7 +54,21 @@ export default async function PedidoPage({ params }: { params: { id: string } })
         .eq("pedido_id", params.id).order("criado_em", { ascending: false }),
     ]).catch(() => [{ data: [] }, { data: [] }]),
     getCoresRal().catch((): any[] => []),
+    admin.from("pedido_retornos")
+      .select("id, motivo, etapa_anterior, criado_em, criado_por:usuarios(nome)")
+      .eq("pedido_id", params.id)
+      .eq("status", "PENDENTE")
+      .maybeSingle()
+      .then((r) => r, () => ({ data: null })),
+    admin.from("devolucoes_compra")
+      .select("id, numero, status, motivo, valor_total, usa_carteira, criado_em")
+      .eq("pedido_id", params.id)
+      .order("criado_em", { ascending: false })
+      .then((r) => r, () => ({ data: [] as any[] })),
   ]);
+
+  const retornoPendente = (retornoResult as { data: RetornoPendente | null }).data;
+  const devolucoesCompra: DevolucaoCompra[] = ((devolucaoResult as { data: any[] | null }).data ?? []) as DevolucaoCompra[];
 
   const coresRal = coresRalResult as any[];
 
@@ -99,9 +118,18 @@ export default async function PedidoPage({ params }: { params: { id: string } })
               Visualizar PDF
             </Button>
           )}
-          <PedidoCliente pedido={ped} />
+          <PedidoCliente
+            pedido={ped}
+            hasRecebimentos={(recebimentos ?? []).length > 0}
+          />
         </div>
       </div>
+
+      {retornoPendente && (
+        <div className="mt-4">
+          <RetornoAprovacao retorno={retornoPendente} pedidoId={params.id} />
+        </div>
+      )}
 
       <div className="mt-6">
         <PedidoTabs
@@ -114,6 +142,8 @@ export default async function PedidoPage({ params }: { params: { id: string } })
           coresRal={coresRal}
         />
       </div>
+
+      <DevolucoesList devolucoesCompra={devolucoesCompra} pedidoId={params.id} />
     </div>
   );
 }

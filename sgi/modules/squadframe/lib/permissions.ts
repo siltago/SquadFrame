@@ -55,6 +55,12 @@ export const PERMISSIONS = {
   FINANCEIRO_PEDIDO_FAT_DIRETO:  "financeiro.pedido.faturamento_direto.usar",
   FINANCEIRO_PEDIDO_CONFIRMAR_DEBITO: "financeiro.pedido.confirmar_debito",
   FINANCEIRO_DASHBOARD_VER:      "financeiro.dashboard.ver",
+
+  // Retorno e Devolução de Pedido
+  COMPRAS_PEDIDO_RETORNAR:          "compras.pedido.retornar",
+  COMPRAS_PEDIDO_APROVAR_RETORNO:   "compras.pedido.aprovar_retorno",
+  COMPRAS_PEDIDO_DEVOLVER:          "compras.pedido.devolver",
+  COMPRAS_PEDIDO_APROVAR_DEVOLUCAO: "compras.pedido.aprovar_devolucao",
 } as const;
 
 export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS];

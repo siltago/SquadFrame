@@ -29,6 +29,17 @@ export {
 } from "@/modules/squadframe/actions/compras/documentos";
 
 export {
+  criarRetornoPedido,
+  aprovarRetornoPedido,
+  rejeitarRetornoPedido,
+} from "@/modules/squadframe/actions/compras/retorno";
+
+export {
+  criarDevolucaoPedido,
+  alterarStatusDevolucao,
+} from "@/modules/squadframe/actions/compras/devolucao";
+
+export {
   criarFormaPagamento,
   alterarFormaPagamento,
   criarFornecedor,

@@ -55,3 +55,52 @@ export const PRIORIDADE_COR: Record<Prioridade, string> = {
 export const ORIGEM_LABEL: Record<Origem, string> = {
   OBRA: 'Obra', ADMINISTRATIVO: 'Administrativo', MANUTENCAO: 'Manutenção',
 };
+
+export type StatusRetorno = 'PENDENTE' | 'APROVADO' | 'REJEITADO';
+export const STATUS_RET_LABEL: Record<StatusRetorno, string> = {
+  PENDENTE:  'Pendente',
+  APROVADO:  'Aprovado',
+  REJEITADO: 'Rejeitado',
+};
+export const STATUS_RET_COR: Record<StatusRetorno, string> = {
+  PENDENTE:  '#f59e0b',
+  APROVADO:  '#10b981',
+  REJEITADO: '#ef4444',
+};
+
+export type StatusDevolucao = 'RASCUNHO' | 'AGUARDANDO_APROVACAO' | 'APROVADO' | 'ENVIO' | 'ENTREGUE' | 'CANCELADO';
+export const STATUS_DEV_LABEL: Record<StatusDevolucao, string> = {
+  RASCUNHO:             'Rascunho',
+  AGUARDANDO_APROVACAO: 'Aguard. Aprovação',
+  APROVADO:             'Aprovado',
+  ENVIO:                'Em Envio',
+  ENTREGUE:             'Entregue',
+  CANCELADO:            'Cancelado',
+};
+export const STATUS_DEV_COR: Record<StatusDevolucao, string> = {
+  RASCUNHO:             '#6b7280',
+  AGUARDANDO_APROVACAO: '#f59e0b',
+  APROVADO:             '#10b981',
+  ENVIO:                '#3b82f6',
+  ENTREGUE:             '#8b5cf6',
+  CANCELADO:            '#ef4444',
+};
+
+export type DevolucaoCompra = {
+  id: string;
+  numero: string;
+  pedido_id: string;
+  motivo: string;
+  status: StatusDevolucao;
+  valor_total: number | null;
+  usa_carteira: boolean;
+  criado_em: string;
+};
+
+export type RetornoPendente = {
+  id: string;
+  motivo: string;
+  etapa_anterior: string;
+  criado_em: string;
+  criado_por: { nome: string } | null;
+};

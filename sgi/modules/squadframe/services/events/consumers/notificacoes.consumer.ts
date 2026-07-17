@@ -111,6 +111,120 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       break;
     }
 
+    // Retorno de pedido solicitado → notifica aprovadores
+    case EVENTS.PURCHASE_ORDER_RETURN_REQUESTED: {
+      const { order_id, retorno_id, numero } = p;
+      if (!order_id) break;
+
+      const { data: perm } = await admin
+        .from("permissoes")
+        .select("id")
+        .eq("chave", "compras.pedido.aprovar_retorno")
+        .maybeSingle();
+      if (!perm?.id) break;
+
+      const { data: cargoPerms } = await admin
+        .from("cargo_permissoes")
+        .select("cargo_id")
+        .eq("permissao_id", perm.id);
+      if (!cargoPerms?.length) break;
+
+      const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
+      const { data: usuarios } = await admin
+        .from("usuarios")
+        .select("id")
+        .in("cargo_id", cargoIds)
+        .eq("ativo", true);
+      if (!usuarios?.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarios.map((u) => ({
+          usuario_id: u.id,
+          tipo: "retorno_pedido_solicitado",
+          payload: { numero, order_id, retorno_id },
+        }))
+      );
+      break;
+    }
+
+    // Retorno aprovado → notifica comprador
+    case EVENTS.PURCHASE_ORDER_RETURN_APPROVED: {
+      const { order_id, numero } = p;
+      if (!order_id) break;
+
+      const { data: pedido } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero")
+        .eq("id", order_id)
+        .single();
+
+      if (pedido?.comprador_id) {
+        await admin.from("notificacoes").insert({
+          usuario_id: pedido.comprador_id,
+          tipo: "retorno_pedido_aprovado",
+          payload: { numero: pedido.numero ?? numero, order_id },
+        });
+      }
+      break;
+    }
+
+    // Retorno rejeitado → notifica comprador
+    case EVENTS.PURCHASE_ORDER_RETURN_REJECTED: {
+      const { order_id, numero } = p;
+      if (!order_id) break;
+
+      const { data: pedido } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero")
+        .eq("id", order_id)
+        .single();
+
+      if (pedido?.comprador_id) {
+        await admin.from("notificacoes").insert({
+          usuario_id: pedido.comprador_id,
+          tipo: "retorno_pedido_rejeitado",
+          payload: { numero: pedido.numero ?? numero, order_id },
+        });
+      }
+      break;
+    }
+
+    // Devolução criada → notifica aprovadores
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_CREATED: {
+      const { order_id, devolucao_id, numero_devolucao } = p;
+      if (!order_id) break;
+
+      const { data: perm } = await admin
+        .from("permissoes")
+        .select("id")
+        .eq("chave", "compras.pedido.aprovar_devolucao")
+        .maybeSingle();
+      if (!perm?.id) break;
+
+      const { data: cargoPerms } = await admin
+        .from("cargo_permissoes")
+        .select("cargo_id")
+        .eq("permissao_id", perm.id);
+      if (!cargoPerms?.length) break;
+
+      const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
+      const { data: usuarios } = await admin
+        .from("usuarios")
+        .select("id")
+        .in("cargo_id", cargoIds)
+        .eq("ativo", true);
+      if (!usuarios?.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarios.map((u) => ({
+          usuario_id: u.id,
+          tipo: "devolucao_pedido_criada",
+          payload: { numero_devolucao, order_id, devolucao_id },
+        }))
+      );
+      break;
+    }
+
     default:
       break;
   }

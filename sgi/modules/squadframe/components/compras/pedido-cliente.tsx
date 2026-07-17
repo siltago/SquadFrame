@@ -36,10 +36,18 @@ const ACAO_LABEL: Record<string, string> = {
   CANCELADO: "Cancelar Pedido",
 };
 
-export function PedidoCliente({ pedido }: { pedido: any }) {
+export function PedidoCliente({
+  pedido,
+  hasRecebimentos = false,
+}: {
+  pedido: any;
+  hasRecebimentos?: boolean;
+}) {
   const podeCriar    = usePode("compras.pedido.criar");
   const podeAprovar  = usePode("compras.pedido.aprovar");
   const podeCancelar = usePode("compras.pedido.cancelar");
+  const podeRetornar = usePode("compras.pedido.retornar");
+  const podeDevolver = usePode("compras.pedido.devolver");
   const [obs, setObs] = useState("");
   const [showObs, setShowObs] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<string | null>(null);
@@ -72,6 +80,11 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
 
   const podeEditarAgora = podeCriar && ["RASCUNHO", "AGUARDANDO_APROVACAO", "REJEITADO"].includes(pedido.status);
 
+  const temRetornoPendente = !!(pedido as any).retorno_pendente_id;
+  const STATUS_RETORNAVEL  = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO"];
+  const podeAbrirRetorno   = podeRetornar && STATUS_RETORNAVEL.includes(pedido.status) && !hasRecebimentos && !temRetornoPendente;
+  const podeAbrirDevolucao = podeDevolver && hasRecebimentos;
+
   // Débito pendente: pedido emitido com FD mas sem débito registrado (sem carteira ou saldo insuficiente na época)
   const STATUS_POS_EMISSAO = ["AGUARDANDO_RECEBIMENTO", "EMITIDO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
   const temDebitoPendente =
@@ -92,7 +105,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
       }
     });
   }
-  const transicoes = (TRANSICOES[pedido.status] ?? []).filter((t) => {
+  const transicoes = temRetornoPendente ? [] : (TRANSICOES[pedido.status] ?? []).filter((t) => {
     if (t.status === "APROVADO")  return podeAprovar;
     // A partir de REJEITADO, aprovador e comprador podem devolver ou cancelar
     if (pedido.status === "REJEITADO") return podeAprovar || podeCriar || (t.status === "CANCELADO" && podeCancelar);
@@ -193,7 +206,7 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
     });
   }
 
-  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega) return null;
+  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao) return null;
 
   return (
     <>
@@ -233,9 +246,19 @@ export function PedidoCliente({ pedido }: { pedido: any }) {
 
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap gap-2 justify-end">
-          {podeEditarAgora && (
+          {podeEditarAgora && !temRetornoPendente && (
             <Button as="a" variant="ghost" href={`/squadframe/compras/pedidos/${pedido.id}/editar`}>
               Editar
+            </Button>
+          )}
+          {podeAbrirRetorno && (
+            <Button as="a" variant="ghost" href={`/squadframe/compras/pedidos/${pedido.id}/retornar`}>
+              Retornar pedido
+            </Button>
+          )}
+          {podeAbrirDevolucao && (
+            <Button as="a" variant="ghost" href={`/squadframe/compras/pedidos/${pedido.id}/devolver`}>
+              Criar devolução
             </Button>
           )}
           {podeRegistrarValorFinal && (

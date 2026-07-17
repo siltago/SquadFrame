@@ -150,6 +150,92 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       break;
     }
 
+    // ── Retorno / Devolução ───────────────────────────────────────────────────
+
+    case EVENTS.PURCHASE_ORDER_RETURN_REQUESTED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, tipo_linha, obras(nome)")
+        .eq("id", p.order_id)
+        .single();
+
+      const numero = ped?.numero ?? "";
+      const tipo = ped?.tipo_linha ?? "compras";
+      const obra = (ped?.obras as any)?.nome ?? "";
+      const obraLabel = obra ? ` · ${obra}` : "";
+
+      const userIds = await getUsersWithPermission("compras.pedido.aprovar_retorno");
+      await push(userIds, {
+        title: `Retorno de pedido aguardando aprovação`,
+        body: `Pedido ${numero} de ${tipo}${obraLabel} solicitou retorno`,
+        url: `/squadframe/compras/pedidos/${p.order_id}`,
+        tag: `pedido-retorno-${p.order_id}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_ORDER_RETURN_APPROVED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero")
+        .eq("id", p.order_id)
+        .single();
+      if (ped?.comprador_id) {
+        await push([ped.comprador_id], {
+          title: "Retorno de pedido aprovado",
+          body: `Pedido ${ped.numero} foi aprovado e retornou ao status anterior`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
+          tag: `pedido-retorno-aprovado-${p.order_id}`,
+        });
+      }
+      break;
+    }
+
+    case EVENTS.PURCHASE_ORDER_RETURN_REJECTED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("comprador_id, numero")
+        .eq("id", p.order_id)
+        .single();
+      if (ped?.comprador_id) {
+        await push([ped.comprador_id], {
+          title: "Retorno de pedido rejeitado",
+          body: `Pedido ${ped.numero} — o retorno solicitado foi rejeitado`,
+          url: `/squadframe/compras/pedidos/${p.order_id}`,
+          tag: `pedido-retorno-rejeitado-${p.order_id}`,
+        });
+      }
+      break;
+    }
+
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_CREATED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, tipo_linha, obras(nome)")
+        .eq("id", p.order_id)
+        .single();
+
+      const numero = ped?.numero ?? "";
+      const obra = (ped?.obras as any)?.nome ?? "";
+      const obraLabel = obra ? ` · ${obra}` : "";
+      const numDev = p.numero_devolucao ?? "";
+
+      const userIds = await getUsersWithPermission("compras.pedido.aprovar_devolucao");
+      await push(userIds, {
+        title: `Devolução ${numDev} aguardando aprovação`,
+        body: `Devolução do pedido ${numero}${obraLabel} foi criada`,
+        url: `/squadframe/compras/pedidos/${p.order_id}`,
+        tag: `devolucao-aprovacao-${p.devolucao_id}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
     // ── Solicitações ──────────────────────────────────────────────────────────
 
     case EVENTS.PURCHASE_REQUEST_APPROVED: {

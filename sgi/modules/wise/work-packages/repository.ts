@@ -152,8 +152,38 @@ export async function publicarEvento(dados: {
   payload: Record<string, unknown>;
   obra_id?: string;
   pacote_id?: string;
+  idempotency_key?: string;
 }): Promise<void> {
-  await createAdminClient().from("wise_eventos").insert(dados);
+  // upsert por idempotency_key — uma republicação da mesma ocorrência
+  // semântica (ex: duplo clique, retry futuro) não gera uma segunda
+  // linha. Sem chave explícita, o trigger default usa o próprio id
+  // (equivalente a "sempre única", igual ao comportamento de antes).
+  const { error } = await createAdminClient()
+    .from("wise_eventos")
+    .upsert(dados, { onConflict: "idempotency_key", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+}
+
+// Auto-provisiona o contexto de Compras do Frame quando o pacote
+// ativa com 'frame' habilitado — primeiro consumidor real de
+// wise_eventos (antes disso só existia via clique manual em
+// "Preparar contexto de Compras" no SquadFrame). Falha aqui não deve
+// impedir a ativação do pacote: o botão manual continua funcionando
+// como fallback.
+export async function garantirContextoComprasSeFrameParticipa(pacoteId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: modulo } = await admin
+    .from("wise_pacote_modulos")
+    .select("habilitado")
+    .eq("pacote_id", pacoteId)
+    .eq("modulo", "frame")
+    .maybeSingle();
+  if (!modulo?.habilitado) return;
+
+  const { error } = await admin.rpc("fn_frame_ensure_package_procurement_context_system", {
+    p_pacote_id: pacoteId,
+  });
+  if (error) throw new Error(error.message);
 }
 
 // ── Código sequencial ────────────────────────────────────────────────────────

@@ -7,18 +7,32 @@ export async function emitirEvento(
   tipo: string,
   payload: Record<string, unknown>,
   company_id: string = "default",
+  idempotencyKey?: string,
 ): Promise<void> {
   const admin = createAdminClient();
   const event: DomainEvent = { tipo, payload, company_id };
 
-  // Persiste o evento para observabilidade e replay futuro
-  const { data: registro } = await admin
+  // Persiste o evento para observabilidade e replay futuro. Com
+  // idempotencyKey explícita, republicar a mesma ocorrência (retry,
+  // duplo clique) faz upsert (DO NOTHING no conflito) em vez de
+  // criar uma segunda linha — sem chave, cai no default do trigger
+  // (equivalente a "sempre única", igual ao comportamento de antes).
+  const { data: registros } = await admin
     .from("eventos_dominio")
-    .insert({ tipo, payload, company_id })
-    .select("id")
-    .single();
+    .upsert(
+      { tipo, payload, company_id, idempotency_key: idempotencyKey },
+      { onConflict: "idempotency_key", ignoreDuplicates: true },
+    )
+    .select("id");
 
-  const eventoId = registro?.id as string | undefined;
+  if (idempotencyKey && !registros?.length) {
+    // Conflito real: esta ocorrência já foi publicada antes. Não
+    // reexecuta os consumers — é exatamente o que a idempotência
+    // deveria evitar (efeito duplicado num retry/duplo clique).
+    return;
+  }
+
+  const eventoId = registros?.[0]?.id as string | undefined;
   if (eventoId) event.id = eventoId;
 
   // ── Consumers CRÍTICOS ──────────────────────────────────────

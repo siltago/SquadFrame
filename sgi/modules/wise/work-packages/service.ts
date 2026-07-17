@@ -62,6 +62,7 @@ export async function criarPacote(
       },
       obra_id: input.obra_id,
       pacote_id: pacote.id,
+      idempotency_key: `wise.work_package.created:${pacote.id}`,
     });
 
     return { ok: true, data: pacote };
@@ -107,7 +108,20 @@ export async function transicionarStatus(
       payload: { pacote_id: id, status_anterior: pacote.status, status_novo: novoStatus },
       obra_id: pacote.obra_id,
       pacote_id: id,
+      idempotency_key: `wise.work_package.${novoStatus.toLowerCase()}:${id}:${pacote.status}->${novoStatus}`,
     });
+
+    if (novoStatus === 'ATIVO') {
+      // Falha no auto-provisionamento não desfaz a ativação — o
+      // botão manual "Preparar contexto de Compras" segue como
+      // fallback (ver repo.garantirContextoComprasSeFrameParticipa).
+      try {
+        await repo.garantirContextoComprasSeFrameParticipa(id);
+      } catch {
+        // intencionalmente silencioso — ver comentário acima.
+      }
+    }
+
     return { ok: true, data: undefined };
   } catch (e: any) {
     return { ok: false, erro: e.message };

@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { atualizarLoteAction } from "@/modules/wise/works/actions";
+import { ImportarTipologiasXml } from "@/modules/wise/works/components/importar-tipologias-xml";
+import { AdicionarTipologiaForm } from "@/modules/wise/works/components/adicionar-tipologia-form";
 import {
   ensureContextoAction,
   adicionarNecessidadeAction,
@@ -247,6 +250,9 @@ function TabDashboard({
   const libProd    = lote.liberado_producao ?? false;
 
   const pedidosAtrasados = pedidos.filter((p) => isAtrasado(p.prazo_entrega));
+  // Valor final é preenchido só depois que o pedido chega em Aguardando
+  // Recebimento; até lá, cai pro total dos itens do próprio pedido.
+  const valorTotal = pedidos.reduce((s, p) => s + (p.valor_final ?? p.valor_itens ?? 0), 0);
 
   return (
     <div className="space-y-5">
@@ -327,6 +333,16 @@ function TabDashboard({
         </div>
       )}
 
+      {/* Valor total */}
+      {valorTotal > 0 && (
+        <div className="card px-5 py-4 flex items-baseline gap-2">
+          <span className="text-2xl font-bold tabular-nums">
+            {valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </span>
+          <span className="text-sm text-text-3">em pedidos vinculados a este lote</span>
+        </div>
+      )}
+
       {/* Pedidos */}
       <div>
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-text-3">
@@ -390,7 +406,10 @@ function TabDashboard({
 
 // ── Aba: Itens ─────────────────────────────────────────────────────────────
 
-function TabItens({ lote }: { lote: WiseLoteComTipologias }) {
+function TabItens({ lote, obraId }: { lote: WiseLoteComTipologias; obraId: string }) {
+  const router = useRouter();
+  const [mostrarAdicionar, setMostrarAdicionar] = useState(false);
+
   const porStatus = lote.tipologias.reduce<Record<string, number>>((acc, t) => {
     const s = t.status ?? "pendente";
     acc[s] = (acc[s] ?? 0) + 1;
@@ -408,6 +427,31 @@ function TabItens({ lote }: { lote: WiseLoteComTipologias }) {
 
   return (
     <div className="space-y-5">
+      {/* Barra de ações */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ImportarTipologiasXml
+          loteId={lote.id}
+          obraId={obraId}
+          tipologiasExistentes={lote.tipologias}
+          onImportado={() => router.refresh()}
+        />
+        {mostrarAdicionar ? (
+          <AdicionarTipologiaForm
+            loteId={lote.id}
+            obraId={obraId}
+            onFechar={() => { setMostrarAdicionar(false); router.refresh(); }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMostrarAdicionar(true)}
+            className="rounded-lg border border-dashed border-border px-3 py-1.5 text-xs font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
+          >
+            Adicionar tipologia
+          </button>
+        )}
+      </div>
+
       {/* Gráfico de pizza */}
       <div className="card px-5 py-4 flex items-center gap-6">
         <div className="shrink-0">
@@ -1348,7 +1392,7 @@ export function LoteDetalhe({
         {aba === "dashboard" && (
           <TabDashboard lote={lote} pedidos={pedidos} solicitacoes={solicitacoes} />
         )}
-        {aba === "itens" && <TabItens lote={lote} />}
+        {aba === "itens" && <TabItens lote={lote} obraId={obraId} />}
         {aba === "compras" && (
           <TabCompras
             loteId={lote.id}

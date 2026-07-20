@@ -144,61 +144,18 @@ export async function alterarStatusObra(obraId: string, statusId: string, motivo
   revalidatePath("/squadframe/obras");
 }
 
-export async function importarTipologias(
-  obraId: string,
-  loteNome: string,
-  tipologiasJson: string,
-) {
-  await verificarPermissao("obras.editar");
-  const supabase = createClient();
-
-  const itens: Array<{
-    nome: string; quantidade: number;
-    codigo_esquadria: string | null; tipo: string | null;
-    largura_mm: number | null; altura_mm: number | null;
-    tratamento: string | null; descricao: string | null;
-    peso_unit: number | null; preco_unit: number | null;
-  }> = JSON.parse(tipologiasJson);
-
-  if (!itens.length) throw new Error("Nenhuma tipologia para importar.");
-
-  // Cria o lote
-  const { data: lote, error: errLote } = await supabase
-    .from("lotes_obra")
-    .insert({ obra_id: obraId, nome: loteNome })
-    .select("id")
-    .single();
-  if (errLote) throw new Error(errLote.message);
-
-  const rows = itens.map((t) => ({ obra_id: obraId, lote_id: lote.id, ...t }));
-  const { error } = await supabase.from("tipologias_obra").insert(rows);
-  if (error) throw new Error(error.message);
-
-  await supabase.from("obra_historico").insert({
-    obra_id: obraId,
-    acao: "XML_IMPORTADO",
-    valor_novo: { lote: loteNome, tipologias: rows.length },
-  });
-
-  revalidatePath(`/squadframe/obras/${obraId}`);
-  return { ok: true, importadas: rows.length, loteId: lote.id };
-}
-
 export async function criarPacoteTrabalho(obraId: string, formData: FormData) {
   await verificarPermissao("obras.criar", "obras.editar");
   const supabase = createClient();
 
-  const nome          = String(formData.get("nome") || "").trim();
-  const descricao     = String(formData.get("descricao") || "").trim() || null;
-  const responsavel_id = String(formData.get("responsavel_id") || "") || null;
-  const prioridade    = String(formData.get("prioridade") || "") || null;
-  const prazo         = String(formData.get("prazo") || "") || null;
+  const nome      = String(formData.get("nome") || "").trim();
+  const descricao = String(formData.get("descricao") || "").trim() || null;
 
   if (!nome) throw new Error("Nome é obrigatório.");
 
   const { data, error } = await supabase
     .from("lotes_obra")
-    .insert({ obra_id: obraId, nome, descricao, responsavel_id, prioridade, prazo })
+    .insert({ obra_id: obraId, nome, descricao })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -211,6 +168,27 @@ export async function criarPacoteTrabalho(obraId: string, formData: FormData) {
 
   revalidatePath(`/squadframe/obras/${obraId}`);
   return { id: data.id };
+}
+
+// Edição "genérica" do lote no SquadFrame — só nome/descrição. Os demais
+// campos (responsável, prioridade, prazo, módulos) são geridos só pelo Wise;
+// o SquadFrame é visualização desses dados, não editor.
+export async function editarLoteBasico(loteId: string, obraId: string, formData: FormData) {
+  await verificarPermissao("obras.editar");
+  const supabase = createClient();
+
+  const nome      = String(formData.get("nome") || "").trim();
+  const descricao = String(formData.get("descricao") || "").trim() || null;
+
+  if (!nome) throw new Error("Nome é obrigatório.");
+
+  const { error } = await supabase
+    .from("lotes_obra")
+    .update({ nome, descricao })
+    .eq("id", loteId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/squadframe/obras/${obraId}`);
 }
 
 export async function excluirLote(loteId: string, obraId: string) {
@@ -239,25 +217,6 @@ export async function editarTipologia(
     .update(dados)
     .eq("id", tipologiaId);
   if (error) throw new Error(error.message);
-  revalidatePath(`/squadframe/obras/${obraId}`);
-}
-
-export async function adicionarTipologia(obraId: string, formData: FormData) {
-  await verificarPermissao("obras.criar", "obras.editar");
-  const supabase = createClient();
-  const nome = String(formData.get("nome") || "").trim();
-  const quantidade = parseInt(String(formData.get("quantidade") || "1"), 10);
-
-  if (!nome) throw new Error("Nome é obrigatório.");
-
-  const { error } = await supabase.from("tipologias_obra").insert({
-    obra_id: obraId,
-    nome,
-    quantidade: isNaN(quantidade) || quantidade < 1 ? 1 : quantidade,
-  });
-
-  if (error) throw new Error(error.message);
-
   revalidatePath(`/squadframe/obras/${obraId}`);
 }
 

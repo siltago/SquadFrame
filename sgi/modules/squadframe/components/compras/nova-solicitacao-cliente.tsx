@@ -228,7 +228,7 @@ export function NovaSolicitacaoCliente({
         )}
         {loteNome && (
           <div className="rounded-lg border border-primary/30 bg-primary-soft px-4 py-2.5 text-sm text-text">
-            Vinculada ao pacote de trabalho <strong>{loteNome}</strong>
+            Vinculada ao lote <strong>{loteNome}</strong>
           </div>
         )}
         <div className="card p-6 space-y-5">

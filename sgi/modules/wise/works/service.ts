@@ -1,6 +1,7 @@
 import "server-only";
 
 import * as repo from "./repository";
+import type { TipologiaParseada } from "./lib/xml-tipologias";
 import type {
   WiseObra, WiseObraEstrutura, WiseObraInput, WiseEstruturaInput,
   WiseObraStatusRow, WiseCliente, ServiceResult,
@@ -144,6 +145,93 @@ export async function atualizarLote(
 ): Promise<ServiceResult> {
   try {
     await repo.atualizarLote(loteId, dados);
+    return { ok: true, data: undefined };
+  } catch (e: any) {
+    return { ok: false, erro: e.message };
+  }
+}
+
+// ── Tipologias do lote ──────────────────────────────────────────────────────
+
+function normalizar(s: string | null | undefined): string | null {
+  const v = s?.trim().toLowerCase();
+  return v ? v : null;
+}
+
+// Casa cada tipologia do XML com uma já existente no lote — por
+// codigo_esquadria primeiro (mais preciso), com fallback pra nome/tipo. Cada
+// linha existente só é consumida por um match (evita duas linhas do XML
+// caírem na mesma existente). Sem match → linha nova. `status` nunca é
+// tocado num match (é controle de produção, não vem do XML).
+export async function importarTipologiasXml(
+  loteId: string,
+  obraId: string,
+  itens: TipologiaParseada[],
+): Promise<ServiceResult<{ atualizadas: number; criadas: number }>> {
+  if (!itens.length) return { ok: false, erro: "Nenhuma tipologia para importar." };
+
+  try {
+    const existentes = await repo.listarTipologiasPorLote(loteId);
+    const consumidas = new Set<string>();
+    const inserir: Array<Omit<repo.TipologiaRow, "id" | "status"> & { obra_id: string; lote_id: string }> = [];
+    let atualizadas = 0;
+
+    for (const item of itens) {
+      const codigoItem = normalizar(item.codigo_esquadria);
+      const nomeItem = normalizar(item.tipo) ?? normalizar(item.nome);
+
+      const match = existentes.find((ex) => {
+        if (consumidas.has(ex.id)) return false;
+        const codigoEx = normalizar(ex.codigo_esquadria);
+        if (codigoItem && codigoEx) return codigoItem === codigoEx;
+        const nomeEx = normalizar(ex.tipo) ?? normalizar(ex.nome);
+        return !codigoItem && !codigoEx && nomeItem !== null && nomeItem === nomeEx;
+      });
+
+      const campos = {
+        nome: item.tipo || item.nome,
+        quantidade: item.quantidade,
+        codigo_esquadria: item.codigo_esquadria,
+        tipo: item.tipo,
+        largura_mm: item.largura_mm,
+        altura_mm: item.altura_mm,
+        tratamento: item.tratamento,
+        descricao: item.descricao,
+        peso_unit: item.peso_unit,
+        preco_unit: item.preco_unit,
+      };
+
+      if (match) {
+        consumidas.add(match.id);
+        await repo.atualizarTipologia(match.id, campos);
+        atualizadas++;
+      } else {
+        inserir.push({ ...campos, obra_id: obraId, lote_id: loteId });
+      }
+    }
+
+    await repo.inserirTipologias(inserir);
+    return { ok: true, data: { atualizadas, criadas: inserir.length } };
+  } catch (e: any) {
+    return { ok: false, erro: e.message };
+  }
+}
+
+export async function adicionarTipologiaAoLote(
+  loteId: string,
+  obraId: string,
+  dados: { nome: string; quantidade: number },
+): Promise<ServiceResult> {
+  const nome = dados.nome.trim();
+  if (!nome) return { ok: false, erro: "Nome é obrigatório." };
+  const quantidade = Number.isFinite(dados.quantidade) && dados.quantidade >= 1 ? dados.quantidade : 1;
+
+  try {
+    await repo.inserirTipologias([{
+      obra_id: obraId, lote_id: loteId, nome, quantidade,
+      codigo_esquadria: null, tipo: null, largura_mm: null, altura_mm: null,
+      tratamento: null, descricao: null, peso_unit: null, preco_unit: null,
+    }]);
     return { ok: true, data: undefined };
   } catch (e: any) {
     return { ok: false, erro: e.message };

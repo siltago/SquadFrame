@@ -164,3 +164,48 @@ export async function atualizarLote(
     .eq("id", loteId);
   if (error) throw new Error(error.message);
 }
+
+// ── Tipologias do lote ──────────────────────────────────────────────────────
+
+export type TipologiaRow = {
+  id: string;
+  nome: string;
+  quantidade: number;
+  status: string | null;
+  codigo_esquadria: string | null;
+  tipo: string | null;
+  largura_mm: number | null;
+  altura_mm: number | null;
+  tratamento: string | null;
+  descricao: string | null;
+  peso_unit: number | null;
+  preco_unit: number | null;
+};
+
+export async function listarTipologiasPorLote(loteId: string): Promise<TipologiaRow[]> {
+  const { data, error } = await createAdminClient()
+    .from("tipologias_obra")
+    .select("id, nome, quantidade, status, codigo_esquadria, tipo, largura_mm, altura_mm, tratamento, descricao, peso_unit, preco_unit")
+    .eq("lote_id", loteId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function atualizarTipologia(
+  id: string,
+  campos: Omit<TipologiaRow, "id" | "status">,
+): Promise<void> {
+  const { error } = await createAdminClient()
+    .from("tipologias_obra")
+    .update(campos)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function inserirTipologias(
+  rows: Array<Omit<TipologiaRow, "id" | "status"> & { obra_id: string; lote_id: string }>,
+): Promise<void> {
+  if (!rows.length) return;
+  const { error } = await createAdminClient().from("tipologias_obra").insert(rows);
+  if (error) throw new Error(error.message);
+}

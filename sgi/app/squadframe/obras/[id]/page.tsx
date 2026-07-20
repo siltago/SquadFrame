@@ -12,7 +12,6 @@ import { WorkspaceTab } from "@/modules/squadframe/components/obras/workspace-ta
 import { TimelineTab } from "@/modules/squadframe/components/obras/timeline-tab";
 import { ConfigTab } from "@/modules/squadframe/components/obras/config-tab";
 import { FinanceiroTab } from "@/modules/squadframe/components/obras/financeiro-tab";
-import { buscarUsuarios } from "@/modules/squadframe/actions/tarefas/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +201,7 @@ async function AbaProducaoWrapper({
   };
   type PedidoResumo = {
     id: string; numero: string; status: string; criado_em: string; valor_final?: number | null;
+    valor_itens?: number | null;
     fornecedor?: { nome: string } | null; comprador?: { nome: string } | null;
   };
   type Lote = {
@@ -225,10 +225,10 @@ async function AbaProducaoWrapper({
   let semLote: Array<{ id: string; nome: string; quantidade: number }> = [];
   let migracaoPendente = false;
 
-  const [resLotes, resSemLote, usuarios] = await Promise.all([
+  const [resLotes, resSemLote] = await Promise.all([
     supabase
       .from("lotes_obra")
-      .select("id, nome, criado_em, descricao, prioridade, prazo, responsavel_id, responsavel:usuarios(nome), tipologias:tipologias_obra(id, nome, quantidade, status, codigo_esquadria, tipo, largura_mm, altura_mm, tratamento, descricao, peso_unit, preco_unit)")
+      .select("id, nome, criado_em, descricao, prioridade, prazo, responsavel_id, responsavel:usuarios(nome), tipologias:tipologias_obra!tipologias_obra_lote_id_fkey(id, nome, quantidade, status, codigo_esquadria, tipo, largura_mm, altura_mm, tratamento, descricao, peso_unit, preco_unit)")
       .eq("obra_id", obraId)
       .order("criado_em", { ascending: true }),
     supabase
@@ -237,7 +237,6 @@ async function AbaProducaoWrapper({
       .eq("obra_id", obraId)
       .is("lote_id", null)
       .order("criado_em", { ascending: true }),
-    buscarUsuarios(),
   ]);
 
   if (resLotes.error) {
@@ -267,6 +266,22 @@ async function AbaProducaoWrapper({
     const solicitacoesRaw = (resSolicitacoes.data ?? []) as unknown as SolicitacaoRaw[];
     const pedidosRaw = (resPedidos.data ?? []) as unknown as PedidoRaw[];
 
+    // Valor final só é preenchido depois que o pedido chega em Aguardando
+    // Recebimento; enquanto isso, o "valor" do pedido pra fins de totalização
+    // do lote é a soma dos itens (quantidade_pedida × preco_unitario).
+    const pedidoIds = pedidosRaw.map((p) => p.id);
+    const valorItensPorPedido = new Map<string, number>();
+    if (pedidoIds.length > 0) {
+      const { data: itens } = await supabase
+        .from("pedido_itens")
+        .select("pedido_id, quantidade_pedida, preco_unitario")
+        .in("pedido_id", pedidoIds);
+      for (const it of itens ?? []) {
+        const atual = valorItensPorPedido.get(it.pedido_id) ?? 0;
+        valorItensPorPedido.set(it.pedido_id, atual + Number(it.quantidade_pedida) * Number(it.preco_unitario ?? 0));
+      }
+    }
+
     lotes = raw.map((l) => ({
       ...l,
       responsavel: l.responsavel?.[0] ?? null,
@@ -275,7 +290,12 @@ async function AbaProducaoWrapper({
         .map((s) => ({ ...s, solicitante: s.solicitante?.[0] ?? null })),
       pedidos: pedidosRaw
         .filter((p) => p.lote_id === l.id)
-        .map((p) => ({ ...p, fornecedor: p.fornecedor?.[0] ?? null, comprador: p.comprador?.[0] ?? null })),
+        .map((p) => ({
+          ...p,
+          fornecedor: p.fornecedor?.[0] ?? null,
+          comprador: p.comprador?.[0] ?? null,
+          valor_itens: valorItensPorPedido.get(p.id) ?? null,
+        })),
     }));
   }
 
@@ -296,7 +316,6 @@ async function AbaProducaoWrapper({
       lotes={lotes}
       semLote={semLote}
       migracaoPendente={migracaoPendente}
-      usuarios={usuarios}
     />
   );
 }

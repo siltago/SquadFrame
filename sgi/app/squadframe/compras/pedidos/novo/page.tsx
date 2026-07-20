@@ -20,12 +20,13 @@ export default async function NovoPedidoPage({
 
   const admin = createAdminClient();
 
-  const [{ data: obras }, { data: solAprovadas }, tipos, fornecedores, formas, coresRalBase] =
+  const [{ data: obras }, { data: solAprovadas }, { data: lotesAtivos }, tipos, fornecedores, formas, coresRalBase] =
     await Promise.all([
       admin.from("obras").select("id, nome, codigo, numero").is("deleted_at", null).order("nome"),
       admin.from("solicitacoes_compra")
         .select("id, numero, obra:obras(id, nome), itens:solicitacao_itens(id, quantidade, unidade, observacoes, descricao_manual, produto:produtos(id, codigo_mestre, nome, unidade))")
         .eq("status", "APROVADA"),
+      admin.from("lotes_obra").select("id, nome, obra_id").eq("status", "ATIVO").order("nome"),
       getTiposLinha(),
       getFornecedores(),
       getFormasPagamento(),
@@ -61,6 +62,7 @@ export default async function NovoPedidoPage({
           fromObraId={fromObraId}
           loteId={searchParams.lote_id ?? null}
           origemContexto={searchParams.origem_contexto ?? null}
+          lotes={lotesAtivos ?? []}
         />
       </div>
     </div>

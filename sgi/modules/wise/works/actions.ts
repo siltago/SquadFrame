@@ -6,6 +6,7 @@ import { buscarUsuarioPorAuthId } from "@/modules/wise/identity/service";
 import { verificarPermissaoWise } from "@/modules/wise/access/service";
 import * as service from "./service";
 import type { WiseObraInput, WiseEstruturaInput } from "./types";
+import type { TipologiaParseada } from "./lib/xml-tipologias";
 
 async function contexto() {
   const usuario = await getUsuarioAtual();
@@ -134,6 +135,49 @@ export async function atualizarLoteAction(
   if (resultado.ok) {
     revalidatePath(`/squadwise/obras/${obraId}/lotes/${loteId}`);
     revalidatePath(`/squadwise/obras/${obraId}`);
+  }
+  return resultado;
+}
+
+// ── Tipologias do lote ───────────────────────────────────────────────────────
+// Ex-funcionalidade do SquadFrame (import de XML + adicionar tipologia
+// avulsa) — movida pra cá porque o lote/tipologia é conceito do Wise; o
+// SquadFrame agora só visualiza.
+
+async function exigirPermissaoTipologias(usuarioId: string) {
+  const pode = await verificarPermissaoWise(usuarioId, "wise.pacotes.editar");
+  if (!pode) throw new Error("Sem permissão para editar tipologias deste pacote.");
+}
+
+export async function importarTipologiasXmlAction(
+  loteId: string,
+  obraId: string,
+  itens: TipologiaParseada[],
+) {
+  const { usuarioId } = await contexto();
+  await exigirPermissaoTipologias(usuarioId);
+
+  const resultado = await service.importarTipologiasXml(loteId, obraId, itens);
+  if (resultado.ok) {
+    revalidatePath(`/squadwise/obras/${obraId}/lotes/${loteId}`);
+  }
+  return resultado;
+}
+
+export async function adicionarTipologiaAction(
+  loteId: string,
+  obraId: string,
+  formData: FormData,
+) {
+  const { usuarioId } = await contexto();
+  await exigirPermissaoTipologias(usuarioId);
+
+  const nome = String(formData.get("nome") || "");
+  const quantidade = parseInt(String(formData.get("quantidade") || "1"), 10);
+
+  const resultado = await service.adicionarTipologiaAoLote(loteId, obraId, { nome, quantidade });
+  if (resultado.ok) {
+    revalidatePath(`/squadwise/obras/${obraId}/lotes/${loteId}`);
   }
   return resultado;
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { adicionarTipologia, importarTipologias, excluirLote, editarTipologia, criarPacoteTrabalho } from "@/modules/squadframe/actions/obras/actions";
+import { excluirLote, editarTipologia, criarPacoteTrabalho, editarLoteBasico } from "@/modules/squadframe/actions/obras/actions";
 import { Button } from "@/ui/components/Button";
 import { Alert } from "@/ui/components/Alert";
 import { Modal } from "@/ui/components/Modal";
@@ -63,12 +63,14 @@ type PedidoResumo = {
   status: string;
   criado_em: string;
   valor_final?: number | null;
+  valor_itens?: number | null;
   fornecedor?: { nome: string } | null;
   comprador?: { nome: string } | null;
 };
 
-// "Lote" (nome interno/tabela) é exibido para o usuário como "Pacote de
-// Trabalho" — a tabela lotes_obra não muda, só a linguagem da UI.
+// No SquadFrame a UI chama essa entidade de "Lote" (nome que já existia
+// antes da tabela lotes_obra virar Pacote de Trabalho no Wise) — mesma
+// tabela, só a linguagem muda entre os dois módulos.
 type Lote = {
   id: string;
   nome: string;
@@ -82,55 +84,6 @@ type Lote = {
   solicitacoes: SolicitacaoResumo[];
   pedidos: PedidoResumo[];
 };
-
-type Usuario = { id: string; nome: string };
-
-type Rascunho = Omit<Tipologia, "id"> & { _key: number };
-
-// ── Helpers ───────────────────────────────────────────────────────
-
-function lerArquivoXml(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Erro ao ler o arquivo."));
-    reader.onload = (ev) => {
-      const buffer = ev.target?.result as ArrayBuffer;
-      const head = new TextDecoder("iso-8859-1").decode(buffer.slice(0, 200));
-      const match = head.match(/encoding=["']([^"']+)["']/i);
-      const enc = match?.[1] ?? "utf-8";
-      try {
-        resolve(new TextDecoder(enc, { fatal: true }).decode(buffer));
-      } catch {
-        resolve(new TextDecoder("windows-1252").decode(buffer));
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function parseXml(text: string): Rascunho[] {
-  const doc = new DOMParser().parseFromString(text, "text/xml");
-  const nodes = Array.from(doc.querySelectorAll("TIPOLOGIA"));
-  const t = (node: Element, tag: string) =>
-    node.querySelector(tag)?.textContent?.trim() ?? "";
-
-  return nodes.map((node, idx) => {
-    const tipo = t(node, "TIPO");
-    return {
-      _key: idx,
-      nome: tipo || "Sem tipo",
-      quantidade: parseInt(t(node, "QTDE")) || 1,
-      codigo_esquadria: t(node, "CODESQD") || null,
-      tipo: tipo || null,
-      largura_mm: parseInt(t(node, "LARGURA")) || null,
-      altura_mm: parseInt(t(node, "ALTURA")) || null,
-      tratamento: t(node, "TRAT_PERF") || null,
-      descricao: t(node, "DESCR") || null,
-      peso_unit: parseFloat(t(node, "PESO_UNIT").replace(",", ".")) || null,
-      preco_unit: parseFloat(t(node, "PRECO_UNIT").replace(",", ".")) || null,
-    };
-  });
-}
 
 // ── Sub-componentes ───────────────────────────────────────────────
 
@@ -314,7 +267,7 @@ const ABAS_FUTURAS: { id: string; label: string }[] = [
   { id: "timeline",     label: "Timeline" },
 ];
 
-function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string; defaultOpen: boolean }) {
+function PacoteCard({ lote, obraId, defaultOpen, onEditar }: { lote: Lote; obraId: string; defaultOpen: boolean; onEditar: () => void }) {
   const [open, setOpen] = useState(defaultOpen);
   const [confirmarExcluir, setConfirmarExcluir] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -323,7 +276,11 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
   const total = lote.tipologias.length;
   const concluidas = lote.tipologias.filter((t) => t.status === "pronto" || t.status === "entregue").length;
   const totalPeso = lote.tipologias.reduce((s, t) => s + (t.peso_unit ?? 0) * t.quantidade, 0);
-  const totalPreco = lote.tipologias.reduce((s, t) => s + (t.preco_unit ?? 0) * t.quantidade, 0);
+  // Valor do lote = soma dos pedidos vinculados a ele — usa o valor final
+  // (confirmado pelo fornecedor) quando já registrado; enquanto o pedido
+  // não chegou lá, usa o valor dos itens do próprio pedido. Não é mais a
+  // estimativa de catálogo das tipologias.
+  const totalPreco = lote.pedidos.reduce((s, p) => s + (p.valor_final ?? p.valor_itens ?? 0), 0);
   const data = new Date(lote.criado_em).toLocaleDateString("pt-BR");
   const prioridade = lote.prioridade ? PRIORIDADE_PACOTE[lote.prioridade as PrioridadeKey] : null;
   const prazoAtrasado = !!lote.prazo && new Date(lote.prazo) < new Date() && concluidas < total;
@@ -376,15 +333,26 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
               </button>
             </div>
           ) : (
-            <button
-              onClick={(e) => { e.stopPropagation(); setConfirmarExcluir(true); }}
-              className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-danger-soft hover:text-danger transition-colors"
-              title="Excluir pacote de trabalho"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
-            </button>
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditar(); }}
+                className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-bg hover:text-primary transition-colors"
+                title="Editar lote"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmarExcluir(true); }}
+                className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-danger-soft hover:text-danger transition-colors"
+                title="Excluir lote"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
+            </>
           )}
         </div>
 
@@ -424,7 +392,7 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
 
             <TabPanel id="tipologias" className="pt-3 space-y-2">
               {lote.tipologias.length === 0 ? (
-                <EmptyState size="sm" title="Nenhuma tipologia neste pacote" />
+                <EmptyState size="sm" title="Nenhuma tipologia neste lote" />
               ) : (
                 lote.tipologias.map((t) => <TipologiaCard key={t.id} t={t} obraId={obraId} />)
               )}
@@ -441,7 +409,7 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
                 </Button>
               </div>
               {lote.solicitacoes.length === 0 ? (
-                <EmptyState size="sm" title="Nenhuma solicitação vinculada a este pacote" />
+                <EmptyState size="sm" title="Nenhuma solicitação vinculada a este lote" />
               ) : (
                 lote.solicitacoes.map((s) => {
                   const cor   = STATUS_SOL_COR[s.status as keyof typeof STATUS_SOL_COR] ?? "#94a3b8";
@@ -481,7 +449,7 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
                 </Button>
               </div>
               {lote.pedidos.length === 0 ? (
-                <EmptyState size="sm" title="Nenhum pedido vinculado a este pacote" />
+                <EmptyState size="sm" title="Nenhum pedido vinculado a este lote" />
               ) : (
                 lote.pedidos.map((p) => {
                   const cor   = STATUS_PED_COR[p.status as keyof typeof STATUS_PED_COR] ?? "#94a3b8";
@@ -526,117 +494,6 @@ function PacoteCard({ lote, obraId, defaultOpen }: { lote: Lote; obraId: string;
   );
 }
 
-// ── Card de revisão (edição inline) ──────────────────────────────
-
-function RascunhoCard({
-  item,
-  onUpdate,
-  onRemove,
-}: {
-  item: Rascunho;
-  onUpdate: (u: Rascunho) => void;
-  onRemove: () => void;
-}) {
-  const [editando, setEditando] = useState(false);
-  const [draft, setDraft] = useState<Rascunho>(item);
-
-  function f(field: keyof Rascunho, value: any) {
-    setDraft((p) => ({ ...p, [field]: value === "" ? null : value }));
-  }
-
-  function salvar() {
-    onUpdate({ ...draft, nome: draft.tipo || draft.nome || "Sem tipo" });
-    setEditando(false);
-  }
-
-  if (editando) {
-    return (
-      <div className="rounded-xl border-2 border-primary bg-surface p-4 space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="label">Tipo / Nome *</label>
-            <input autoFocus value={draft.tipo ?? ""} onChange={(e) => f("tipo", e.target.value)} className="field text-sm" />
-          </div>
-          <div>
-            <label className="label">Código (CODESQD)</label>
-            <input value={draft.codigo_esquadria ?? ""} onChange={(e) => f("codigo_esquadria", e.target.value)} className="field text-sm font-mono" />
-          </div>
-          <div>
-            <label className="label">Qtde</label>
-            <input type="number" min="1" value={draft.quantidade} onChange={(e) => f("quantidade", parseInt(e.target.value) || 1)} className="field text-sm" />
-          </div>
-          <div>
-            <label className="label">Largura (mm)</label>
-            <input type="number" value={draft.largura_mm ?? ""} onChange={(e) => f("largura_mm", parseInt(e.target.value))} className="field text-sm" />
-          </div>
-          <div>
-            <label className="label">Altura (mm)</label>
-            <input type="number" value={draft.altura_mm ?? ""} onChange={(e) => f("altura_mm", parseInt(e.target.value))} className="field text-sm" />
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="label">Tratamento</label>
-            <input value={draft.tratamento ?? ""} onChange={(e) => f("tratamento", e.target.value)} className="field text-sm" />
-          </div>
-          <div className="col-span-2">
-            <label className="label">Descrição</label>
-            <input value={draft.descricao ?? ""} onChange={(e) => f("descricao", e.target.value)} className="field text-sm" />
-          </div>
-          <div>
-            <label className="label">Peso unit (kg)</label>
-            <input type="number" step="0.01" value={draft.peso_unit ?? ""} onChange={(e) => f("peso_unit", parseFloat(e.target.value))} className="field text-sm" />
-          </div>
-          <div>
-            <label className="label">Preço unit (R$)</label>
-            <input type="number" step="0.01" value={draft.preco_unit ?? ""} onChange={(e) => f("preco_unit", parseFloat(e.target.value))} className="field text-sm" />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button onClick={salvar} size="sm">Salvar</Button>
-          <Button onClick={() => { setDraft(item); setEditando(false); }} variant="ghost" size="sm">Cancelar</Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card flex gap-3 p-3 group">
-      <div className="flex shrink-0 flex-col items-center justify-center rounded-lg bg-bg px-2.5 py-2 text-center min-w-[60px]">
-        {item.largura_mm && item.altura_mm ? (
-          <>
-            <span className="font-mono text-xs font-bold text-text">{item.largura_mm}</span>
-            <span className="font-mono text-[9px] text-text-3 leading-none">×</span>
-            <span className="font-mono text-xs font-bold text-text">{item.altura_mm}</span>
-            <span className="mt-0.5 text-[9px] text-text-3">mm</span>
-          </>
-        ) : (
-          <span className="text-xs text-text-3">—</span>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-sm text-text">{item.tipo || item.nome}</span>
-          {item.codigo_esquadria && <span className="font-mono text-[11px] text-text-3">{item.codigo_esquadria}</span>}
-        </div>
-        {item.descricao && <p className="mt-0.5 text-xs text-text-2 leading-snug">{item.descricao}</p>}
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-text-2"><span className="font-semibold text-text">{item.quantidade}</span> {item.quantidade === 1 ? "peça" : "peças"}</span>
-          {item.tratamento && <TratamentoBadge texto={item.tratamento} />}
-          {item.peso_unit != null && item.peso_unit > 0 && <span className="text-text-3">{item.peso_unit} kg/un</span>}
-          {item.preco_unit != null && item.preco_unit > 0 && <span className="font-medium text-text">{item.preco_unit.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/un</span>}
-        </div>
-      </div>
-      <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => setEditando(true)} className="flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-bg hover:text-primary transition-colors" title="Editar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button onClick={onRemove} className="flex h-7 w-7 items-center justify-center rounded-lg text-text-3 hover:bg-danger-soft hover:text-danger transition-colors" title="Excluir">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Componente principal ──────────────────────────────────────────
 
 export function AbaProducao({
@@ -644,100 +501,16 @@ export function AbaProducao({
   lotes,
   semLote,
   migracaoPendente,
-  usuarios,
 }: {
   obraId: string;
   lotes: Lote[];
   semLote: Array<{ id: string; nome: string; quantidade: number }>;
   migracaoPendente?: boolean;
-  usuarios: Usuario[];
 }) {
-  const [mostrarForm, setMostrarForm] = useState(false);
   const [mostrarFormPacote, setMostrarFormPacote] = useState(false);
-  const [rascunhos, setRascunhos] = useState<Rascunho[] | null>(null);
-  const [loteNome, setLoteNome] = useState("");
-  const [localLote, setLocalLote] = useState<Lote | null>(null);
-  const [erroXml, setErroXml] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<string | null>(null);
+  const [loteEditando, setLoteEditando] = useState<Lote | null>(null);
   const [pending, startTransition] = useTransition();
-  const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const prevLotesLen = useRef(lotes.length);
-
-  useEffect(() => {
-    if (localLote && lotes.length !== prevLotesLen.current) {
-      setLocalLote(null);
-    }
-    prevLotesLen.current = lotes.length;
-  }, [lotes, localLote]);
-
-  function handleXmlChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const nome = file.name.replace(/\.[^.]+$/, "");
-    e.target.value = "";
-    setErroXml(null);
-    setLoteNome(nome);
-
-    lerArquivoXml(file)
-      .then((text) => {
-        const parsed = parseXml(text);
-        if (parsed.length === 0) { setErroXml("Nenhuma tipologia encontrada no XML."); return; }
-        setRascunhos(parsed);
-      })
-      .catch(() => setErroXml("Erro ao ler o arquivo XML."));
-  }
-
-  function handleUpdate(key: number, updated: Rascunho) {
-    setRascunhos((prev) => prev?.map((r) => r._key === key ? updated : r) ?? null);
-  }
-
-  function handleRemove(key: number) {
-    setRascunhos((prev) => {
-      const next = prev?.filter((r) => r._key !== key) ?? null;
-      return next?.length === 0 ? null : next;
-    });
-  }
-
-  function handleConfirmar() {
-    if (!rascunhos?.length) return;
-    const snapshot = rascunhos;
-    const nome = loteNome || "Novo pacote de trabalho";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const payload = snapshot.map(({ _key, nome: _n, ...rest }) => ({
-      nome: rest.tipo || _n,
-      ...rest,
-    }));
-    startTransition(async () => {
-      try {
-        const res = await importarTipologias(obraId, nome, JSON.stringify(payload));
-        setLocalLote({
-          id: res.loteId,
-          nome,
-          criado_em: new Date().toISOString(),
-          tipologias: payload.map((t, i) => ({ ...t, id: `local-${i}` })),
-          solicitacoes: [],
-          pedidos: [],
-        });
-        setRascunhos(null);
-        setResultado(`${res.importadas} tipologia${res.importadas !== 1 ? "s" : ""} importada${res.importadas !== 1 ? "s" : ""}.`);
-        setTimeout(() => setResultado(null), 5000);
-        router.refresh();
-      } catch (err: any) {
-        setErroXml(`Erro ao salvar: ${err.message}`);
-      }
-    });
-  }
-
-  function handleSubmitManual(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    startTransition(async () => {
-      await adicionarTipologia(obraId, fd);
-      setMostrarForm(false);
-      router.refresh();
-    });
-  }
 
   function handleSubmitPacote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -749,53 +522,17 @@ export function AbaProducao({
     });
   }
 
-  const todosLotes = localLote ? [...lotes, localLote] : lotes;
-
-  // ── Painel de revisão do XML ──────────────────────────────────
-  if (rascunhos !== null) {
-    return (
-      <div className="mt-6 space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-primary/30 bg-primary-soft px-4 py-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text">
-              Revisão do XML — {rascunhos.length} tipologia{rascunhos.length !== 1 ? "s" : ""}
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <label className="shrink-0 text-xs text-text-3">Nome do Pacote de Trabalho:</label>
-              <input
-                value={loteNome}
-                onChange={(e) => setLoteNome(e.target.value)}
-                placeholder="Ex: Fachada Norte"
-                className="field text-sm flex-1"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <Button onClick={handleConfirmar} disabled={pending || rascunhos.length === 0} size="sm">
-              {pending ? "Salvando…" : "Confirmar importação"}
-            </Button>
-            <Button onClick={() => { setRascunhos(null); setErroXml(null); }} disabled={pending} variant="ghost" size="sm">
-              Cancelar
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {rascunhos.map((r) => (
-            <RascunhoCard
-              key={r._key}
-              item={r}
-              onUpdate={(updated) => handleUpdate(r._key, updated)}
-              onRemove={() => handleRemove(r._key)}
-            />
-          ))}
-        </div>
-        {erroXml && <Alert variant="danger">{erroXml}</Alert>}
-      </div>
-    );
+  function handleSubmitEditarLote(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!loteEditando) return;
+    const fd = new FormData(e.currentTarget);
+    startTransition(async () => {
+      await editarLoteBasico(loteEditando.id, obraId, fd);
+      setLoteEditando(null);
+      router.refresh();
+    });
   }
 
-  // ── Vista normal ─────────────────────────────────────────────
   return (
     <div className="mt-6 space-y-4">
       {migracaoPendente && (
@@ -813,44 +550,26 @@ export function AbaProducao({
           className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Novo pacote de trabalho
+          Novo lote
         </button>
-
-        <button
-          onClick={() => setMostrarForm(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-sm font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Adicionar tipologia
-        </button>
-
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary-soft px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-          Importar XML
-        </button>
-        <input ref={fileRef} type="file" accept=".xml,text/xml" className="hidden" onChange={handleXmlChange} />
-
-        {erroXml && <span className="text-sm text-danger">{erroXml}</span>}
-        {resultado && <span className="text-sm font-medium text-success">{resultado}</span>}
       </div>
 
-      {todosLotes.length === 0 && semLote.length === 0 && !mostrarForm && (
+      {lotes.length === 0 && semLote.length === 0 && (
         <div className="card p-10 text-center text-sm text-text-3">
-          Nenhum pacote de trabalho criado ainda. Importe um XML, crie um pacote manualmente, ou adicione uma tipologia avulsa.
+          Nenhum lote criado ainda. Crie um lote pra começar — a importação de
+          XML e as tipologias são gerenciadas no Wise.
         </div>
       )}
 
-      {todosLotes.length > 0 && (
+      {lotes.length > 0 && (
         <div className="space-y-2">
-          {todosLotes.map((lote, i) => (
+          {lotes.map((lote, i) => (
             <PacoteCard
               key={lote.id}
               lote={lote}
               obraId={obraId}
-              defaultOpen={i === todosLotes.length - 1}
+              defaultOpen={i === lotes.length - 1}
+              onEditar={() => setLoteEditando(lote)}
             />
           ))}
         </div>
@@ -868,32 +587,10 @@ export function AbaProducao({
         </div>
       )}
 
-      {mostrarForm && (
-        <form onSubmit={handleSubmitManual} className="card divide-y divide-border">
-          <div className="px-6 py-4">
-            <p className="font-display text-sm font-semibold uppercase tracking-wide text-text-2">Nova tipologia</p>
-          </div>
-          <div className="grid gap-4 p-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="nome" className="label">Nome da tipologia</label>
-              <input id="nome" name="nome" type="text" required placeholder="Ex: Porta WC" className="field" />
-            </div>
-            <div>
-              <label htmlFor="quantidade" className="label">Quantidade de peças</label>
-              <input id="quantidade" name="quantidade" type="number" min="1" defaultValue={1} required className="field" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 px-6 py-4">
-            <Button type="button" onClick={() => setMostrarForm(false)} disabled={pending} variant="ghost" size="sm">Cancelar</Button>
-            <Button type="submit" disabled={pending} size="sm">{pending ? "Salvando…" : "Salvar"}</Button>
-          </div>
-        </form>
-      )}
-
       <Modal
         open={mostrarFormPacote}
         onClose={() => setMostrarFormPacote(false)}
-        title="Novo pacote de trabalho"
+        title="Novo lote"
         size="sm"
       >
         <form onSubmit={handleSubmitPacote} className="flex flex-col gap-4">
@@ -906,32 +603,38 @@ export function AbaProducao({
           <Textarea
             label="Descrição"
             name="descricao"
-            placeholder="Escopo deste pacote (opcional)"
+            placeholder="Escopo deste lote (opcional)"
           />
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="responsavel_id" className="label">Responsável</label>
-              <select id="responsavel_id" name="responsavel_id" className="field" defaultValue="">
-                <option value="">Sem responsável</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="prioridade" className="label">Prioridade</label>
-              <select id="prioridade" name="prioridade" className="field" defaultValue="">
-                <option value="">Sem prioridade</option>
-                {(Object.entries(PRIORIDADE_PACOTE) as [PrioridadeKey, { label: string }][]).map(([key, p]) => (
-                  <option key={key} value={key}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <Input label="Prazo" name="prazo" type="date" />
           <div className="flex justify-end gap-2">
             <Button type="button" onClick={() => setMostrarFormPacote(false)} disabled={pending} variant="ghost">Cancelar</Button>
-            <Button type="submit" disabled={pending}>{pending ? "Criando…" : "Criar pacote"}</Button>
+            <Button type="submit" disabled={pending}>{pending ? "Criando…" : "Criar lote"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={loteEditando !== null}
+        onClose={() => setLoteEditando(null)}
+        title="Editar lote"
+        size="sm"
+      >
+        <form onSubmit={handleSubmitEditarLote} className="flex flex-col gap-4">
+          <Input
+            label="Nome"
+            name="nome"
+            required
+            defaultValue={loteEditando?.nome ?? ""}
+            placeholder="Ex: Fachada Norte"
+          />
+          <Textarea
+            label="Descrição"
+            name="descricao"
+            defaultValue={loteEditando?.descricao ?? ""}
+            placeholder="Escopo deste lote (opcional)"
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" onClick={() => setLoteEditando(null)} disabled={pending} variant="ghost">Cancelar</Button>
+            <Button type="submit" disabled={pending}>{pending ? "Salvando…" : "Salvar"}</Button>
           </div>
         </form>
       </Modal>

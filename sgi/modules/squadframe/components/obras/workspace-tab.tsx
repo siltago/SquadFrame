@@ -201,7 +201,7 @@ export async function WorkspaceTab({
 
     supabase
       .from("lotes_obra")
-      .select("id, nome, tipologias:tipologias_obra(id, nome, quantidade, status, criado_em)")
+      .select("id, nome, tipologias:tipologias_obra!tipologias_obra_lote_id_fkey(id, nome, quantidade, status, criado_em:created_at)")
       .eq("obra_id", obraId)
       .order("criado_em", { ascending: true }),
   ]);

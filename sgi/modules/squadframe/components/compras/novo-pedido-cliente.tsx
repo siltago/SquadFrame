@@ -206,16 +206,21 @@ function CodigoFornecedorModal({ produto, nomeFornecedor, onUsar, onSemCodigo, o
 }
 
 // ── Componente principal ──────────────────────────────────────────
+type Lote = { id: string; nome: string; obra_id: string };
+
 export function NovoPedidoCliente({
   obras, fornecedores, solicitacoesAprovadas, tiposLinha, formasPagamento, coresRal, fromSolicitacao, fromObraId,
-  loteId, origemContexto,
+  loteId, origemContexto, lotes,
 }: {
   obras: Obra[]; fornecedores: Fornecedor[]; solicitacoesAprovadas: Solicitacao[];
   tiposLinha: TipoLinha[]; formasPagamento: FormaPagamento[]; coresRal: CorRal[];
   fromSolicitacao?: Solicitacao | null; fromObraId?: string | null;
   loteId?: string | null; origemContexto?: string | null;
+  lotes?: Lote[];
 }) {
   const [itens, setItens] = useState<Item[]>([]);
+  const [obraId, setObraId] = useState(fromObraId ?? "");
+  const [loteSelecionadoId, setLoteSelecionadoId] = useState("");
   const [showSols, setShowSols] = useState(false);
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoLinha | null>(
     tiposLinha.length === 1 ? tiposLinha[0] : null
@@ -489,7 +494,11 @@ export function NovoPedidoCliente({
             </div>
             <div>
               <label className="label">Obra <span className="text-danger">*</span></label>
-              <select name="obra_id" required defaultValue={fromObraId ?? ""} className="field">
+              <select
+                name="obra_id" required value={obraId}
+                onChange={(e) => { setObraId(e.target.value); setLoteSelecionadoId(""); }}
+                className="field"
+              >
                 <option value="">Selecione uma obra…</option>
                 {obras.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -498,6 +507,28 @@ export function NovoPedidoCliente({
                 ))}
               </select>
             </div>
+            {!loteId && (lotes?.length ?? 0) > 0 && (
+              <div>
+                <label className="label">Lote <span className="text-text-3 font-normal">(opcional)</span></label>
+                <select
+                  name="lote_id" value={loteSelecionadoId}
+                  onChange={(e) => setLoteSelecionadoId(e.target.value)}
+                  disabled={!obraId}
+                  className="field"
+                >
+                  <option value="">Nenhum — pedido avulso</option>
+                  {(lotes ?? []).filter((l) => l.obra_id === obraId).map((l) => (
+                    <option key={l.id} value={l.id}>{l.nome}</option>
+                  ))}
+                </select>
+                {loteSelecionadoId && (
+                  <input type="hidden" name="origem_contexto" value="COMPRAS_PACOTE" />
+                )}
+                {!obraId && (
+                  <p className="mt-1 text-xs text-text-3">Selecione uma obra para listar os lotes.</p>
+                )}
+              </div>
+            )}
             <div>
               <label className="label">Forma de pagamento <span className="text-text-3 font-normal">(opcional)</span></label>
               <select

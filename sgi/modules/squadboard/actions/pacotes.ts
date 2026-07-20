@@ -28,7 +28,7 @@ export async function buscarPacotesBoard(pipeline: PipelineId): Promise<BoardWor
       id, nome, criado_em, prioridade, prazo, responsavel_id,
       obra:obras!inner(id, nome, deleted_at),
       responsavel:usuarios(nome),
-      tipologias:tipologias_obra(status),
+      tipologias:tipologias_obra!tipologias_obra_lote_id_fkey(status),
       solicitacoes:solicitacoes_compra(id),
       pedidos:pedidos_compra(id),
       pipeline_status:pacote_pipeline_status(coluna, ordem),

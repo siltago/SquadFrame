@@ -63,7 +63,7 @@ async function buscarPedidosEsolicitacoes(loteId: string) {
   const [resPedidos, resSols] = await Promise.all([
     db
       .from("pedidos_compra")
-      .select("id, numero, status, criado_em, prazo_entrega")
+      .select("id, numero, status, criado_em, prazo_entrega, valor_final")
       .eq("lote_id", loteId)
       .order("criado_em", { ascending: false }),
     db
@@ -73,13 +73,29 @@ async function buscarPedidosEsolicitacoes(loteId: string) {
       .order("criado_em", { ascending: false }),
   ]);
 
+  const pedidoIds = (resPedidos.data ?? []).map((p: Record<string, unknown>) => p.id as string);
+  const valorItensPorPedido = new Map<string, number>();
+  if (pedidoIds.length > 0) {
+    const { data: itens } = await db
+      .from("pedido_itens")
+      .select("pedido_id, quantidade_pedida, preco_unitario")
+      .in("pedido_id", pedidoIds);
+    for (const it of itens ?? []) {
+      const atual = valorItensPorPedido.get(it.pedido_id) ?? 0;
+      valorItensPorPedido.set(it.pedido_id, atual + Number(it.quantidade_pedida) * Number(it.preco_unitario ?? 0));
+    }
+  }
+
+  // Valor final só é preenchido depois que o pedido chega em Aguardando
+  // Recebimento; até lá, usa a soma dos itens do próprio pedido.
   const pedidos: WiseLotePedido[] = (resPedidos.data ?? []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
     numero: p.numero as string,
     status: p.status as string,
     criado_em: p.criado_em as string,
     prazo_entrega: (p.prazo_entrega ?? null) as string | null,
-    valor_final: null,
+    valor_final: (p.valor_final ?? null) as number | null,
+    valor_itens: valorItensPorPedido.get(p.id as string) ?? null,
     fornecedor: null,
   }));
 

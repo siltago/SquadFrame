@@ -107,6 +107,7 @@ export type WiseLotePedido = {
   criado_em: string;
   prazo_entrega: string | null;
   valor_final: number | null;
+  valor_itens: number | null;
   fornecedor: { nome: string } | null;
 };
 

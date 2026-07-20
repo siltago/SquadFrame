@@ -179,7 +179,7 @@ export async function DashboardTab({
 
     supabase
       .from("lotes_obra")
-      .select("tipologias:tipologias_obra(status, quantidade)")
+      .select("tipologias:tipologias_obra!tipologias_obra_lote_id_fkey(status, quantidade)")
       .eq("obra_id", obraId),
 
     supabase

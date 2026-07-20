@@ -55,7 +55,7 @@ export default async function PedidoPage({ params }: { params: { id: string } })
     ]).catch(() => [{ data: [] }, { data: [] }]),
     getCoresRal().catch((): any[] => []),
     admin.from("pedido_retornos")
-      .select("id, motivo, etapa_anterior, criado_em, criado_por:usuarios(nome)")
+      .select("id, motivo, etapa_anterior, criado_em, criado_por:usuarios!pedido_retornos_criado_por_fkey(nome)")
       .eq("pedido_id", params.id)
       .eq("status", "PENDENTE")
       .maybeSingle()

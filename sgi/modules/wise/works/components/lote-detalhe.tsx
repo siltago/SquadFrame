@@ -6,6 +6,7 @@ import Link from "next/link";
 import { atualizarLoteAction } from "@/modules/wise/works/actions";
 import { ImportarTipologiasXml } from "@/modules/wise/works/components/importar-tipologias-xml";
 import { AdicionarTipologiaForm } from "@/modules/wise/works/components/adicionar-tipologia-form";
+import { ProdutoPicker, type ProdutoOption } from "@/modules/wise/works/components/produto-picker";
 import {
   ensureContextoAction,
   adicionarNecessidadeAction,
@@ -710,6 +711,8 @@ const ETAPA_NECESSIDADE_OPTS = [
 ];
 
 function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriada: (n: WiseNecessidade) => void }) {
+  const [modo, setModo] = useState<"catalogo" | "livre">("catalogo");
+  const [produto, setProduto] = useState<ProdutoOption | null>(null);
   const [descricao, setDescricao] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -718,12 +721,20 @@ function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriad
   const [erro, setErro] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const descricaoValida = modo === "catalogo" ? !!produto : !!descricao.trim();
+
+  function limpar() {
+    setProduto(null); setDescricao(""); setQuantidade(""); setUnidade("");
+    setCriticidade("NORMAL"); setEtapa("");
+  }
+
   function submeter() {
     setErro(null);
     startTransition(async () => {
       const resultado = await adicionarNecessidadeAction({
         pacote_id: pacoteId,
-        descricao_livre: descricao,
+        produto_id: modo === "catalogo" ? produto?.id ?? null : null,
+        descricao_livre: modo === "livre" ? descricao : null,
         quantidade: parseFloat(quantidade.replace(",", ".")) || 0,
         unidade,
         criticidade,
@@ -733,8 +744,11 @@ function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriad
       onCriada({
         id: resultado.dados,
         pacote_id: pacoteId,
-        produto_id: null,
-        descricao_livre: descricao,
+        produto_id: modo === "catalogo" ? produto?.id ?? null : null,
+        produto: modo === "catalogo" && produto
+          ? { id: produto.id, nome: produto.nome, codigo_mestre: produto.codigo_mestre }
+          : null,
+        descricao_livre: modo === "livre" ? descricao : null,
         quantidade_necessaria: parseFloat(quantidade.replace(",", ".")) || 0,
         unidade,
         criticidade: criticidade as WiseNecessidade["criticidade"],
@@ -745,20 +759,53 @@ function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriad
         criado_em: new Date().toISOString(),
         atualizado_em: new Date().toISOString(),
       });
-      setDescricao(""); setQuantidade(""); setUnidade(""); setCriticidade("NORMAL"); setEtapa("");
+      limpar();
     });
   }
 
   return (
     <div className="card px-4 py-4 space-y-3">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-text-3">Nova necessidade de material</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-text-3">Nova necessidade de material</p>
+        <div className="flex gap-1 rounded-lg border border-border p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => { setModo("catalogo"); setDescricao(""); }}
+            className={`rounded-md px-2 py-1 font-medium transition-colors ${modo === "catalogo" ? "bg-primary text-white" : "text-text-3 hover:text-text-2"}`}
+          >
+            Catálogo
+          </button>
+          <button
+            type="button"
+            onClick={() => { setModo("livre"); setProduto(null); }}
+            className={`rounded-md px-2 py-1 font-medium transition-colors ${modo === "livre" ? "bg-primary text-white" : "text-text-3 hover:text-text-2"}`}
+          >
+            Descrição livre
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <input
-          className="col-span-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm sm:col-span-2"
-          placeholder="Descrição (ex: Perfil montante Suprema)"
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-        />
+        <div className="col-span-2 sm:col-span-2">
+          {modo === "catalogo" ? (
+            produto ? (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
+                <span className="font-mono text-xs text-text-3">{produto.codigo_mestre}</span>
+                <span className="flex-1 truncate">{produto.nome}</span>
+                <button type="button" onClick={() => setProduto(null)} className="text-xs text-text-3 hover:text-red-500">trocar</button>
+              </div>
+            ) : (
+              <ProdutoPicker onSelect={(p) => { setProduto(p); if (!unidade) setUnidade(p.unidade); }} />
+            )
+          ) : (
+            <input
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder="Descrição (ex: Perfil montante Suprema)"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+            />
+          )}
+        </div>
         <input
           className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
           placeholder="Quantidade"
@@ -792,7 +839,7 @@ function NovaNecessidadeForm({ pacoteId, onCriada }: { pacoteId: string; onCriad
         </select>
         <button
           type="button"
-          disabled={isPending || !descricao.trim() || !quantidade.trim() || !unidade.trim()}
+          disabled={isPending || !descricaoValida || !quantidade.trim() || !unidade.trim()}
           onClick={submeter}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >

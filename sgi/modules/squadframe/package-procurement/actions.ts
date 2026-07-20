@@ -7,6 +7,7 @@ import type {
   WisePacoteCompras, WiseNecessidade, ResultadoServico,
   CoberturaNecessidade, PedidoItemDisponivel, StatusSuprimentosCalculado,
   SolicitacaoItemDisponivel, RecebimentoItemDisponivel,
+  ItemXmlParaResolver, ResolucaoImportacaoXml, DecisaoItemXml,
 } from "./types";
 
 async function usuarioAtualId(): Promise<string | null> {
@@ -42,6 +43,45 @@ export async function adicionarNecessidadeAction(dados: {
   const resultado = await service.adicionarNecessidade({ ...dados, usuario_id: usuarioId });
   if (resultado.ok) revalidatePath("/squadwise/obras");
   return resultado;
+}
+
+export async function resolverCodigosImportadosAction(
+  itens: ItemXmlParaResolver[],
+): Promise<ResolucaoImportacaoXml> {
+  return service.resolverCodigosImportados(itens);
+}
+
+export async function confirmarImportacaoXmlAction(
+  pacoteId: string,
+  decisoes: DecisaoItemXml[],
+): Promise<ResultadoServico<{ criadas: number; ignoradas: number }>> {
+  const usuarioId = await usuarioAtualId();
+  if (!usuarioId) return { ok: false, erro: "Não autenticado" };
+  const resultado = await service.confirmarImportacaoXml(pacoteId, usuarioId, decisoes);
+  if (resultado.ok) revalidatePath("/squadwise/obras");
+  return resultado;
+}
+
+export async function listarLinhasAction(): Promise<{ id: string; nome: string; tipo: string }[]> {
+  return service.listarLinhas();
+}
+
+export async function criarProdutoRapidoAction(dados: {
+  linha_id: string;
+  codigo_mestre: string;
+  nome_tecnico: string;
+  unidade?: string;
+  tamanho_mm?: number | null;
+}): Promise<{ id: string; codigo_mestre: string; nome: string; ja_existia: boolean }> {
+  return service.criarProdutoRapido(dados);
+}
+
+export async function criarLinhaRapidaAction(dados: { nome: string; tipo: string }): Promise<{ id: string; nome: string; tipo: string; ja_existia: boolean }> {
+  return service.criarLinhaRapida(dados);
+}
+
+export async function listarTiposLinhaAction(): Promise<{ nome: string; slug: string }[]> {
+  return service.listarTiposLinha();
 }
 
 export async function cancelarNecessidadeAction(necessidadeId: string, motivo: string): Promise<ResultadoServico> {

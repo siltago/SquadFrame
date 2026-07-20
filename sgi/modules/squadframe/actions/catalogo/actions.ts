@@ -395,6 +395,112 @@ export async function criarProduto(linhaId: string, formData: FormData) {
   redirect(`/squadframe/catalogo/${linhaId}/${data.id}`);
 }
 
+// Mesma lógica de criarProduto (checagem de duplicidade por
+// codigo_mestre + vínculo automático de cores), mas retorna o produto
+// em vez de redirecionar — criarProduto termina em redirect(), o que
+// não serve pra um cadastro inline dentro de outra tela (ex: revisão
+// de import de XML).
+export async function criarProdutoRapido(dados: {
+  linha_id: string;
+  codigo_mestre: string;
+  nome_tecnico: string;
+  unidade?: string;
+  tamanho_mm?: number | null;
+}): Promise<{ id: string; codigo_mestre: string; nome: string; ja_existia: boolean }> {
+  await verificarPermissao("catalogo.criar");
+  const supabase = createClient();
+
+  const codigo_mestre = dados.codigo_mestre.trim();
+  const nome_tecnico = dados.nome_tecnico.trim();
+  if (!codigo_mestre) throw new Error("Código mestre é obrigatório.");
+  if (!nome_tecnico) throw new Error("Nome técnico é obrigatório.");
+
+  const { data: existente } = await supabase
+    .from("produtos")
+    .select("id, codigo_mestre, nome")
+    .eq("codigo_mestre", codigo_mestre)
+    .maybeSingle();
+  if (existente) return { ...existente, ja_existia: true };
+
+  const { data, error } = await supabase
+    .from("produtos")
+    .insert({
+      codigo_mestre,
+      nome: nome_tecnico,
+      nome_tecnico,
+      linha_id: dados.linha_id,
+      unidade: dados.unidade ?? "UN",
+      tamanho_mm: dados.tamanho_mm ?? null,
+    })
+    .select("id, codigo_mestre, nome")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const tipo = await tipoDaLinha(supabase, dados.linha_id);
+  let coresQuery = supabase.from("cores_ral").select("id, acabamento_id");
+  if (tipo) coresQuery = coresQuery.contains("tipos", [tipo]);
+  const { data: cores } = await coresQuery;
+  if (cores && cores.length > 0) {
+    await supabase.from("produto_cores").insert(
+      cores.map((c) => {
+        const row: Record<string, string> = { produto_id: data.id, cor_id: c.id };
+        if (c.acabamento_id) row.acabamento_id = c.acabamento_id;
+        return row;
+      })
+    );
+  }
+
+  revalidatePath(`/squadframe/catalogo/${dados.linha_id}`);
+  return { ...data, ja_existia: false };
+}
+
+// Mesma lógica de criarLinha (valida tipo contra tipos_linha, trata
+// nome duplicado), mas retorna a linha em vez de redirecionar — usada
+// no mesmo fluxo de cadastro inline do criarProdutoRapido.
+export async function criarLinhaRapida(dados: {
+  nome: string;
+  tipo: string;
+}): Promise<{ id: string; nome: string; tipo: string; ja_existia: boolean }> {
+  await verificarPermissao(PERMISSIONS.CATALOGO_LINHA_GERENCIAR);
+  const supabase = createClient();
+
+  const nome = dados.nome.trim();
+  const tipoRaw = dados.tipo.trim();
+  if (!nome) throw new Error("Nome da linha é obrigatório.");
+  if (!tipoRaw) throw new Error("Selecione a aba do catálogo.");
+
+  const { data: tiposValidos } = await supabase.from("tipos_linha").select("slug");
+  const slugMatch = tiposValidos?.find((t) => t.slug.toUpperCase() === tipoRaw.toUpperCase());
+  if (!slugMatch) throw new Error("Tipo de aba inválido.");
+  const tipo = slugMatch.slug;
+
+  const { data: existente } = await supabase
+    .from("linhas")
+    .select("id, nome, tipo")
+    .ilike("nome", nome)
+    .maybeSingle();
+  if (existente) return { ...existente, ja_existia: true };
+
+  const { data, error } = await supabase
+    .from("linhas")
+    .insert({ nome, tipo })
+    .select("id, nome, tipo")
+    .single();
+  if (error) {
+    if (error.code === "23505") throw new Error(`Já existe uma linha com o nome "${nome}".`);
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/squadframe/catalogo");
+  return { ...data, ja_existia: false };
+}
+
+export async function listarTiposLinha(): Promise<{ nome: string; slug: string }[]> {
+  const supabase = createClient();
+  const { data } = await supabase.from("tipos_linha").select("nome, slug").order("ordem");
+  return data ?? [];
+}
+
 // ─── Cores ───────────────────────────────────────────────────
 
 export async function vincularTodasCores(produtoId: string, linhaId: string) {

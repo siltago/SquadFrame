@@ -7,6 +7,7 @@ import { atualizarLoteAction } from "@/modules/wise/works/actions";
 import { ImportarTipologiasXml } from "@/modules/wise/works/components/importar-tipologias-xml";
 import { AdicionarTipologiaForm } from "@/modules/wise/works/components/adicionar-tipologia-form";
 import { ProdutoPicker, type ProdutoOption } from "@/modules/wise/works/components/produto-picker";
+import { ImportarNecessidadesXml } from "@/modules/wise/works/components/importar-necessidades-xml";
 import {
   ensureContextoAction,
   adicionarNecessidadeAction,
@@ -1233,6 +1234,10 @@ function TabCompras({
             </button>
           </div>
         )}
+      </div>
+
+      <div className="flex items-center justify-end">
+        <ImportarNecessidadesXml pacoteId={loteId} />
       </div>
 
       <NovaNecessidadeForm pacoteId={loteId} onCriada={(n) => setNecessidades((prev) => [...prev, n])} />

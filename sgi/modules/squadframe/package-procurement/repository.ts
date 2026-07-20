@@ -1,6 +1,12 @@
 import "server-only";
 
 import { createAdminClient } from "@/shared/database/supabase-admin";
+import {
+  adicionarAlias,
+  criarProdutoRapido as criarProdutoRapidoCatalogo,
+  criarLinhaRapida as criarLinhaRapidaCatalogo,
+  listarTiposLinha as listarTiposLinhaCatalogo,
+} from "@/modules/squadframe/actions/catalogo/actions";
 import type {
   WisePacoteCompras, WiseNecessidade,
   AlocacaoSolicitacao, AlocacaoPedido, AlocacaoRecebimento, PedidoItemDisponivel,
@@ -376,4 +382,102 @@ export async function estornarAlocacaoRecebimento(id: string, usuarioId: string,
     p_motivo: motivo,
   });
   if (error) throw new Error(error.message);
+}
+
+// ── Import de necessidades via XML (de-para de código) ───────
+
+export type ProdutoResolvido = {
+  id: string;
+  codigo_mestre: string;
+  nome: string;
+  tamanho_mm: number | null;
+  linha_id: string | null;
+};
+
+// Fornecedor "virtual" que representa a origem dos códigos do XML —
+// criado (idempotente) pela migration 20260720000001. Cacheado em
+// memória do processo pra não bater no banco a cada item.
+let fornecedorPreferenceIdCache: string | null = null;
+
+export async function buscarFornecedorPreferenceId(): Promise<string> {
+  if (fornecedorPreferenceIdCache) return fornecedorPreferenceIdCache;
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("fornecedores").select("id").eq("nome", "Preference").single();
+  if (error || !data) throw new Error("Fornecedor 'Preference' não encontrado — rode a migration 20260720000001.");
+  fornecedorPreferenceIdCache = data.id as string;
+  return fornecedorPreferenceIdCache;
+}
+
+export async function buscarProdutoPorCodigoMestre(codigo: string): Promise<ProdutoResolvido | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("produtos")
+    .select("id, codigo_mestre, nome, tamanho_mm, linha_id")
+    .ilike("codigo_mestre", codigo)
+    .maybeSingle();
+  return (data as ProdutoResolvido) ?? null;
+}
+
+export async function buscarProdutoPorAlias(codigo: string): Promise<ProdutoResolvido | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("produto_aliases")
+    .select("produto:produtos(id, codigo_mestre, nome, tamanho_mm, linha_id)")
+    .ilike("alias", codigo)
+    .maybeSingle();
+  const produto = (data as unknown as { produto: ProdutoResolvido | null } | null)?.produto;
+  return produto ?? null;
+}
+
+export async function codigoEstaIgnorado(fornecedorId: string, codigo: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("frame_xml_codigos_ignorados")
+    .select("id")
+    .eq("fornecedor_id", fornecedorId)
+    .eq("codigo", codigo)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function marcarCodigoIgnorado(fornecedorId: string, codigo: string, usuarioId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("frame_xml_codigos_ignorados")
+    .upsert({ fornecedor_id: fornecedorId, codigo, criado_por: usuarioId }, { onConflict: "fornecedor_id,codigo", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+}
+
+// Cria o alias (código do XML → produto do catálogo) reaproveitando a
+// action já existente do módulo de catálogo — não reimplementa o
+// insert. Busca o linha_id do produto só porque adicionarAlias usa
+// isso pra revalidatePath, não afeta o dado gravado.
+export async function criarAliasParaCodigo(produtoId: string, codigo: string, fornecedorId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: produto } = await admin.from("produtos").select("linha_id").eq("id", produtoId).single();
+  await adicionarAlias(produtoId, produto?.linha_id ?? "", codigo, fornecedorId, {});
+}
+
+export async function listarLinhas(): Promise<{ id: string; nome: string; tipo: string }[]> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("linhas").select("id, nome, tipo").eq("ativo", true).order("nome");
+  return (data ?? []) as { id: string; nome: string; tipo: string }[];
+}
+
+export async function criarProdutoRapido(dados: {
+  linha_id: string;
+  codigo_mestre: string;
+  nome_tecnico: string;
+  unidade?: string;
+  tamanho_mm?: number | null;
+}): Promise<{ id: string; codigo_mestre: string; nome: string; ja_existia: boolean }> {
+  return criarProdutoRapidoCatalogo(dados);
+}
+
+export async function criarLinhaRapida(dados: { nome: string; tipo: string }): Promise<{ id: string; nome: string; tipo: string; ja_existia: boolean }> {
+  return criarLinhaRapidaCatalogo(dados);
+}
+
+export async function listarTiposLinha(): Promise<{ nome: string; slug: string }[]> {
+  return listarTiposLinhaCatalogo();
 }

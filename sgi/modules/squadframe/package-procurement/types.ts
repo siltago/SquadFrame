@@ -128,3 +128,59 @@ export type RecebimentoItemDisponivel = {
   unidade: string;
   ja_alocado: number;
 };
+
+// ── Import de necessidades via XML (de-para de código) ───────
+
+export type ItemXmlParaResolver = {
+  _key: number;
+  origem: "componente" | "perfil";
+  codigo: string;
+  descricao: string;
+  quantidade: number;
+  unidade: string;
+  cortesMm: number[];
+};
+
+// Item já resolvido automaticamente (código_mestre direto ou alias já
+// existente) — não entra na tabela de revisão, vira necessidade direto.
+export type ItemXmlResolvido = ItemXmlParaResolver & {
+  status: "resolvido";
+  produto_id: string;
+  produto_codigo_mestre: string;
+  produto_nome: string;
+  tamanho_mm: number | null;
+};
+
+// Item sem match nenhum (nem código_mestre, nem alias, nem ignorado) —
+// vai pra tabela de revisão pro usuário decidir.
+export type ItemXmlPendente = ItemXmlParaResolver & {
+  status: "pendente";
+};
+
+export type ResolucaoImportacaoXml = {
+  resolvidos: ItemXmlResolvido[];
+  pendentes: ItemXmlPendente[];
+  // quantos itens do XML já foram marcados como "não incluir" antes —
+  // não aparecem nem em resolvidos nem em pendentes, só informativo.
+  ignorados: number;
+};
+
+// Decisão final do usuário por linha (tanto resolvida automaticamente
+// quanto revisada manualmente) — enviada em lote pra confirmarImportacaoXmlAction.
+export type DecisaoItemXml = {
+  _key: number;
+  origem: "componente" | "perfil";
+  codigo: string;
+  descricao: string;
+  quantidade: number;
+  unidade: string;
+  cortesMm: number[];
+  incluir: boolean;
+  // Quando já resolvido (produto existente ou recém-cadastrado nesta
+  // sessão de revisão) — precisa criar alias se ainda não existir.
+  produto_id: string | null;
+  tamanho_mm: number | null;
+  // true só quando o usuário resolveu manualmente na tabela (precisa
+  // criar alias); false quando já veio resolvido (alias já existe).
+  precisa_criar_alias: boolean;
+};

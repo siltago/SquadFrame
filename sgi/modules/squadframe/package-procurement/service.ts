@@ -1,10 +1,15 @@
 import "server-only";
 
 import * as repo from "./repository";
+import { calcularBarras } from "./lib/otimizacao-corte";
 import type {
   WisePacoteCompras, WiseNecessidade, StatusSuprimentosCalculado, ResultadoServico,
   CoberturaNecessidade, PedidoItemDisponivel, SolicitacaoItemDisponivel, RecebimentoItemDisponivel,
+  ItemXmlParaResolver, ResolucaoImportacaoXml, DecisaoItemXml,
 } from "./types";
+
+const KERF_MM = 5;
+const COMPRIMENTO_BARRA_PADRAO_MM = 6000;
 
 export async function obterContexto(pacoteId: string): Promise<WisePacoteCompras | null> {
   return repo.buscarContexto(pacoteId);
@@ -127,6 +132,110 @@ export async function adicionarNecessidade(dados: {
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : "Não foi possível criar a necessidade" };
   }
+}
+
+// Import de necessidades a partir do XML (COMPONENTES + PERFIS já
+// filtrados e agregados pelo parser — ver lib/xml-necessidades.ts).
+// Cada código é resolvido contra o catálogo mestre (produtos.codigo_mestre
+// direto, depois produto_aliases) antes de virar necessidade — só o que
+// não bate com nada vai pra revisão manual do usuário.
+export async function resolverCodigosImportados(itens: ItemXmlParaResolver[]): Promise<ResolucaoImportacaoXml> {
+  const fornecedorId = await repo.buscarFornecedorPreferenceId();
+
+  const resolvidos: ResolucaoImportacaoXml["resolvidos"] = [];
+  const pendentes: ResolucaoImportacaoXml["pendentes"] = [];
+  let ignorados = 0;
+
+  for (const item of itens) {
+    const porCodigoMestre = await repo.buscarProdutoPorCodigoMestre(item.codigo);
+    const produto = porCodigoMestre ?? (await repo.buscarProdutoPorAlias(item.codigo));
+    if (produto) {
+      resolvidos.push({
+        ...item, status: "resolvido",
+        produto_id: produto.id, produto_codigo_mestre: produto.codigo_mestre,
+        produto_nome: produto.nome, tamanho_mm: produto.tamanho_mm,
+      });
+      continue;
+    }
+    if (await repo.codigoEstaIgnorado(fornecedorId, item.codigo)) {
+      ignorados++;
+      continue;
+    }
+    pendentes.push({ ...item, status: "pendente" });
+  }
+
+  return { resolvidos, pendentes, ignorados };
+}
+
+export async function confirmarImportacaoXml(
+  pacoteId: string,
+  usuarioId: string,
+  decisoes: DecisaoItemXml[],
+): Promise<ResultadoServico<{ criadas: number; ignoradas: number }>> {
+  if (!decisoes.length) return { ok: false, erro: "Nenhum item para confirmar." };
+  const fornecedorId = await repo.buscarFornecedorPreferenceId();
+
+  try {
+    let criadas = 0;
+    let ignoradasCount = 0;
+
+    for (const item of decisoes) {
+      if (!item.incluir) {
+        await repo.marcarCodigoIgnorado(fornecedorId, item.codigo, usuarioId);
+        ignoradasCount++;
+        continue;
+      }
+      if (!item.produto_id) {
+        throw new Error(`Item "${item.codigo}" está marcado pra incluir mas não tem produto resolvido.`);
+      }
+      if (item.precisa_criar_alias) {
+        await repo.criarAliasParaCodigo(item.produto_id, item.codigo, fornecedorId);
+      }
+
+      const quantidade = item.origem === "perfil"
+        ? calcularBarras(item.cortesMm, item.tamanho_mm ?? COMPRIMENTO_BARRA_PADRAO_MM, KERF_MM).barras
+        : item.quantidade;
+      const unidade = item.origem === "perfil" ? "barra" : item.unidade;
+
+      await repo.adicionarNecessidade({
+        pacote_id: pacoteId,
+        usuario_id: usuarioId,
+        produto_id: item.produto_id,
+        descricao_livre: null,
+        quantidade,
+        unidade,
+        criticidade: "NORMAL",
+        etapa_necessaria: null,
+      });
+      criadas++;
+    }
+
+    return { ok: true, dados: { criadas, ignoradas: ignoradasCount } };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Não foi possível importar as necessidades." };
+  }
+}
+
+export async function listarLinhas(): Promise<{ id: string; nome: string; tipo: string }[]> {
+  return repo.listarLinhas();
+}
+
+export async function criarProdutoRapido(dados: {
+  linha_id: string;
+  codigo_mestre: string;
+  nome_tecnico: string;
+  unidade?: string;
+  tamanho_mm?: number | null;
+}): Promise<{ id: string; codigo_mestre: string; nome: string; ja_existia: boolean }> {
+  return repo.criarProdutoRapido(dados);
+}
+
+export async function criarLinhaRapida(dados: { nome: string; tipo: string }): Promise<{ id: string; nome: string; tipo: string; ja_existia: boolean }> {
+  return repo.criarLinhaRapida(dados);
+}
+
+export async function listarTiposLinha(): Promise<{ nome: string; slug: string }[]> {
+  return repo.listarTiposLinha();
 }
 
 export async function cancelarNecessidade(

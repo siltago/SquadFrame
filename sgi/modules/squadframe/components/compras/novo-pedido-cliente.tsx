@@ -208,15 +208,19 @@ function CodigoFornecedorModal({ produto, nomeFornecedor, onUsar, onSemCodigo, o
 // ── Componente principal ──────────────────────────────────────────
 type Lote = { id: string; nome: string; obra_id: string };
 
+type NecessidadeParaPedido = { id: string; quantidade: number; unidade: string; produto: Produto };
+
 export function NovoPedidoCliente({
   obras, fornecedores, solicitacoesAprovadas, tiposLinha, formasPagamento, coresRal, fromSolicitacao, fromObraId,
-  loteId, origemContexto, lotes,
+  loteId, origemContexto, lotes, fromNecessidades, necessidadesSemProduto,
 }: {
   obras: Obra[]; fornecedores: Fornecedor[]; solicitacoesAprovadas: Solicitacao[];
   tiposLinha: TipoLinha[]; formasPagamento: FormaPagamento[]; coresRal: CorRal[];
   fromSolicitacao?: Solicitacao | null; fromObraId?: string | null;
   loteId?: string | null; origemContexto?: string | null;
   lotes?: Lote[];
+  fromNecessidades?: NecessidadeParaPedido[] | null;
+  necessidadesSemProduto?: number;
 }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [obraId, setObraId] = useState(fromObraId ?? "");
@@ -239,6 +243,7 @@ export function NovoPedidoCliente({
 
   useEffect(() => {
     if (fromSolicitacao) importarSolicitacao(fromSolicitacao);
+    if (fromNecessidades?.length) importarNecessidades(fromNecessidades);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const outrasSolicitacoes = fromSolicitacao
@@ -330,6 +335,25 @@ export function NovoPedidoCliente({
       return [...prev, ...novos];
     });
     setShowSols(false);
+  }
+
+  function importarNecessidades(nec: NecessidadeParaPedido[]) {
+    setItens((prev) => {
+      const novos = nec
+        .filter((n) => !prev.find((i) => i.produto?.id === n.produto.id))
+        .map((n) => ({
+          produto: n.produto,
+          quantidade_pedida: n.quantidade,
+          unidade: n.unidade,
+          preco_unitario: n.produto.preco_metro ? calcPrecoUnit(n.unidade, n.produto.tamanho_mm, n.produto.preco_metro) : 0,
+          codigo_fornecedor: n.produto.codigo_do_fornecedor ?? "",
+          descricao_snapshot: n.produto.nome,
+          peso_metro: n.produto.peso_metro ?? null,
+          tamanho_mm: n.produto.tamanho_mm ?? null,
+          preco_metro: n.produto.preco_metro ?? null,
+        }));
+      return [...prev, ...novos];
+    });
   }
 
   function removeItem(idx: number) { setItens((prev) => prev.filter((_, i) => i !== idx)); }
@@ -629,6 +653,20 @@ export function NovoPedidoCliente({
             <Alert variant="success" className="mb-3">
               Itens importados automaticamente de{" "}
               <span className="font-mono font-semibold">{fromSolicitacao.numero}</span>
+            </Alert>
+          )}
+
+          {fromNecessidades && fromNecessidades.length > 0 && (
+            <Alert variant="success" className="mb-3">
+              {fromNecessidades.length} iten(s) importado(s) do levantamento de material do lote.
+              {!!necessidadesSemProduto && (
+                <> {necessidadesSemProduto} necessidade(s) sem código de catálogo não foram incluídas — cadastre o produto antes de importar.</>
+              )}
+            </Alert>
+          )}
+          {fromNecessidades && fromNecessidades.length === 0 && necessidadesSemProduto === 0 && (
+            <Alert variant="warning" className="mb-3">
+              Nenhuma necessidade pendente de pedido encontrada neste lote.
             </Alert>
           )}
 

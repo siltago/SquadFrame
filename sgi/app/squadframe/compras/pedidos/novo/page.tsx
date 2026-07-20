@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { getTiposLinha, getFornecedores, getFormasPagamento, getCoresRal } from "@/modules/squadframe/lib/cached-queries";
+import { listarNecessidadesAction, obterCoberturaAction } from "@/modules/squadframe/package-procurement/actions";
 import { NovoPedidoCliente } from "@/modules/squadframe/components/compras/novo-pedido-cliente";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 
@@ -43,6 +44,33 @@ export default async function NovoPedidoPage({
 
   const fromObraId = searchParams.obra_id ?? null;
 
+  // Prefill vindo do levantamento de material de um lote (aba "Lotes" de
+  // Compras) — só necessidades com produto_id resolvido entram (criar_pedido
+  // não aceita descricao_livre); a quantidade sugerida é o que ainda falta
+  // pedir (necessário − já pedido), não o total.
+  let fromNecessidades: { id: string; quantidade: number; unidade: string; produto: { id: string; codigo_mestre: string; nome: string; unidade: string } }[] | null = null;
+  let necessidadesSemProduto = 0;
+  if (searchParams.origem_contexto === "LEVANTAMENTO_NECESSIDADES" && searchParams.lote_id) {
+    const necessidades = await listarNecessidadesAction(searchParams.lote_id);
+    const ativas = necessidades.filter((n) => n.estado_administrativo === "ATIVA");
+    const { cobertura } = await obterCoberturaAction(ativas);
+    const coberturaPorNecessidade = new Map(cobertura.map((c) => [c.necessidade_id, c]));
+
+    fromNecessidades = [];
+    for (const n of ativas) {
+      if (!n.produto_id || !n.produto) { necessidadesSemProduto++; continue; }
+      const jaPedido = coberturaPorNecessidade.get(n.id)?.pedido ?? 0;
+      const faltaPedir = n.quantidade_necessaria - jaPedido;
+      if (faltaPedir <= 0) continue;
+      fromNecessidades.push({
+        id: n.id,
+        quantidade: faltaPedir,
+        unidade: n.unidade,
+        produto: { id: n.produto.id, codigo_mestre: n.produto.codigo_mestre, nome: n.produto.nome, unidade: n.unidade },
+      });
+    }
+  }
+
   return (
     <div className="px-8 py-8 max-w-5xl">
       <BackButton href={fromObraId ? `/squadframe/obras/${fromObraId}?aba=pedidos` : "/squadframe/compras/pedidos"} />
@@ -63,6 +91,8 @@ export default async function NovoPedidoPage({
           loteId={searchParams.lote_id ?? null}
           origemContexto={searchParams.origem_contexto ?? null}
           lotes={lotesAtivos ?? []}
+          fromNecessidades={fromNecessidades}
+          necessidadesSemProduto={necessidadesSemProduto}
         />
       </div>
     </div>

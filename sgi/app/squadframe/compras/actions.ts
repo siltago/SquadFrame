@@ -17,6 +17,7 @@ export {
   registrarValorFinal,
   confirmarDebitoPedido,
   atualizarPrazoEntrega,
+  vincularPedidoLote,
 } from "@/modules/squadframe/actions/compras/pedidos";
 
 export { registrarRecebimento } from "@/modules/squadframe/actions/compras/recebimentos";

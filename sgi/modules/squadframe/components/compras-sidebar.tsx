@@ -6,7 +6,7 @@ import { AppSidebar, SidebarSection } from "@/ui/layout/AppSidebar";
 import { Button } from "@/ui/components/Button";
 import {
   DashboardIcon, DocumentIcon, PackageIcon, BuildingIcon,
-  BriefcaseIcon, CreditCardIcon, DollarSignIcon,
+  BriefcaseIcon, CreditCardIcon, DollarSignIcon, LayersIcon,
 } from "@/ui/icons";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 
@@ -22,6 +22,7 @@ export function ComprasSidebar() {
         { href: "/squadframe/compras",              label: "Painel",          icon: <DashboardIcon />,  exact: true },
         { href: "/squadframe/compras/solicitacoes", label: "Solicitações",    icon: <DocumentIcon />  },
         { href: "/squadframe/compras/pedidos",      label: "Pedidos",         icon: <PackageIcon />   },
+        { href: "/squadframe/compras/lotes",        label: "Lotes",           icon: <LayersIcon />    },
         { href: "/squadframe/compras/fornecedores", label: "Fornecedores",    icon: <BuildingIcon />  },
         { href: "/squadframe/compras/financeiro",   label: "Financeiro",      icon: <DollarSignIcon /> },
       ],

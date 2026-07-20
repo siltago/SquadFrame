@@ -247,6 +247,32 @@ export async function editarPedido(id: string, formData: FormData) {
   return { id };
 }
 
+// Vínculo de cabeçalho (pedido inteiro → lote), não a alocação granular
+// por item — essa continua existindo via o Bloco B (fn_frame_allocate_*)
+// dentro do detalhe do lote no Wise. Reusa a mesma permissão de
+// editarPedido() (não existe uma "compras.pedido.editar" separada).
+export async function vincularPedidoLote(pedidoId: string, loteId: string | null) {
+  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
+
+  const admin = createAdminClient();
+
+  const { data: ped } = await admin
+    .from("pedidos_compra")
+    .select("status")
+    .eq("id", pedidoId)
+    .single();
+  if (!ped) throw new Error("Pedido não encontrado.");
+  if (!pedidoEditavel(ped.status)) {
+    throw new Error(`Pedidos com status "${ped.status}" não podem ser vinculados a um lote.`);
+  }
+
+  const { error } = await admin.from("pedidos_compra").update({ lote_id: loteId }).eq("id", pedidoId);
+  if (error) throw new Error(error.message);
+
+  if (loteId) revalidatePath(`/squadframe/compras/lotes/${loteId}`);
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
+}
+
 export async function confirmarDebitoPedido(pedidoId: string) {
   await verificarPermissao(PERMISSIONS.FINANCEIRO_PEDIDO_CONFIRMAR_DEBITO);
 

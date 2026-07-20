@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ObraForm } from "./obra-form";
+import { ImportarLoteXml } from "./importar-lote-xml";
 import type {
   WiseObra, WiseObraStatusRow, WiseCliente,
   WiseLoteComTipologias,
@@ -167,18 +168,21 @@ export function ObraDetalhe({
         {/* Edição — lista de lotes */}
         {aba === "edicao" && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-text-3">{lotes.length} lote(s)</p>
-              <Link
-                href={`/squadframe/obras/${obra.id}?aba=producao`} target="_blank"
-                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-              >
-                Gerenciar no Frame
-                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </Link>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-text-3 shrink-0">{lotes.length} lote(s)</p>
+              <div className="flex items-center gap-3">
+                <ImportarLoteXml obraId={obra.id} />
+                <Link
+                  href={`/squadframe/obras/${obra.id}?aba=producao`} target="_blank"
+                  className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                >
+                  Gerenciar no Frame
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </Link>
+              </div>
             </div>
 
             {lotes.length === 0 ? (

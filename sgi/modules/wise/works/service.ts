@@ -217,6 +217,27 @@ export async function importarTipologiasXml(
   }
 }
 
+// Cria um lote novo já populado a partir de um XML — atalho pra não
+// exigir "criar lote vazio, abrir, importar XML" em 3 passos.
+export async function importarLoteXml(
+  obraId: string,
+  nome: string,
+  itens: TipologiaParseada[],
+): Promise<ServiceResult<{ loteId: string; criadas: number }>> {
+  const nomeLimpo = nome.trim();
+  if (!nomeLimpo) return { ok: false, erro: "Nome do lote é obrigatório." };
+  if (!itens.length) return { ok: false, erro: "Nenhuma tipologia para importar." };
+
+  try {
+    const loteId = await repo.criarLote(obraId, nomeLimpo);
+    const resultado = await importarTipologiasXml(loteId, obraId, itens);
+    if (!resultado.ok) return resultado;
+    return { ok: true, data: { loteId, criadas: resultado.data.criadas } };
+  } catch (e: any) {
+    return { ok: false, erro: e.message };
+  }
+}
+
 export async function adicionarTipologiaAoLote(
   loteId: string,
   obraId: string,

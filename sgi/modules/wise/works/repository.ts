@@ -147,6 +147,16 @@ export async function excluirEstrutura(id: string): Promise<void> {
 
 // ── Lote ───────────────────────────────────────────────────────────────────
 
+export async function criarLote(obraId: string, nome: string): Promise<string> {
+  const { data, error } = await createAdminClient()
+    .from("lotes_obra")
+    .insert({ obra_id: obraId, nome })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return data.id as string;
+}
+
 export async function atualizarLote(
   loteId: string,
   dados: {

@@ -164,6 +164,22 @@ export async function importarTipologiasXmlAction(
   return resultado;
 }
 
+export async function importarLoteXmlAction(
+  obraId: string,
+  nome: string,
+  itens: TipologiaParseada[],
+) {
+  const { usuarioId } = await contexto();
+  const pode = await verificarPermissaoWise(usuarioId, "wise.pacotes.criar");
+  if (!pode) return { ok: false as const, erro: "Sem permissão para criar pacotes de trabalho nesta obra" };
+
+  const resultado = await service.importarLoteXml(obraId, nome, itens);
+  if (resultado.ok) {
+    revalidatePath(`/squadwise/obras/${obraId}`);
+  }
+  return resultado;
+}
+
 export async function adicionarTipologiaAction(
   loteId: string,
   obraId: string,

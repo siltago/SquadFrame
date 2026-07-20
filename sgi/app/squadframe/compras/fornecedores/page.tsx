@@ -2,6 +2,7 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { criarFornecedor } from "@/app/squadframe/compras/actions";
 import { FornecedoresLista } from "@/modules/squadframe/components/compras/fornecedores-lista";
 import { Button } from "@/ui/components/Button";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function FornecedoresPage() {
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher channelName="compras-fornecedores" subs={[{ table: "fornecedores" }]} />
       <h1 className="text-2xl font-bold tracking-tight">Fornecedores</h1>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">

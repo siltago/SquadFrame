@@ -7,6 +7,7 @@ import { CarteirasContent } from "@/modules/squadframe/components/compras/cartei
 import { FinanceiroTabNav } from "@/modules/squadframe/components/financeiro/tab-nav";
 import Link from "next/link";
 import { Button } from "@/ui/components/Button";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ export default async function FinanceiroPage({
   if (abaAtual === "carteiras") {
     return (
       <div className="px-8 py-8 max-w-6xl">
+        <RealtimeRefresher channelName="financeiro-carteiras" subs={[{ table: "carteiras" }]} />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
         <FinanceiroTabNav {...tabNavProps} />
         <CarteirasContent />
@@ -152,6 +154,10 @@ export default async function FinanceiroPage({
 
   return (
     <div className="px-8 py-8 max-w-6xl">
+      <RealtimeRefresher
+        channelName="financeiro-dashboard"
+        subs={[{ table: "pedidos_compra" }, { table: "pedido_itens" }]}
+      />
       <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
       <p className="mt-1 text-sm text-text-2">
         Gasto consolidado em compras. Valores sem confirmação são estimados pela soma dos itens.

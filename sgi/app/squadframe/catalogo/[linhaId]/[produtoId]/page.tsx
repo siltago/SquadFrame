@@ -6,6 +6,7 @@ import { AbaGeral } from "@/modules/squadframe/components/catalogo/aba-geral";
 import { AbaCores } from "@/modules/squadframe/components/catalogo/aba-cores";
 import { AbaAliases } from "@/modules/squadframe/components/catalogo/aba-aliases";
 import { AbaArquivos } from "@/modules/squadframe/components/catalogo/aba-arquivos";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +139,15 @@ export default async function ProdutoPage({
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher
+        channelName={`catalogo-produto-${params.produtoId}`}
+        subs={[
+          { table: "produtos", filter: `id=eq.${params.produtoId}` },
+          { table: "produto_cores", filter: `produto_id=eq.${params.produtoId}` },
+          { table: "produto_aliases", filter: `produto_id=eq.${params.produtoId}` },
+          { table: "produto_arquivos", filter: `produto_id=eq.${params.produtoId}` },
+        ]}
+      />
       <BackButton href={linha?.tipo ? `/squadframe/catalogo?tipo=${linha.tipo.toLowerCase()}` : `/squadframe/catalogo/${params.linhaId}`} />
 
       {/* Cabeçalho */}

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { CargosCliente } from "@/modules/squadframe/components/usuarios/cargos-cliente";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 function toPermissao(p: { id: string; chave: string; nome: string | null }) {
   const parts = p.chave.split(".");
@@ -33,10 +34,16 @@ export default async function CargosPage() {
   }));
 
   return (
-    <CargosCliente
-      setoresInit={setores ?? []}
-      cargosInit={cargosComPerms}
-      permissoes={(permissoes ?? []).map(toPermissao)}
-    />
+    <>
+      <RealtimeRefresher
+        channelName="usuarios-cargos"
+        subs={[{ table: "cargos" }, { table: "setores" }, { table: "cargo_permissoes" }]}
+      />
+      <CargosCliente
+        setoresInit={setores ?? []}
+        cargosInit={cargosComPerms}
+        permissoes={(permissoes ?? []).map(toPermissao)}
+      />
+    </>
   );
 }

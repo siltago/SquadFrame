@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { UsuariosCliente } from "@/modules/squadframe/components/usuarios/usuarios-cliente";
 import { UsuariosSidebar } from "@/modules/squadframe/components/usuarios-sidebar";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,10 @@ export default async function UsuariosPage() {
 
   return (
     <div className="flex" style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))" }}>
+      <RealtimeRefresher
+        channelName="usuarios-lista"
+        subs={[{ table: "usuarios" }, { table: "cargos" }, { table: "setores" }]}
+      />
       <UsuariosSidebar setores={setoresComCount} />
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
         <UsuariosCliente

@@ -4,6 +4,7 @@ import { StatusBadge } from "@/modules/squadframe/components/status-badge";
 import { Paginacao } from "@/modules/squadframe/components/paginacao";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { BtnAcaoProtegida } from "@/modules/squadframe/components/btn-acao-protegida";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function ObrasPage({ searchParams }: { searchParams: { page
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher channelName="obras-lista" subs={[{ table: "obras" }]} />
       {/* Cabeçalho */}
       <div className="mb-8 flex items-end justify-between">
         <div>

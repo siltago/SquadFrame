@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { STATUS_SOL_COR, STATUS_SOL_LABEL, STATUS_PED_COR, STATUS_PED_LABEL, PRIORIDADE_COR, PRIORIDADE_LABEL } from "@/modules/squadframe/types/compras";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,10 @@ export default async function ComprasPage() {
 
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">
+      <RealtimeRefresher
+        channelName="compras-painel"
+        subs={[{ table: "solicitacoes_compra" }, { table: "pedidos_compra" }]}
+      />
       <h1 className="text-2xl font-bold tracking-tight">Painel de Compras</h1>
       <p className="mt-1 text-sm text-text-2">Visão geral e pendências prioritárias.</p>
 

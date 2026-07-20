@@ -3,6 +3,7 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import Link from "next/link";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,13 @@ export default async function CarteiraDetailPage({
 
   return (
     <div className="px-8 py-8 max-w-4xl">
+      <RealtimeRefresher
+        channelName={`carteira-${params.carteiraId}`}
+        subs={[
+          { table: "carteiras", filter: `id=eq.${params.carteiraId}` },
+          { table: "carteira_movimentacoes", filter: `carteira_id=eq.${params.carteiraId}` },
+        ]}
+      />
       <Link href="/squadframe/financeiro?aba=carteiras" className="text-xs text-text-3 hover:text-text-2">
         ← Voltar às carteiras
       </Link>

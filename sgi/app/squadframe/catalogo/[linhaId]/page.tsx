@@ -7,6 +7,7 @@ import { ImportarXml } from "@/modules/squadframe/components/catalogo/importar-x
 import { BtnAlterarUnidade } from "@/modules/squadframe/components/catalogo/btn-alterar-unidade";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { Button } from "@/ui/components/Button";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,13 @@ export default async function LinhaPage({
 
   return (
     <div className="px-8 py-8">
+      <RealtimeRefresher
+        channelName={`catalogo-linha-${params.linhaId}`}
+        subs={[
+          { table: "produtos", filter: `linha_id=eq.${params.linhaId}` },
+          { table: "categorias_perfil", filter: `linha_id=eq.${params.linhaId}` },
+        ]}
+      />
       <BackButton href="/squadframe/catalogo" />
 
       {/* Cabeçalho */}

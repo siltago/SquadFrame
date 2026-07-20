@@ -14,6 +14,7 @@ import { EmptyState } from "@/ui/components/EmptyState";
 import type { CatalogItem } from "@/modules/squadframe/types/catalogo/catalog-item";
 import type { Filters } from "@/modules/squadframe/components/catalogo/filter-bar";
 import { buildSearchPattern } from "@/ui/lib/search";
+import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -344,6 +345,13 @@ export default async function CatalogoPage({
 
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">
+      <RealtimeRefresher
+        channelName={`catalogo-${tipoSlug}`}
+        subs={[
+          { table: "produtos" },
+          { table: "linhas", filter: `tipo=eq.${tipoSlug}` },
+        ]}
+      />
 
       {/* Cabeçalho */}
       <div className="flex items-center justify-between gap-4">

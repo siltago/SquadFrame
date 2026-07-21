@@ -13,6 +13,10 @@ export type NotificacaoTipo =
   | 'solicitacao_rejeitada'
   | 'pedido_cobranca_prazo'
   | 'solicitacao_cobranca_prazo'
+  | 'retorno_pedido_solicitado'
+  | 'retorno_pedido_aprovado'
+  | 'retorno_pedido_rejeitado'
+  | 'devolucao_pedido_criada'
   // SquadBoard
   | 'board_card_atribuido'
   | 'board_card_movido'
@@ -36,6 +40,10 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'solicitacao_rejeitada',
     'pedido_cobranca_prazo',
     'solicitacao_cobranca_prazo',
+    'retorno_pedido_solicitado',
+    'retorno_pedido_aprovado',
+    'retorno_pedido_rejeitado',
+    'devolucao_pedido_criada',
   ],
   squadboard: [
     'board_card_atribuido',

@@ -21,6 +21,10 @@ const TIPO_LABEL: Record<string, string> = {
   debito_carteira_falhou:      "Débito da carteira não realizado",
   pedido_cobranca_prazo:       "Cobrança: pedido aguardando aprovação",
   solicitacao_cobranca_prazo:  "Cobrança: solicitação aguardando aprovação",
+  retorno_pedido_solicitado:   "Retorno de pedido solicitado",
+  retorno_pedido_aprovado:     "Retorno de pedido aprovado",
+  retorno_pedido_rejeitado:    "Retorno de pedido rejeitado",
+  devolucao_pedido_criada:     "Devolução de pedido criada",
   // SquadBoard
   board_card_atribuido:        "Card atribuído a você",
   board_card_movido:           "Card movido de coluna",
@@ -40,6 +44,10 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "pedido_aprovado":
     case "debito_carteira_falhou":
     case "pedido_cobranca_prazo":
+    case "retorno_pedido_solicitado":
+    case "retorno_pedido_aprovado":
+    case "retorno_pedido_rejeitado":
+    case "devolucao_pedido_criada":
       if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
       break;
     case "solicitacao_aprovada":

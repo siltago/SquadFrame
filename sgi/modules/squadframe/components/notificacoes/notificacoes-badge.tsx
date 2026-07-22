@@ -8,6 +8,7 @@ import {
   buscarNotificacoes,
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas,
+  limparNotificacoes,
 } from "@/modules/squadframe/actions/tarefas/actions";
 import { TIPOS_NOTIFICACAO_POR_ESCOPO, type EscopoNotificacao, type Notificacao } from "@/modules/squadframe/types/kanban";
 
@@ -160,29 +161,6 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
     setBanners((prev) => prev.filter((n) => n.id !== id));
   }
 
-  // DEV: banner de exemplo com dados fictícios, só pra editar o visual sem
-  // precisar criar/aprovar pedido nenhum. Não bate no banco. Remover antes
-  // de commitar (ou trocar por um botão explícito, se for ficar).
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    setBanners([{
-      id: "preview-fake",
-      usuario_id: usuarioId,
-      tipo: "pedido_aguardando_aprovacao",
-      tarefa_id: null,
-      payload: {
-        numero: "999",
-        order_id: "00000000-0000-0000-0000-000000000000",
-        tipo_linha: "PERFIL",
-        obra_nome: "Residencial Exemplo",
-        criado_por_nome: "Fulano de Tal",
-      },
-      lida: false,
-      criado_em: new Date().toISOString(),
-    }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function abrirBanner(n: Notificacao) {
     dispensarBanner(n.id);
     const link = resolverLink(n);
@@ -288,6 +266,15 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
     });
   }
 
+  function handleLimpar() {
+    if (!window.confirm("Apagar todas as notificações? Essa ação não pode ser desfeita.")) return;
+    startTransition(async () => {
+      await limparNotificacoes(escopo);
+      setNotificacoes([]);
+      setNaoLidas(0);
+    });
+  }
+
   return (
     <div className="relative">
       <button
@@ -344,14 +331,24 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
           <div className="fixed inset-x-4 top-16 z-50 mx-auto max-w-sm rounded-xl border border-border bg-surface shadow-xl overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-w-none">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="text-sm font-semibold text-text">Notificações</span>
-              {naoLidas > 0 && (
-                <button
-                  onClick={handleMarcarTodas}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Marcar todas como lidas
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {naoLidas > 0 && (
+                  <button
+                    onClick={handleMarcarTodas}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Marcar todas como lidas
+                  </button>
+                )}
+                {notificacoes.length > 0 && (
+                  <button
+                    onClick={handleLimpar}
+                    className="text-xs text-text-3 hover:text-red-500 hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
             </div>
             <div className="max-h-96 overflow-y-auto divide-y divide-border">
               {notificacoes.length === 0 ? (

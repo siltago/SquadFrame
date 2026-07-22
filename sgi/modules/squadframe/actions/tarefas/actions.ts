@@ -941,6 +941,22 @@ export async function marcarTodasNotificacoesLidas(escopo?: EscopoNotificacao) {
   return { ok: true };
 }
 
+// Apaga (não só marca como lida) as notificações do usuário no escopo do
+// módulo atual — mesmo recorte por tipo de marcarTodasNotificacoesLidas,
+// só que remove a linha em vez de só marcar lida.
+export async function limparNotificacoes(escopo?: EscopoNotificacao) {
+  const admin = createAdminClient();
+  const uid = await usuarioAtualId();
+  if (!uid) return { ok: false };
+
+  const tipos = escopo ? TIPOS_NOTIFICACAO_POR_ESCOPO[escopo] : null;
+  const base = admin.from("notificacoes").delete().eq("usuario_id", uid);
+
+  await (tipos ? base.in("tipo", tipos) : base);
+
+  return { ok: true };
+}
+
 export async function buscarTarefasGlobal(termo: string) {
   const admin = createAdminClient();
   const uid = await usuarioAtualId();

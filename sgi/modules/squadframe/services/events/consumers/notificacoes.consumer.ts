@@ -30,8 +30,21 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
 
     // Pedido aguardando aprovação → notifica aprovadores com permissão
     case EVENTS.PURCHASE_ORDER_AWAITING_APPROVAL: {
-      const { order_id, numero } = p;
+      const { order_id } = p;
       if (!order_id) break;
+
+      // O evento não traz numero (só order_id) — busca do banco, igual
+      // push.consumer.ts já faz pro push nativo. tipo_linha/obra_nome só
+      // existem pra montar o corpo detalhado da notificação, não
+      // influenciam quem é notificado.
+      const { data: pedDetalhe } = await admin
+        .from("pedidos_compra")
+        .select("numero, tipo_linha, obras(nome)")
+        .eq("id", order_id)
+        .single();
+      const numero = pedDetalhe?.numero ?? null;
+      const tipo_linha = pedDetalhe?.tipo_linha ?? null;
+      const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
 
       // Busca IDs de permissão para aprovar pedidos
       const { data: perm } = await admin
@@ -63,7 +76,7 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
         usuarios.map((u) => ({
           usuario_id: u.id,
           tipo: "pedido_aguardando_aprovacao",
-          payload: { numero, order_id },
+          payload: { numero, order_id, tipo_linha, obra_nome },
         }))
       );
       break;
@@ -113,8 +126,18 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
 
     // Retorno de pedido solicitado → notifica aprovadores
     case EVENTS.PURCHASE_ORDER_RETURN_REQUESTED: {
-      const { order_id, retorno_id, numero } = p;
+      const { order_id, retorno_id } = p;
       if (!order_id) break;
+
+      // O evento não traz numero — busca do banco, igual push.consumer.ts.
+      const { data: pedDetalhe } = await admin
+        .from("pedidos_compra")
+        .select("numero, tipo_linha, obras(nome)")
+        .eq("id", order_id)
+        .single();
+      const numero = pedDetalhe?.numero ?? null;
+      const tipo_linha = pedDetalhe?.tipo_linha ?? null;
+      const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
 
       const { data: perm } = await admin
         .from("permissoes")
@@ -141,7 +164,7 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
         usuarios.map((u) => ({
           usuario_id: u.id,
           tipo: "retorno_pedido_solicitado",
-          payload: { numero, order_id, retorno_id },
+          payload: { numero, order_id, retorno_id, tipo_linha, obra_nome },
         }))
       );
       break;
@@ -194,6 +217,14 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       const { order_id, devolucao_id, numero_devolucao } = p;
       if (!order_id) break;
 
+      const { data: pedDetalhe } = await admin
+        .from("pedidos_compra")
+        .select("numero, obras(nome)")
+        .eq("id", order_id)
+        .single();
+      const numero_pedido = pedDetalhe?.numero ?? null;
+      const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
+
       const { data: perm } = await admin
         .from("permissoes")
         .select("id")
@@ -219,7 +250,7 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
         usuarios.map((u) => ({
           usuario_id: u.id,
           tipo: "devolucao_pedido_criada",
-          payload: { numero_devolucao, order_id, devolucao_id },
+          payload: { numero_devolucao, order_id, devolucao_id, numero_pedido, obra_nome },
         }))
       );
       break;

@@ -33,6 +33,55 @@ const TIPO_LABEL: Record<string, string> = {
   board_card_prazo_proximo:    "Card com prazo amanhã",
 };
 
+// Título + corpo detalhado por notificação — mesmos templates usados pelo
+// push nativo (push.consumer.ts), só que lidos do payload salvo em
+// notificacoes em vez de buscar no banco de novo (ver
+// notificacoes.consumer.ts, que agora grava tipo_linha/obra_nome pros
+// tipos que precisam). Tipos sem template específico (SquadBoard,
+// debito_carteira_falhou) caem no label genérico de TIPO_LABEL, sem corpo.
+function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | null } {
+  const p = n.payload as Record<string, string | null | undefined>;
+  const obraLabel = p.obra_nome ? ` · ${p.obra_nome}` : "";
+
+  switch (n.tipo) {
+    case "pedido_aguardando_aprovacao":
+      return {
+        titulo: `Pedido de ${p.tipo_linha ?? "compras"} aguardando aprovação`,
+        corpo: `Pedido ${p.numero}${obraLabel} está aguardando aprovação`,
+      };
+    case "pedido_aprovado":
+      return { titulo: "Pedido aprovado — emita agora", corpo: `Pedido ${p.numero} foi aprovado` };
+    case "retorno_pedido_solicitado":
+      return {
+        titulo: "Retorno de pedido aguardando aprovação",
+        corpo: `Pedido ${p.numero} de ${p.tipo_linha ?? "compras"}${obraLabel} solicitou retorno`,
+      };
+    case "retorno_pedido_aprovado":
+      return { titulo: "Retorno de pedido aprovado", corpo: `Pedido ${p.numero} foi aprovado e retornou ao status anterior` };
+    case "retorno_pedido_rejeitado":
+      return { titulo: "Retorno de pedido rejeitado", corpo: `Pedido ${p.numero} — o retorno solicitado foi rejeitado` };
+    case "devolucao_pedido_criada":
+      return {
+        titulo: `Devolução ${p.numero_devolucao} aguardando aprovação`,
+        corpo: `Devolução do pedido ${p.numero_pedido}${obraLabel} foi criada`,
+      };
+    case "solicitacao_aprovada":
+      return { titulo: "Solicitação aprovada", corpo: `Solicitação ${p.numero} foi aprovada` };
+    case "solicitacao_rejeitada":
+      return { titulo: "Solicitação rejeitada", corpo: `Solicitação ${p.numero} foi rejeitada` };
+    case "pedido_cobranca_prazo":
+      return { titulo: "Cobrança: pedido aguardando aprovação", corpo: `Pedido ${p.numero} ainda aguarda aprovação` };
+    case "solicitacao_cobranca_prazo":
+      return { titulo: "Cobrança: solicitação aguardando aprovação", corpo: `Solicitação ${p.numero} ainda aguarda aprovação` };
+    case "tarefa_atribuida":
+      return { titulo: p.papel ? "Você foi adicionado a uma tarefa" : "Tarefa atribuída a você", corpo: p.titulo ?? "Nova tarefa" };
+    case "tarefa_comentario":
+      return { titulo: "Novo comentário na tarefa", corpo: p.titulo ?? null };
+    default:
+      return { titulo: TIPO_LABEL[n.tipo] ?? n.tipo, corpo: null };
+  }
+}
+
 function resolverLink(n: Notificacao): { href: string; label: string } | null {
   const p = n.payload as Record<string, string>;
   switch (n.tipo) {
@@ -106,6 +155,17 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
   function dispensarBanner(id: string) {
     setBanners((prev) => prev.filter((n) => n.id !== id));
   }
+
+  // DEV: fixa o pedido_aguardando_aprovacao mais recente como banner, pra
+  // editar o visual sem precisar criar um pedido novo toda hora. Remover
+  // antes de commitar.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    buscarNotificacoes(30, escopo).then((r) => {
+      const ultimoPedido = r.notificacoes.find((n) => n.tipo === "pedido_aguardando_aprovacao");
+      if (ultimoPedido) setBanners([ultimoPedido]);
+    });
+  }, [escopo]);
 
   function abrirBanner(n: Notificacao) {
     dispensarBanner(n.id);
@@ -235,6 +295,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
       >
         {banners.map((n) => {
           const link = resolverLink(n);
+          const { titulo, corpo } = formatarNotificacao(n);
           return (
             <div
               key={n.id}
@@ -244,8 +305,9 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
             >
               <span className="mt-0.5 shrink-0 text-primary"><BellDotIcon size={16} /></span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-text">{TIPO_LABEL[n.tipo] ?? n.tipo}</p>
-                {link && <p className="truncate text-xs text-primary">{link.label} →</p>}
+                <p className="text-sm font-semibold text-text">{titulo}</p>
+                {corpo && <p className="mt-0.5 text-xs text-text-2">{corpo}</p>}
+                {link && <p className="mt-1 truncate text-xs text-primary">{link.label} →</p>}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); dispensarBanner(n.id); }}
@@ -283,6 +345,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
               ) : (
                 notificacoes.map((n) => {
                   const link = resolverLink(n);
+                  const { titulo, corpo } = formatarNotificacao(n);
                   return (
                     <div
                       key={n.id}
@@ -296,9 +359,14 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
                     >
                       <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!n.lida ? "bg-primary" : ""}`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-text">
-                          {TIPO_LABEL[n.tipo] ?? n.tipo}
+                        <p className="text-xs font-semibold text-text">
+                          {titulo}
                         </p>
+                        {corpo && (
+                          <p className="truncate text-xs text-text-2">
+                            {corpo}
+                          </p>
+                        )}
                         {link && (
                           <p className="truncate text-xs text-primary">
                             {link.label} →

@@ -150,12 +150,15 @@ export async function alterarStatusPedido(
   const admin = createAdminClient();
   const usuario_id = await getUsuarioId();
 
-  const { data: ped } = await admin
+  const { data: ped, error: erroPed } = await admin
     .from("pedidos_compra")
     .select("status, obra_id, usa_carteira, debito_registrado, comprador_id, numero, prazo_entrega")
     .eq("id", id)
     .single();
-  if (!ped) throw new Error("Pedido não encontrado.");
+  // "Pedido não encontrado" só descrevia certo o caso de 0 linhas — .single()
+  // também falha (sem lançar) em erro de conexão/timeout e afins, e o erro
+  // real ficava descartado, escondendo a causa de falhas transitórias.
+  if (!ped) throw new Error(erroPed ? `Erro ao buscar pedido: ${erroPed.message}` : "Pedido não encontrado.");
 
   // Idempotência: se já está no status alvo (double-click ou estado stale), ignora
   if (ped.status === status) return;

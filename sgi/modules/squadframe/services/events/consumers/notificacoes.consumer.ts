@@ -34,17 +34,18 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       if (!order_id) break;
 
       // O evento não traz numero (só order_id) — busca do banco, igual
-      // push.consumer.ts já faz pro push nativo. tipo_linha/obra_nome só
-      // existem pra montar o corpo detalhado da notificação, não
-      // influenciam quem é notificado.
+      // push.consumer.ts já faz pro push nativo. tipo_linha/obra_nome/
+      // criado_por_nome só existem pra montar o corpo detalhado da
+      // notificação, não influenciam quem é notificado.
       const { data: pedDetalhe } = await admin
         .from("pedidos_compra")
-        .select("numero, tipo_linha, obras(nome)")
+        .select("numero, tipo_linha, obras(nome), comprador:usuarios(nome)")
         .eq("id", order_id)
         .single();
       const numero = pedDetalhe?.numero ?? null;
       const tipo_linha = pedDetalhe?.tipo_linha ?? null;
       const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
+      const criado_por_nome = (pedDetalhe?.comprador as any)?.nome ?? null;
 
       // Busca IDs de permissão para aprovar pedidos
       const { data: perm } = await admin
@@ -76,7 +77,7 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
         usuarios.map((u) => ({
           usuario_id: u.id,
           tipo: "pedido_aguardando_aprovacao",
-          payload: { numero, order_id, tipo_linha, obra_nome },
+          payload: { numero, order_id, tipo_linha, obra_nome, criado_por_nome },
         }))
       );
       break;

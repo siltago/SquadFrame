@@ -44,11 +44,15 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
   const obraLabel = p.obra_nome ? ` · ${p.obra_nome}` : "";
 
   switch (n.tipo) {
-    case "pedido_aguardando_aprovacao":
+    case "pedido_aguardando_aprovacao": {
+      const tipo = (p.tipo_linha ?? "compras").toLowerCase();
+      const obra = p.obra_nome ? ` - ${p.obra_nome}` : "";
+      const enviadoPor = p.criado_por_nome ? ` enviado por ${p.criado_por_nome}` : "";
       return {
-        titulo: `Pedido de ${p.tipo_linha ?? "compras"} aguardando aprovação`,
-        corpo: `Pedido ${p.numero}${obraLabel} está aguardando aprovação`,
+        titulo: `Pedido de ${tipo} aguardando aprovação`,
+        corpo: `Pedido ${p.numero}${obra}${enviadoPor} para aprovação`,
       };
+    }
     case "pedido_aprovado":
       return { titulo: "Pedido aprovado — emita agora", corpo: `Pedido ${p.numero} foi aprovado` };
     case "retorno_pedido_solicitado":

@@ -107,8 +107,12 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
     };
     window.addEventListener("appinstalled", onInstalled);
 
-    // Registrar Service Worker
-    if ("serviceWorker" in navigator) {
+    // Registrar Service Worker — nunca em dev: sw.js cacheia /_next/static/
+    // com cache-first, e o Next em dev às vezes reusa o mesmo nome de chunk
+    // entre recompilações (HMR) — o SW serve o JS antigo pra sempre, mesmo
+    // com o dev server já rodando o código novo, e nada nas devtools chama
+    // atenção pra isso (parece só "a mudança não tem efeito").
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
         .then((reg) => {

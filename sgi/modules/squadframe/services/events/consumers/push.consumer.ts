@@ -53,19 +53,21 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       const admin = createAdminClient();
       const { data: ped } = await admin
         .from("pedidos_compra")
-        .select("numero, tipo_linha, obras(nome)")
+        .select("numero, tipo_linha, obras(nome), comprador:usuarios(nome)")
         .eq("id", p.order_id)
         .single();
 
-      const tipo = ped?.tipo_linha ?? "compras";
+      const tipo = (ped?.tipo_linha ?? "compras").toLowerCase();
       const numero = ped?.numero ?? "";
       const obra = (ped?.obras as any)?.nome ?? "";
-      const obraLabel = obra ? ` · ${obra}` : "";
+      const obraLabel = obra ? ` - ${obra}` : "";
+      const criadoPor = (ped?.comprador as any)?.nome ?? "";
+      const enviadoPor = criadoPor ? ` enviado por ${criadoPor}` : "";
 
       const userIds = await getUsersWithPermission("compras.pedido.aprovar");
       await push(userIds, {
         title: `Pedido de ${tipo} aguardando aprovação`,
-        body: `Pedido ${numero}${obraLabel} está aguardando aprovação`,
+        body: `Pedido ${numero}${obraLabel}${enviadoPor} para aprovação`,
         url: `/squadframe/compras/pedidos/${p.order_id}`,
         tag: `pedido-aprovacao-${p.order_id}`,
         actions: [{ action: "open", title: "Ver pedido" }],
@@ -161,7 +163,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         .single();
 
       const numero = ped?.numero ?? "";
-      const tipo = ped?.tipo_linha ?? "compras";
+      const tipo = (ped?.tipo_linha ?? "compras").toLowerCase();
       const obra = (ped?.obras as any)?.nome ?? "";
       const obraLabel = obra ? ` · ${obra}` : "";
 

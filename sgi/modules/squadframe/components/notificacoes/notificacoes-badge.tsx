@@ -58,7 +58,7 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
     case "retorno_pedido_solicitado":
       return {
         titulo: "Retorno de pedido aguardando aprovação",
-        corpo: `Pedido ${p.numero} de ${p.tipo_linha ?? "compras"}${obraLabel} solicitou retorno`,
+        corpo: `Pedido ${p.numero} de ${(p.tipo_linha ?? "compras").toLowerCase()}${obraLabel} solicitou retorno`,
       };
     case "retorno_pedido_aprovado":
       return { titulo: "Retorno de pedido aprovado", corpo: `Pedido ${p.numero} foi aprovado e retornou ao status anterior` };
@@ -160,16 +160,28 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
     setBanners((prev) => prev.filter((n) => n.id !== id));
   }
 
-  // DEV: fixa o pedido_aguardando_aprovacao mais recente como banner, pra
-  // editar o visual sem precisar criar um pedido novo toda hora. Remover
-  // antes de commitar.
+  // DEV: banner de exemplo com dados fictícios, só pra editar o visual sem
+  // precisar criar/aprovar pedido nenhum. Não bate no banco. Remover antes
+  // de commitar (ou trocar por um botão explícito, se for ficar).
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
-    buscarNotificacoes(30, escopo).then((r) => {
-      const ultimoPedido = r.notificacoes.find((n) => n.tipo === "pedido_aguardando_aprovacao");
-      if (ultimoPedido) setBanners([ultimoPedido]);
-    });
-  }, [escopo]);
+    setBanners([{
+      id: "preview-fake",
+      usuario_id: usuarioId,
+      tipo: "pedido_aguardando_aprovacao",
+      tarefa_id: null,
+      payload: {
+        numero: "999",
+        order_id: "00000000-0000-0000-0000-000000000000",
+        tipo_linha: "PERFIL",
+        obra_nome: "Residencial Exemplo",
+        criado_por_nome: "Fulano de Tal",
+      },
+      lida: false,
+      criado_em: new Date().toISOString(),
+    }]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function abrirBanner(n: Notificacao) {
     dispensarBanner(n.id);

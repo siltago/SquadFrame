@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BellIcon, BellDotIcon, CloseIcon } from "@/ui/icons";
 import { createClient } from "@/shared/database/supabase-client";
@@ -94,6 +94,14 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
   const [, startTransition] = useTransition();
 
   const tiposDoEscopo = TIPOS_NOTIFICACAO_POR_ESCOPO[escopo];
+  // Nome de canal único por montagem — em dev, o StrictMode monta o
+  // componente duas vezes rapidamente (mount → cleanup → mount); com o
+  // mesmo nome de tópico nas duas vezes, o "leave" da primeira pode não
+  // terminar no servidor antes do "join" da segunda chegar, deixando a
+  // segunda inscrição "fantasma" (cliente marca SUBSCRIBED mas o servidor
+  // nunca entrega eventos pra esse tópico). Um sufixo aleatório por
+  // instância elimina qualquer colisão de tópico entre montagens.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   function dispensarBanner(id: string) {
     setBanners((prev) => prev.filter((n) => n.id !== id));
@@ -111,9 +119,20 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
   // filtro do Realtime só suporta igualdade simples (usuario_id=eq.X), então
   // o recorte por tipo é feito no cliente após o evento chegar.
   useEffect(() => {
+    // Em dev, o StrictMode roda esse efeito, desmonta e roda de novo na
+    // hora — a primeira execução é sempre descartada. Se ela chega a
+    // chamar .subscribe() (join no servidor) antes do cleanup rodar
+    // (remoteChannel = leave), as duas mensagens ficam correndo quase
+    // juntas no mesmo socket, e a segunda inscrição (a que "vale", com o
+    // componente que fica montado de verdade) fica "fantasma": o cliente
+    // marca SUBSCRIBED normalmente, mas o servidor nunca entrega eventos
+    // pra ela. Adiar o .subscribe() por um tick e checar se o efeito já
+    // foi cancelado evita que a primeira montagem (descartável) chegue a
+    // mandar o join — só a montagem que realmente fica de pé assina.
+    let cancelado = false;
     const supabase = createClient();
     const channel = supabase
-      .channel(`notificacoes-${escopo}-${usuarioId}`)
+      .channel(`notificacoes-${escopo}-${usuarioId}-${instanceIdRef.current}`)
       .on(
         "postgres_changes",
         {
@@ -152,9 +171,17 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
             setNaoLidas((c) => Math.max(0, c - 1));
           }
         }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      );
+
+    const timer = setTimeout(() => {
+      if (!cancelado) channel.subscribe();
+    }, 0);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
   }, [usuarioId, escopo, tiposDoEscopo]);
 
   async function handleAbrir() {

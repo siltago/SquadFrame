@@ -79,11 +79,28 @@ export function CardPanel({ tarefaId, onClose, standalone = false }: Props) {
     reload();
     buscarUsuarios().then(setUsuarios);
     const supabase = createClient();
+    // Sufixo único por montagem — evita colisão de tópico entre as duas
+    // montagens do StrictMode (ver kanban-board.tsx/notificacoes-badge.tsx
+    // pro mesmo padrão e explicação completa).
     const channel = supabase
-      .channel(`card-panel-${tarefaId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas", filter: `id=eq.${tarefaId}` }, () => reload())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      .channel(`card-panel-${tarefaId}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas", filter: `id=eq.${tarefaId}` }, () => reload());
+
+    // Em dev, o StrictMode roda esse efeito duas vezes rapidamente — a
+    // primeira execução é sempre descartada. Adiar o subscribe por um tick
+    // e checar se o efeito já foi cancelado evita mandar o join do servidor
+    // pra montagem descartável, o que deixaria a segunda (a que fica de pé)
+    // "fantasma" (SUBSCRIBED no cliente, sem eventos de verdade).
+    let cancelado = false;
+    const subscribeTimer = setTimeout(() => {
+      if (!cancelado) channel.subscribe();
+    }, 0);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(subscribeTimer);
+      supabase.removeChannel(channel);
+    };
   }, [tarefaId]);
 
   function flash(msg: string) {

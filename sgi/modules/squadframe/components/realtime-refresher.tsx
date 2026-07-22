@@ -33,6 +33,14 @@ export function RealtimeRefresher({ channelName, subs, debounceMs = 400 }: Props
   // Usamos ref para subs pois o array é recriado a cada render mas o conteúdo é estável
   const subsRef = useRef(subs);
   subsRef.current = subs;
+  // Sufixo único por montagem — em dev, o StrictMode monta o componente duas
+  // vezes rapidamente (mount → cleanup → mount); com o mesmo nome de tópico
+  // nas duas vezes, o "leave" da primeira pode não terminar no servidor
+  // antes do "join" da segunda chegar, deixando a inscrição "fantasma"
+  // (cliente marca SUBSCRIBED mas o servidor nunca entrega eventos pra esse
+  // tópico). channelName continua controlando o dedup lógico (mesmo nome =
+  // mesma tela), só o sufixo evita a colisão entre as duas montagens.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     const supabase = createClient();
@@ -43,7 +51,7 @@ export function RealtimeRefresher({ channelName, subs, debounceMs = 400 }: Props
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let channel = supabase.channel(channelName) as any;
+    let channel = supabase.channel(`${channelName}-${instanceIdRef.current}`) as any;
 
     for (const sub of subsRef.current) {
       channel = channel.on(
@@ -58,9 +66,21 @@ export function RealtimeRefresher({ channelName, subs, debounceMs = 400 }: Props
       );
     }
 
-    channel.subscribe();
+    // Em dev, o StrictMode roda esse efeito, desmonta e roda de novo na
+    // hora — a primeira execução é sempre descartada. Se ela chegar a
+    // mandar o join (channel.subscribe()) antes do cleanup rodar, a
+    // segunda montagem (a que fica de pé de verdade) pode ficar "fantasma":
+    // o cliente marca SUBSCRIBED, mas o servidor nunca entrega eventos pra
+    // ela. Adiar o subscribe por um tick e checar se o efeito já foi
+    // cancelado evita que a montagem descartável chegue a mandar o join.
+    let cancelado = false;
+    const subscribeTimer = setTimeout(() => {
+      if (!cancelado) channel.subscribe();
+    }, 0);
 
     return () => {
+      cancelado = true;
+      clearTimeout(subscribeTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
       supabase.removeChannel(channel);
     };

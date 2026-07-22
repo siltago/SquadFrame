@@ -84,7 +84,13 @@ export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId
         ? `usuario_responsavel_id=eq.${usuarioId}`
         : undefined;
 
-    const channelName = `kanban-${setorId ?? usuarioId ?? "global"}`;
+    // Sufixo único por montagem — em dev, o StrictMode monta duas vezes
+    // rapidamente; com o mesmo nome de tópico, o "leave" da primeira pode
+    // não terminar no servidor antes do "join" da segunda, deixando a
+    // inscrição "fantasma" (SUBSCRIBED no cliente, mas sem eventos de
+    // verdade). Avaliado aqui dentro do efeito já garante um valor novo a
+    // cada execução (uma por montagem).
+    const channelName = `kanban-${setorId ?? usuarioId ?? "global"}-${Math.random().toString(36).slice(2)}`;
 
     const channel = supabase
       .channel(channelName)
@@ -99,11 +105,24 @@ export function KanbanBoard({ colunas, tarefas: tarefasIniciais, modo, usuarioId
         (payload) => {
           atualizarCardLocal(payload.new as Record<string, any>);
         }
-      )
-      .subscribe();
+      );
       // INSERT de nova tarefa é tratado pelo RealtimeRefresher da página pai
 
-    return () => { supabase.removeChannel(channel); };
+    // Em dev, o StrictMode roda esse efeito duas vezes rapidamente — a
+    // primeira execução é sempre descartada. Adiar o subscribe por um tick
+    // e checar se o efeito já foi cancelado evita mandar o join do servidor
+    // pra montagem descartável, o que deixaria a segunda (a que fica de pé)
+    // "fantasma" (SUBSCRIBED no cliente, sem eventos de verdade).
+    let cancelado = false;
+    const subscribeTimer = setTimeout(() => {
+      if (!cancelado) channel.subscribe();
+    }, 0);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(subscribeTimer);
+      supabase.removeChannel(channel);
+    };
   }, [setorId, usuarioId, atualizarCardLocal]);
 
   const sensors = useSensors(

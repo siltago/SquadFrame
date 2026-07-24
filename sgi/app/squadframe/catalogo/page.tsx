@@ -377,6 +377,11 @@ export default async function CatalogoPage({
               Nova linha
             </Button>
           )}
+          {filtroLinha && (
+            <Button as="a" href={`/squadframe/catalogo/${filtroLinha}`} variant="secondary" size="sm">
+              Gerenciar linha
+            </Button>
+          )}
           {podeCriar && filtroLinha && (
             <Button as="a" href={`/squadframe/catalogo/${filtroLinha}/novo-produto`} size="sm">
               Novo item

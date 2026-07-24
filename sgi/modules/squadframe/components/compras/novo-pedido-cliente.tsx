@@ -62,12 +62,12 @@ function itemPeso(it: Item) {
 }
 
 // ── BuscaProduto ──────────────────────────────────────────────────
-function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, onAddForcar, onIncrement, existingIds }: {
+function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, onAddForcar, onIncrement, existingQtds }: {
   tipoSlug: string; fornecedorId: string; corId?: string; nomeFornecedor: string;
   onAdd: (p: Produto) => void;
   onAddForcar: (p: Produto) => void;
   onIncrement: (produtoId: string, delta: number) => void;
-  existingIds: Set<string>;
+  existingQtds: Map<string, number>;
 }) {
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<Produto[]>([]);
@@ -109,7 +109,8 @@ function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, on
         <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface shadow-lg">
           {resultados.map((p) => {
             const temCodigoForn = p.codigo_do_fornecedor && p.codigo_do_fornecedor !== p.codigo_mestre;
-            const jaExiste = existingIds.has(p.id);
+            const atual = existingQtds.get(p.id);
+            const jaExiste = atual !== undefined;
             const qtd = qtdExtra[p.id] ?? 1;
             if (jaExiste) {
               return (
@@ -120,7 +121,6 @@ function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, on
                     <span className="text-xs text-warning font-medium shrink-0">Já no pedido</span>
                   </div>
                   <div className="flex items-center gap-2 pl-[6.5rem]">
-                    <span className="text-xs text-text-3">Adicionar mais:</span>
                     <input
                       type="number" min="1" step="any" value={qtd}
                       onChange={(e) => setQtdExtra((prev) => ({ ...prev, [p.id]: parseFloat(e.target.value) || 1 }))}
@@ -128,6 +128,9 @@ function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, on
                       className="field h-7 w-20 text-xs font-mono"
                     />
                     <span className="text-xs text-text-3">{p.unidade}</span>
+                    <span className="text-xs text-text-3 font-mono">
+                      {atual} + {qtd} = <strong className="text-text">{atual + qtd}</strong>
+                    </span>
                     <Button
                       type="button" size="sm"
                       onClick={() => { onIncrement(p.id, qtd); setQtdExtra((prev) => ({ ...prev, [p.id]: 1 })); setQ(""); setAberto(false); }}
@@ -140,7 +143,7 @@ function BuscaProduto({ tipoSlug, fornecedorId, corId, nomeFornecedor, onAdd, on
                       onClick={() => { onAddForcar(p); setQ(""); setAberto(false); }}
                       className="h-7 px-3 text-xs"
                     >
-                      + Cor diferente
+                      Adicionar novamente
                     </Button>
                   </div>
                 </div>
@@ -703,7 +706,7 @@ export function NovoPedidoCliente({
               onAdd={addProduto}
               onAddForcar={(p) => addProduto(p, true)}
               onIncrement={incrementarProduto}
-              existingIds={new Set(itens.filter((i) => !i.solicitacao_item_id && i.produto).map((i) => i.produto!.id))}
+              existingQtds={new Map(itens.filter((i) => !i.solicitacao_item_id && i.produto).map((i) => [i.produto!.id, i.quantidade_pedida ?? 0]))}
             />
             {fornecedorId && tipoSelecionado && (
               <p className="mt-1 text-xs text-text-3">

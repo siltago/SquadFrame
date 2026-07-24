@@ -19,11 +19,11 @@ type ItemCatalogo = { tipo: "catalogo"; produto: Produto; quantidade: number; un
 type ItemExterno  = { tipo: "externo"; descricao: string; quantidade: number; unidade: string; observacoes: string; cor_id?: string };
 type Item = ItemCatalogo | ItemExterno;
 
-function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingIds }: {
+function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingQtds }: {
   onAdd: (p: Produto) => void;
   onAddForcar: (p: Produto) => void;
   onIncrement: (produtoId: string, delta: number) => void;
-  existingIds: Set<string>;
+  existingQtds: Map<string, number>;
 }) {
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<Produto[]>([]);
@@ -62,7 +62,8 @@ function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingIds }: {
       {aberto && resultados.length > 0 && (
         <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface shadow-lg">
           {resultados.map((p) => {
-            const jaExiste = existingIds.has(p.id);
+            const atual = existingQtds.get(p.id);
+            const jaExiste = atual !== undefined;
             const qtd = qtdExtra[p.id] ?? 1;
             if (jaExiste) {
               return (
@@ -73,12 +74,14 @@ function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingIds }: {
                     <span className="text-xs text-warning font-medium">Já na lista</span>
                   </div>
                   <div className="flex items-center gap-2 pl-[6.5rem]">
-                    <span className="text-xs text-text-3">Adicionar mais:</span>
                     <input type="number" min="1" step="any" value={qtd}
                       onChange={(e) => setQtdExtra((prev) => ({ ...prev, [p.id]: parseFloat(e.target.value) || 1 }))}
                       onClick={(e) => e.stopPropagation()}
                       className="field h-7 w-20 text-xs font-mono" />
                     <span className="text-xs text-text-3">{p.unidade}</span>
+                    <span className="text-xs text-text-3 font-mono">
+                      {atual} + {qtd} = <strong className="text-text">{atual + qtd}</strong>
+                    </span>
                     <button type="button"
                       onClick={() => { onIncrement(p.id, qtd); setQtdExtra((prev) => ({ ...prev, [p.id]: 1 })); setQ(""); setAberto(false); }}
                       className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary/90 h-7">
@@ -87,7 +90,7 @@ function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingIds }: {
                     <button type="button"
                       onClick={() => { onAddForcar(p); setQ(""); setAberto(false); }}
                       className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1 text-xs font-medium text-text-2 hover:bg-bg h-7">
-                      + Cor diferente
+                      Adicionar novamente
                     </button>
                   </div>
                 </div>
@@ -297,7 +300,7 @@ export function NovaSolicitacaoCliente({
                   ? { ...it, quantidade: (it.quantidade ?? 0) + delta }
                   : it
               ))}
-              existingIds={new Set(itens.filter((i): i is ItemCatalogo => i.tipo === "catalogo").map((i) => i.produto.id))}
+              existingQtds={new Map(itens.filter((i): i is ItemCatalogo => i.tipo === "catalogo").map((i) => [i.produto.id, i.quantidade ?? 0]))}
             />
           ) : (
             <FormItemExterno onAdd={addExterno} />

@@ -65,6 +65,9 @@ export const PERMISSIONS = {
   // Contexto de Compras do Pacote de Trabalho (necessidades de material)
   FRAME_PACOTES_COMPRAS_VISUALIZAR: "frame.pacotes.compras.visualizar",
   FRAME_PACOTES_COMPRAS_GERENCIAR:  "frame.pacotes.compras.gerenciar",
+
+  // Documentos / Relatórios
+  COMPRAS_RELATORIO_GERENCIAR: "compras.relatorio.gerenciar",
 } as const;
 
 export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS];

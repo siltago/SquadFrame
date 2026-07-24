@@ -6,7 +6,7 @@ import Link, { LinkProps } from "next/link";
 import { usePathname } from "next/navigation";
 import {
   MenuIcon, CloseIcon, BuildingIcon, BookOpenIcon,
-  ShoppingBagIcon, DollarSignIcon, TasksIcon, UsersIcon,
+  ShoppingBagIcon, DollarSignIcon, TasksIcon, UsersIcon, DocumentIcon,
 } from "@/ui/icons";
 
 const NAV_ITEMS = [
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/squadframe/compras",    label: "Compras",    icon: <ShoppingBagIcon size={20} /> },
   { href: "/squadframe/financeiro", label: "Financeiro", icon: <DollarSignIcon size={20} />  },
   { href: "/squadframe/tarefas",    label: "Tarefas",    icon: <TasksIcon size={20} />       },
+  { href: "/squadframe/documentos", label: "Documentos", icon: <DocumentIcon size={20} />    },
   { href: "/squadframe/usuarios",   label: "Usuários",   icon: <UsersIcon size={20} />       },
 ];
 

@@ -46,7 +46,18 @@ export function PrintButton() {
 // navegador) e dispara o download com um nome de arquivo sugerido —
 // no celular isso cai direto na tela "Salvar em..." em vez de abrir a
 // pré-visualização de impressão.
-export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string; nomeArquivo: string }) {
+interface SalvarPdfButtonProps {
+  elementId: string;
+  nomeArquivo: string;
+  // "auto" (padrão): uma página única com altura exata do conteúdo — bom
+  // pra documentos curtos (ex: um pedido), evita sobrar página quase em
+  // branco no final. "a4-multipla": formato A4 real, múltiplas páginas,
+  // cortando nos elementos marcados com breakAfter/.html2pdf__page-break —
+  // usado por documentos longos já divididos em folhas (ex: relatórios).
+  formato?: "auto" | "a4-multipla";
+}
+
+export function SalvarPdfButton({ elementId, nomeArquivo, formato = "auto" }: SalvarPdfButtonProps) {
   const [gerando, setGerando] = useState(false);
 
   async function salvar() {
@@ -56,36 +67,48 @@ export function SalvarPdfButton({ elementId, nomeArquivo }: { elementId: string;
     try {
       const { default: html2pdf } = await import("html2pdf.js");
 
-      // Altura real do conteúdo (não muda com a escala responsiva do
-      // PdfScaleWrapper — scrollHeight/scrollWidth refletem o tamanho
-      // intrínseco do elemento, não o transform do ancestral). Gera a
-      // página do PDF já com esse tamanho exato: com formato "a4" fixo, a
-      // altura do conteúdo raramente bate exatamente com 297mm e sobra uma
-      // página quase em branco no final, mesmo em pedidos curtos.
-      const PX_PARA_MM = 25.4 / 96;
-      const larguraMm = el.scrollWidth * PX_PARA_MM;
-      const alturaMm = el.scrollHeight * PX_PARA_MM;
+      // A folha responsiva (PdfScaleWrapper) reduz a escala em telas
+      // estreitas — reseta isso só no clone usado pra renderizar, sem afetar
+      // a página visível, pra sempre capturar em tamanho natural (794px = A4).
+      // No modo "a4-multipla" também zera a margem/sombra que só existem pra
+      // separar visualmente as folhas na tela (ver .folha-a4 em folha-a4.tsx).
+      const onclone = (clonedDoc: Document) => {
+        const clonado = clonedDoc.getElementById(elementId);
+        if (clonado?.parentElement) clonado.parentElement.style.transform = "none";
+        if (formato === "a4-multipla") {
+          clonedDoc.querySelectorAll<HTMLElement>(".folha-a4").forEach((folha) => {
+            folha.style.marginBottom = "0";
+            folha.style.boxShadow = "none";
+          });
+        }
+      };
 
-      const worker = html2pdf()
-        .set({
-          filename: nomeArquivo,
-          margin: 0,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            // A folha responsiva (PdfScaleWrapper) reduz a escala em telas
-            // estreitas — reseta isso só no clone usado pra renderizar,
-            // sem afetar a página visível, pra sempre capturar em tamanho
-            // natural (794px = A4).
-            onclone: (clonedDoc: Document) => {
-              const clonado = clonedDoc.getElementById(elementId);
-              if (clonado?.parentElement) clonado.parentElement.style.transform = "none";
-            },
-          },
-          jsPDF: { unit: "mm", format: [larguraMm, alturaMm], orientation: "portrait" },
-        })
-        .from(el);
+      const jsPDF =
+        formato === "a4-multipla"
+          ? ({ unit: "mm", format: "a4", orientation: "portrait" } as const)
+          : (() => {
+              // Altura real do conteúdo (não muda com a escala responsiva do
+              // PdfScaleWrapper — scrollHeight/scrollWidth refletem o tamanho
+              // intrínseco do elemento, não o transform do ancestral).
+              const PX_PARA_MM = 25.4 / 96;
+              return {
+                unit: "mm" as const,
+                format: [el.scrollWidth * PX_PARA_MM, el.scrollHeight * PX_PARA_MM] as [number, number],
+                orientation: "portrait" as const,
+              };
+            })();
+
+      // `pagebreak` não está no type.d.ts do html2pdf.js (só existe em runtime) — any local, sem afetar o resto do arquivo.
+      const opcoes: any = {
+        filename: nomeArquivo,
+        margin: 0,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, onclone },
+        jsPDF,
+        ...(formato === "a4-multipla" ? { pagebreak: { mode: ["css", "legacy"] } } : {}),
+      };
+
+      const worker = html2pdf().set(opcoes).from(el);
 
       // Gera o PDF como Blob (nunca dispara download sozinho) pra decidir
       // como entregar: diálogo nativo "Salvar como" quando o navegador

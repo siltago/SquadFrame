@@ -80,6 +80,7 @@ export function CobrancaDashboard({
   solicitacoesAprovacao,
   pedidosEmEntrega,
   pedidosAtrasados,
+  alertas,
 }: {
   kpis: CobrancaKpis;
   statusPedidos: PedidoStatusCount[];
@@ -88,6 +89,7 @@ export function CobrancaDashboard({
   solicitacoesAprovacao: SolicitacaoAprovacaoRow[];
   pedidosEmEntrega: PedidoEntregaRow[];
   pedidosAtrasados: PedidoPrazoRow[];
+  alertas?: React.ReactNode;
 }) {
   return (
     <div>
@@ -96,6 +98,8 @@ export function CobrancaDashboard({
         Visão geral de pedidos e solicitações de compra: o que está parado aguardando aprovação,
         o que está a caminho e o que já passou do prazo combinado.
       </p>
+
+      {alertas && <div className="mt-6">{alertas}</div>}
 
       {/* KPIs */}
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">

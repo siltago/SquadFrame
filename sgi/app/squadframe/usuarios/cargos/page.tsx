@@ -37,7 +37,7 @@ export default async function CargosPage() {
     <>
       <RealtimeRefresher
         channelName="usuarios-cargos"
-        subs={[{ table: "cargos" }, { table: "setores" }, { table: "cargo_permissoes" }]}
+        subs={[{ table: "cargos" }, { table: "setores" }, { table: "cargo_permissoes" }, { table: "permissoes" }]}
       />
       <CargosCliente
         setoresInit={setores ?? []}

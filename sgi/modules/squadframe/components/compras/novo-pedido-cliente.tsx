@@ -18,7 +18,7 @@ type Produto = {
   codigo_do_fornecedor?: string | null;
   peso_metro?: number | null; preco_metro?: number | null; tamanho_mm?: number | null;
 };
-type SolItem = { id: string; quantidade: number; unidade: string; observacoes?: string; descricao_manual?: string | null; produto?: Produto | null };
+type SolItem = { id: string; quantidade: number; unidade: string; observacoes?: string; descricao_manual?: string | null; cor_id?: string | null; produto?: Produto | null };
 type Solicitacao = { id: string; numero: string; obra: any; itens: SolItem[] };
 type Item = {
   produto?: Produto | null; quantidade_pedida: number; unidade: string; preco_unitario: number;
@@ -266,9 +266,12 @@ export function NovoPedidoCliente({
 
   const nomeFornecedorAtual = fornecedores.find((f) => f.id === fornecedorId)?.nome ?? "";
 
-  // Ao trocar tipo: limpa itens (confirmação), limpa fornecedor se incompatível
+  // Ao trocar tipo: limpa itens (confirmação), limpa fornecedor se incompatível.
+  // A primeira escolha de tipo (tipoSelecionado ainda null — ex: logo após
+  // importar itens de uma solicitação) não conta como "troca": só confirma
+  // quando já havia um tipo definido e o comprador está de fato mudando.
   function selecionarTipo(t: TipoLinha | null) {
-    if (itens.length > 0 && t?.slug !== tipoSelecionado?.slug) {
+    if (tipoSelecionado && itens.length > 0 && t?.slug !== tipoSelecionado?.slug) {
       if (!confirm(`Mudar o tipo para "${t?.nome ?? "Todos"}" irá remover os itens já adicionados. Continuar?`)) return;
       setItens([]);
     }
@@ -325,6 +328,9 @@ export function NovoPedidoCliente({
   }
 
   function importarSolicitacao(sol: Solicitacao) {
+    const obraSolId = (sol.obra as any)?.id;
+    if (obraSolId) setObraId(obraSolId);
+    if (sol.itens.some((si) => si.cor_id)) setModoCorPedido("por-item");
     setItens((prev) => {
       const novos = sol.itens
         .filter((si) => !prev.find((i) => i.solicitacao_item_id === si.id))
@@ -333,7 +339,8 @@ export function NovoPedidoCliente({
           quantidade_pedida: Number(si.quantidade),
           unidade: si.unidade, preco_unitario: 0, codigo_fornecedor: "",
           descricao_snapshot: si.produto?.nome ?? si.descricao_manual ?? "Item externo",
-          obra_id: (sol.obra as any)?.id, solicitacao_item_id: si.id,
+          obra_id: obraSolId, solicitacao_item_id: si.id,
+          cor_id: si.cor_id ?? null,
         }));
       return [...prev, ...novos];
     });

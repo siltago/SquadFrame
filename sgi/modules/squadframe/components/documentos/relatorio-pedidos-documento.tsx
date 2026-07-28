@@ -1,18 +1,11 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createAdminClient } from "@/shared/database/supabase-admin";
-import { getUsuarioAtual } from "@/shared/auth/auth";
-import { redirect } from "next/navigation";
-import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { PrintButton, SalvarPdfButton } from "@/modules/squadframe/components/compras/print-button";
 import { PdfScaleWrapper } from "@/modules/squadframe/components/compras/pdf-scale-wrapper";
 import { RelatorioGraficos } from "@/modules/squadframe/components/documentos/relatorio-graficos";
 import { FolhaA4 } from "@/modules/squadframe/components/documentos/folha-a4";
 import { empacotarSecoes, type SecaoTabela } from "@/modules/squadframe/lib/paginacao";
-import { gerarRelatorioPedidos, type FiltrosRelatorioPedidos } from "@/modules/squadframe/services/relatorios/relatorio-pedidos";
+import type { RelatorioPedidosData } from "@/modules/squadframe/services/relatorios/relatorio-pedidos";
 import { STATUS_PED_LABEL, type StatusPedido } from "@/modules/squadframe/types/compras";
-
-export const dynamic = "force-dynamic";
 
 const azul = "#1e3a5f";
 const cinzaLinha = "#e0e0e0";
@@ -78,57 +71,22 @@ function BlocoSecao({ secao }: { secao: SecaoTabela }) {
   );
 }
 
-export default async function VisualizarRelatorioPage({ params }: { params: { id: string } }) {
-  const usuario = await getUsuarioAtual();
-  if (!usuario) redirect("/login");
+interface RelatorioPedidosDocumentoProps {
+  dados: RelatorioPedidosData;
+  titulo: string;
+  subtitulo: string;
+  empresa: any;
+  autorNome: string;
+  voltarHref: string;
+}
 
-  const podeGerenciar = !!(
-    usuario.permissoes?.includes("*") || usuario.permissoes?.includes(PERMISSIONS.COMPRAS_RELATORIO_GERENCIAR)
-  );
-
-  const admin = createAdminClient();
-  const [{ data: relatorio }, { data: emp }] = await Promise.all([
-    admin
-      .from("relatorios")
-      .select("id, nome, filtros, criado_em, autor:usuarios(nome)")
-      .eq("id", params.id)
-      .maybeSingle(),
-    admin.from("empresa").select("*").eq("id", "default").maybeSingle(),
-  ]);
-
-  if (!relatorio) notFound();
-
-  const filtrosSalvos = (relatorio.filtros ?? {}) as {
-    data_inicio?: string;
-    data_fim?: string;
-    obra_id?: string;
-    fornecedor_id?: string;
-    status?: StatusPedido;
-  };
-  if (!filtrosSalvos.data_inicio || !filtrosSalvos.data_fim) notFound();
-
-  const filtros: FiltrosRelatorioPedidos = {
-    dataInicio: filtrosSalvos.data_inicio,
-    dataFim: filtrosSalvos.data_fim,
-    ...(filtrosSalvos.obra_id ? { obraId: filtrosSalvos.obra_id } : {}),
-    ...(filtrosSalvos.fornecedor_id ? { fornecedorId: filtrosSalvos.fornecedor_id } : {}),
-    ...(filtrosSalvos.status ? { status: filtrosSalvos.status } : {}),
-  };
-
-  const dados = await gerarRelatorioPedidos(admin, filtros);
-  const empresa = (emp ?? {}) as any;
-  const autor = (relatorio.autor as any)?.nome ?? (Array.isArray(relatorio.autor) ? relatorio.autor[0]?.nome : null) ?? "—";
-
-  // Só mostra a seção "Resumo por obra" e agrupa o detalhamento por obra
-  // quando o resultado atravessa mais de uma obra — com filtro de obra
-  // aplicado (ou coincidentemente 1 obra só no período), isso é redundante.
+// Documento A4 paginado (tela + PDF) pro relatório de pedidos — reaproveitado
+// tanto pelo relatório Geral quanto pelo Por Obra, cada um só muda o título/
+// subtítulo do cabeçalho e os `dados` já agregados pelo serviço. Nada aqui é
+// persistido: o documento é gerado on-the-fly a partir dos filtros da URL.
+export function RelatorioPedidosDocumento({ dados, titulo, subtitulo, empresa, autorNome, voltarHref }: RelatorioPedidosDocumentoProps) {
   const multiObra = dados.porObra.length > 1;
 
-  // ── Monta as seções de tabela (resumo, atrasados, aguardando, detalhamento) ──
-  // Cada uma vira uma ou mais linhas de <tr>; quem decide como distribuir
-  // isso entre folhas A4 é o empacotador (empacotarSecoes), que enche cada
-  // folha com o máximo de seções que couberem antes de pular pra próxima —
-  // em vez de reservar uma folha inteira pra cada seção, mesmo as curtas.
   const secoes: SecaoTabela[] = [];
 
   if (multiObra) {
@@ -204,7 +162,6 @@ export default async function VisualizarRelatorioPage({ params }: { params: { id
     });
   }
 
-  // Detalhamento — agrupado por obra quando há mais de uma; senão uma seção só.
   const theadPedidos = (mostrarObra: boolean) => (
     <tr style={{ backgroundColor: "#f2f2f2" }}>
       <th style={th}>Número</th>
@@ -250,8 +207,6 @@ export default async function VisualizarRelatorioPage({ params }: { params: { id
 
   const paginasEmpacotadas = empacotarSecoes(secoes);
 
-  // Folha 1 é sempre o cabeçalho + narrativa + totais + gráficos; as demais
-  // vêm do empacotador, que já decidiu quantas seções cabem em cada uma.
   const folhas: React.ReactNode[] = [
     <>
       <div
@@ -273,8 +228,8 @@ export default async function VisualizarRelatorioPage({ params }: { params: { id
           </div>
         </div>
         <div style={{ textAlign: "right", paddingTop: 2 }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>{relatorio.nome}</div>
-          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{dados.periodoLabel}</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{titulo}</div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{subtitulo}</div>
         </div>
       </div>
 
@@ -330,49 +285,40 @@ export default async function VisualizarRelatorioPage({ params }: { params: { id
   if (dados.totais.quantidade === 0) {
     folhas.push(
       <div style={{ padding: "20px 28px 0", textAlign: "center", color: "#777", fontSize: 11 }}>
-        Nenhum pedido no período selecionado.
+        Nenhum pedido encontrado.
       </div>,
     );
   }
 
-  // Rodapé "gerado em" entra só na última folha.
   const ultimoIndice = folhas.length - 1;
   folhas[ultimoIndice] = (
     <>
       {folhas[ultimoIndice]}
       <div style={{ padding: "14px 28px 0", fontSize: 9.5, color: "#888" }}>
-        Gerado em {formatarDataHora(new Date())} por {autor}.
+        Gerado em {formatarDataHora(new Date())} por {autorNome}.
       </div>
     </>
   );
 
-  const tituloRodape = `${empresa.nome_fantasia ?? empresa.nome ?? "Empresa"} — ${relatorio.nome}`;
+  const tituloRodape = `${empresa.nome_fantasia ?? empresa.nome ?? "Empresa"} — ${titulo}`;
 
   return (
     <div className="min-h-full bg-gray-100">
       <div className="print:hidden sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-surface px-3 py-3 shadow-sm sm:gap-3 sm:px-6">
         <Link
-          href="/squadframe/documentos"
+          href={voltarHref}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-text-2 transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
           title="Voltar"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          <span className="hidden sm:inline">Voltar</span>
+          <span className="hidden sm:inline">Ajustar filtros</span>
         </Link>
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">{relatorio.nome}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">{titulo}</span>
         <div className="flex shrink-0 items-center gap-2">
-          {podeGerenciar && (
-            <Link
-              href={`/squadframe/documentos/${params.id}/editar`}
-              className="inline-flex items-center rounded-lg px-2.5 py-1.5 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text"
-            >
-              Editar filtros
-            </Link>
-          )}
           <PrintButton />
-          <SalvarPdfButton elementId="pdf-content" nomeArquivo={nomeArquivoPdf(relatorio.nome)} formato="a4-multipla" />
+          <SalvarPdfButton elementId="pdf-content" nomeArquivo={nomeArquivoPdf(titulo)} formato="a4-multipla" />
         </div>
       </div>
 

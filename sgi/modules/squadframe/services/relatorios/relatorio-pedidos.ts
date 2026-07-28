@@ -4,8 +4,10 @@ import { STATUS_PED_LABEL, type StatusPedido } from "@/modules/squadframe/types/
 import { hojeSaoPaulo } from "@/modules/squadframe/services/cobranca/executar-cobranca";
 
 export interface FiltrosRelatorioPedidos {
-  dataInicio: string; // "YYYY-MM-DD"
-  dataFim: string;    // "YYYY-MM-DD"
+  // Ausentes = sem recorte de período (relatório "por obra": traz o total
+  // histórico daquela obra, sem escolher tempo).
+  dataInicio?: string; // "YYYY-MM-DD"
+  dataFim?: string;    // "YYYY-MM-DD"
   obraId?: string;
   fornecedorId?: string;
   status?: StatusPedido;
@@ -99,10 +101,10 @@ async function buscarPedidosNoPeriodo(
       id, numero, status, criado_em, valor_final, prazo_entrega,
       obra:obras(nome),
       fornecedor:fornecedores(nome)
-    `)
-    .gte("criado_em", `${filtros.dataInicio}T00:00:00-03:00`)
-    .lt("criado_em", `${filtros.dataFim}T23:59:59-03:00`);
+    `);
 
+  if (filtros.dataInicio) q = q.gte("criado_em", `${filtros.dataInicio}T00:00:00-03:00`);
+  if (filtros.dataFim) q = q.lt("criado_em", `${filtros.dataFim}T23:59:59-03:00`);
   if (filtros.obraId) q = q.eq("obra_id", filtros.obraId);
   if (filtros.fornecedorId) q = q.eq("fornecedor_id", filtros.fornecedorId);
   if (filtros.status) q = q.eq("status", filtros.status);
@@ -165,6 +167,7 @@ function diasEntre(inicioISO: string, fimISO: string): number {
 
 function montarNarrativa(
   periodoLabel: string,
+  temPeriodo: boolean,
   totais: RelatorioPedidosData["totais"],
   porStatus: GrupoContagem[],
   variacaoPercentual: number | null,
@@ -172,14 +175,15 @@ function montarNarrativa(
   aguardandoRecebimento: PedidoLinha[],
 ): string[] {
   const blocos: string[] = [];
+  const escopo = temPeriodo ? `no período de ${periodoLabel}` : "no histórico";
 
   if (totais.quantidade === 0) {
-    blocos.push(`Nenhum pedido de compra foi registrado no período de ${periodoLabel}.`);
+    blocos.push(`Nenhum pedido de compra foi registrado ${escopo}.`);
     return blocos;
   }
 
   blocos.push(
-    `No período de ${periodoLabel}, o sistema registrou ${totais.quantidade} pedido${totais.quantidade !== 1 ? "s" : ""} de compra, totalizando ${formatarMoeda(totais.valorTotal)}.`,
+    `Considerando ${escopo}, o sistema registrou ${totais.quantidade} pedido${totais.quantidade !== 1 ? "s" : ""} de compra, totalizando ${formatarMoeda(totais.valorTotal)}.`,
   );
 
   if (variacaoPercentual != null) {
@@ -253,15 +257,17 @@ export async function gerarRelatorioPedidos(
 
   const pedidosPorObra = agruparPorObra(pedidos);
 
-  // Período anterior de mesma duração — só pra comparação percentual, não entra na tabela/gráficos.
-  const dias = diasEntre(filtros.dataInicio, filtros.dataFim);
-  const fimAnterior = new Date(`${filtros.dataInicio}T00:00:00Z`);
-  fimAnterior.setUTCDate(fimAnterior.getUTCDate() - 1);
-  const inicioAnterior = new Date(fimAnterior);
-  inicioAnterior.setUTCDate(inicioAnterior.getUTCDate() - (dias - 1));
-
+  // Comparação com o "período anterior de mesma duração" só faz sentido
+  // quando existe um período — o relatório por obra (sem data) traz o total
+  // histórico, não tem com o que comparar.
   let variacaoPercentual: number | null = null;
-  if (totais.quantidade > 0) {
+  if (filtros.dataInicio && filtros.dataFim && totais.quantidade > 0) {
+    const dias = diasEntre(filtros.dataInicio, filtros.dataFim);
+    const fimAnterior = new Date(`${filtros.dataInicio}T00:00:00Z`);
+    fimAnterior.setUTCDate(fimAnterior.getUTCDate() - 1);
+    const inicioAnterior = new Date(fimAnterior);
+    inicioAnterior.setUTCDate(inicioAnterior.getUTCDate() - (dias - 1));
+
     const rowsAnterior = await buscarPedidosNoPeriodo(admin, {
       ...filtros,
       dataInicio: inicioAnterior.toISOString().slice(0, 10),
@@ -276,8 +282,19 @@ export async function gerarRelatorioPedidos(
     }
   }
 
-  const periodoLabel = `${formatarData(filtros.dataInicio)} a ${formatarData(filtros.dataFim)}`;
-  const narrativa = montarNarrativa(periodoLabel, totais, porStatus, variacaoPercentual, atrasados, aguardandoRecebimento);
+  const periodoLabel =
+    filtros.dataInicio && filtros.dataFim
+      ? `${formatarData(filtros.dataInicio)} a ${formatarData(filtros.dataFim)}`
+      : "Total histórico";
+  const narrativa = montarNarrativa(
+    periodoLabel,
+    !!(filtros.dataInicio && filtros.dataFim),
+    totais,
+    porStatus,
+    variacaoPercentual,
+    atrasados,
+    aguardandoRecebimento,
+  );
 
   return {
     periodoLabel,

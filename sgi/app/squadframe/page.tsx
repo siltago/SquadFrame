@@ -9,6 +9,7 @@ import { buscarRelatorioCobranca } from "@/modules/squadframe/services/cobranca/
 import { DashboardAlertas } from "@/modules/squadframe/components/dashboard-alertas";
 import { hojeSaoPaulo } from "@/modules/squadframe/services/cobranca/executar-cobranca";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
+import { listarSaldosPorFornecedor, filtrarSaldoBaixo } from "@/modules/squadframe/services/financeiro/carteira-alertas";
 
 export const dynamic = "force-dynamic";
 
@@ -76,39 +77,9 @@ export default async function HomePage({
     const podeCarteiras =
       usuario.permissoes?.includes("*") || usuario.permissoes?.includes(PERMISSIONS.FINANCEIRO_CARTEIRA_VER) || false;
 
-    const [{ data: carteirasData }, { data: depositosData }] = podeCarteiras
-      ? await Promise.all([
-          admin.from("carteiras").select("id, fornecedor_id, saldo_atual, fornecedor:fornecedores(nome)"),
-          admin.from("carteira_movimentacoes").select("carteira_id, valor").eq("tipo", "DEPOSITO"),
-        ])
-      : [{ data: [] as any[] }, { data: [] as any[] }];
-
-    const totalDepositadoPorCarteira = new Map<string, number>();
-    for (const m of depositosData ?? []) {
-      totalDepositadoPorCarteira.set(m.carteira_id, (totalDepositadoPorCarteira.get(m.carteira_id) ?? 0) + m.valor);
-    }
-
-    const nomeRelacao = (v: any) => (Array.isArray(v) ? v[0]?.nome : v?.nome) ?? "—";
-
-    // Um fornecedor pode ter uma carteira por obra — a saúde financeira dele
-    // é avaliada de forma agregada (soma de todas as obras), não carteira por
-    // carteira, senão uma obra com saldo baixo isolada dispararia alerta
-    // mesmo com o fornecedor bem provisionado no total.
-    const porFornecedor = new Map<string, { fornecedor: string; saldo: number; totalDepositado: number; qtdObras: number }>();
-    for (const c of (carteirasData ?? []) as any[]) {
-      const chave = c.fornecedor_id as string;
-      if (!porFornecedor.has(chave)) {
-        porFornecedor.set(chave, { fornecedor: nomeRelacao(c.fornecedor), saldo: 0, totalDepositado: 0, qtdObras: 0 });
-      }
-      const acumulado = porFornecedor.get(chave)!;
-      acumulado.saldo += c.saldo_atual as number;
-      acumulado.totalDepositado += totalDepositadoPorCarteira.get(c.id) ?? 0;
-      acumulado.qtdObras += 1;
-    }
-
-    const carteirasAlerta = [...porFornecedor.values()]
-      .filter((c) => c.saldo <= 0 || (c.totalDepositado > 0 && c.saldo < c.totalDepositado * 0.25))
-      .sort((a, b) => a.saldo - b.saldo);
+    const carteirasAlerta = podeCarteiras
+      ? filtrarSaldoBaixo(await listarSaldosPorFornecedor(admin))
+      : [];
 
     const alertas = (
       <DashboardAlertas

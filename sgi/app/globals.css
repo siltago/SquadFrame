@@ -362,6 +362,94 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SQUADSTOCK THEME — identidade âmbar industrial (#F39C12), módulo
+   de estoque/patrimônio. Escopado via classe, igual .frame/.squadboard/
+   .squadwise. Paleta e raio (4px, flat — precisão, não "amigável")
+   vêm do Design System oficial do módulo. --color-header fica fixo
+   (marrom-âmbar escuro), mesmo padrão de .frame/#222831 e
+   .squadwise --color-topbar/#290940. Semânticas recebem viés quente
+   pra não destoar do fundo creme, e "warning" usa laranja-queimado
+   (não o âmbar da marca) pra badge de "baixo estoque" nunca ser
+   confundido com identidade — ver docs/squadstock/design-system.md.
+═══════════════════════════════════════════════════════════════ */
+.squadstock {
+  /* Superfícies — creme quente, nunca branco/cinza frio puro */
+  --color-bg:            255 245 237;  /* #FFF5ED */
+  --color-surface:       255 253 251;  /* #FFFDFB */
+  --color-surface-2:     251 244 234;  /* #FBF4EA */
+  --color-surface-3:     240 227 205;  /* #F0E3CD */
+
+  /* Texto — tinta quase-preta com viés quente */
+  --color-text:          36  29  20;   /* #241D14 */
+  --color-text-2:        74  64  48;   /* #4A4030 */
+  --color-text-3:        140 128 113;  /* #8C8071 */
+
+  /* Bordas */
+  --color-border:        232 223 209; /* #E8DFD1 */
+  --color-divider:       251 244 234; /* #FBF4EA */
+
+  /* Primária — âmbar industrial oficial do SquadStock */
+  --color-primary:        243 156 18; /* #F39C12 */
+  --color-primary-hover:  187 115 26; /* #BB731A */
+  --color-primary-active: 90  58  0;  /* #5A3A00 */
+  --color-primary-soft:   255 233 211;/* #FFE9D3 */
+
+  /* Semânticas — hue própria, nunca reaproveita o âmbar da marca */
+  --color-success:       46  125 70; /* #2E7D46 — disponível */
+  --color-success-hover: 38  107 60;
+  --color-success-soft:  227 243 231;/* #E3F3E7 */
+  --color-warning:       194 65  12; /* #C2410C — baixo estoque (laranja-queimado) */
+  --color-warning-hover: 163 53  8;
+  --color-warning-soft:  252 231 220;/* #FCE7DC */
+  --color-danger:        185 28  28; /* #B91C1C — sem estoque */
+  --color-danger-hover:  153 20  20;
+  --color-danger-soft:   251 227 225;/* #FBE3E1 */
+  --color-info:          52  82  196;/* #3452C4 — reservado */
+  --color-info-soft:     231 235 252;/* #E7EBFC */
+
+  /* Header — marrom-âmbar escuro, sempre fixo (igual .frame/.squadwise) */
+  --color-header: 90 58 0; /* #5A3A00 */
+
+  /* Raio flat — precisão/controle, não "amigável". Vale só onde o token
+     é consumido (.field/.card); Button e afins usam rounded-md estático
+     do Tailwind e ficam fora deste escopo — ver nota no doc de auditoria. */
+  --radius-md: 4px;
+  --radius-lg: 4px;
+}
+
+/* Espaço (descendente), não composto — mesma lógica do .squadboard/.squadwise. */
+.dark .squadstock {
+  --color-bg:            23  19  13;  /* #17130D */
+  --color-surface:       33  27  19;  /* #211B13 */
+  --color-surface-2:     43  35  24;  /* #2B2318 */
+  --color-surface-3:     58  48  33;  /* #3A3021 */
+
+  --color-text:          243 233 219;/* #F3E9DB */
+  --color-text-2:        201 187 163;/* #C9BBA3 */
+  --color-text-3:        147 135 111;/* #93876F */
+
+  --color-border:        58  48  33; /* #3A3021 */
+  --color-divider:       43  35  24; /* #2B2318 */
+
+  --color-primary:        243 156 18; /* #F39C12 — inalterado, já contrasta no escuro */
+  --color-primary-hover:  255 215 122;/* #FFD77A — ponta clara do gradiente oficial */
+  --color-primary-active: 255 233 211;/* #FFE9D3 */
+  --color-primary-soft:   62  42  12; /* #3E2A0C */
+
+  --color-success:       74  199 128;/* #4AC780 */
+  --color-success-hover: 96  214 148;
+  --color-success-soft:  22  48  31; /* #16301F */
+  --color-warning:       224 122 66; /* #E07A42 */
+  --color-warning-hover: 235 145 90;
+  --color-warning-soft:  58  32  19; /* #3A2013 */
+  --color-danger:        224 100 100;/* #E06464 */
+  --color-danger-hover:  235 130 130;
+  --color-danger-soft:   58  22  22; /* #3A1616 */
+  --color-info:          130 154 235;/* #829AEB */
+  --color-info-soft:     27  33  64; /* #1B2140 */
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BASE
 ═══════════════════════════════════════════════════════════════ */
 @layer base {

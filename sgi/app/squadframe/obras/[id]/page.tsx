@@ -257,7 +257,7 @@ async function AbaProducaoWrapper({
             .order("criado_em", { ascending: false }),
           supabase
             .from("pedidos_compra")
-            .select("id, numero, status, criado_em, valor_final, lote_id, fornecedor:fornecedores(nome), comprador:usuarios(nome)")
+            .select("id, numero, status, criado_em, valor_final, lote_id, fornecedor:fornecedores(nome), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
             .in("lote_id", loteIds)
             .order("criado_em", { ascending: false }),
         ])

@@ -8,8 +8,9 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { emitirEvento } from "@/modules/squadframe/services/events/event-bus";
 import { EVENTS } from "@/modules/squadframe/services/events/event-types";
 import { validarTransicaoPedido, pedidoEditavel } from "@/modules/squadframe/services/state-machines/compras";
-import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa } from "./helpers";
+import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa, derivarUsaCarteira } from "./helpers";
 import { calcPesoItem } from "@/modules/squadframe/lib/tipo-unidade";
+import { extrairValorFinalPdf, type ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
 
 const STATUS_PARA_EVENTO: Record<string, string> = {
   AGUARDANDO_APROVACAO:   EVENTS.PURCHASE_ORDER_AWAITING_APPROVAL,
@@ -42,6 +43,7 @@ export async function criarPedido(formData: FormData) {
 
   if (!fornecedor_id) throw new Error("Selecione um fornecedor.");
   if (!obra_id) throw new Error("Selecione uma obra.");
+  if (!forma_pagamento_id) throw new Error("Selecione a forma de pagamento.");
 
   const itens: {
     produto_id: string; descricao_snapshot: string; quantidade_pedida: number;
@@ -109,16 +111,11 @@ export async function criarPedido(formData: FormData) {
 
   const { id: pedidoId } = result as { id: string; numero: string };
 
-  // Se a forma de pagamento for Faturamento Direto, marcar usa_carteira
-  if (forma_pagamento_id) {
-    const { data: forma } = await admin
-      .from("formas_pagamento")
-      .select("is_faturamento_direto")
-      .eq("id", forma_pagamento_id)
-      .single();
-    if (forma?.is_faturamento_direto) {
-      await admin.from("pedidos_compra").update({ usa_carteira: true }).eq("id", pedidoId);
-    }
+  // usa_carteira é sempre derivado da forma de pagamento — fonte única de
+  // verdade (ver derivarUsaCarteira em ./helpers), nunca um toggle manual solto.
+  const usaCarteira = await derivarUsaCarteira(admin, forma_pagamento_id);
+  if (usaCarteira) {
+    await admin.from("pedidos_compra").update({ usa_carteira: true }).eq("id", pedidoId);
   }
 
   await emitirEvento(EVENTS.PURCHASE_ORDER_CREATED, {
@@ -152,7 +149,7 @@ export async function alterarStatusPedido(
 
   const { data: ped, error: erroPed } = await admin
     .from("pedidos_compra")
-    .select("status, obra_id, usa_carteira, debito_registrado, comprador_id, numero, prazo_entrega")
+    .select("status, obra_id, usa_carteira, debito_registrado, debito_status, comprador_id, numero, prazo_entrega")
     .eq("id", id)
     .single();
   // "Pedido não encontrado" só descrevia certo o caso de 0 linhas — .single()
@@ -164,6 +161,14 @@ export async function alterarStatusPedido(
   if (ped.status === status) return;
 
   validarTransicaoPedido(ped.status, status);
+
+  // Débito de faturamento direto rejeitado trava o pedido — só sai daqui
+  // aprovando o débito (aprovarDebitoPedido) ou cancelando o pedido inteiro.
+  if (ped.debito_status === "REJEITADO" && status !== "CANCELADO") {
+    throw new Error(
+      "Débito de faturamento direto rejeitado — aprove o débito ou cancele o pedido antes de avançar.",
+    );
+  }
 
   // Prazo de entrega é obrigatório para entrar em Aguardando Recebimento
   if (status === "AGUARDANDO_RECEBIMENTO") {
@@ -224,6 +229,8 @@ export async function editarPedido(id: string, formData: FormData) {
   const prazo_entrega      = (formData.get("prazo_entrega") as string) || null;
   const itens              = JSON.parse(formData.get("itens") as string) as Record<string, unknown>[];
 
+  if (!forma_pagamento_id) throw new Error("Selecione a forma de pagamento.");
+
   const itensProcessados = enriquecerItensChapa(itens as Parameters<typeof enriquecerItensChapa>[0]);
 
   // RPC atômica: UPDATE + DELETE itens + INSERT itens em uma única transação
@@ -239,6 +246,13 @@ export async function editarPedido(id: string, formData: FormData) {
     p_usuario_id:         usuario_id,
   });
   if (error) throw new Error(error.message);
+
+  // Mesma fonte única de verdade de criarPedido() — se a forma de pagamento
+  // mudou nesta edição, usa_carteira precisa refletir isso agora, não ficar
+  // com o valor decidido lá na criação (bug real que existia antes: editar
+  // nunca reavaliava usa_carteira).
+  const usaCarteira = await derivarUsaCarteira(admin, forma_pagamento_id);
+  await admin.from("pedidos_compra").update({ usa_carteira: usaCarteira }).eq("id", id);
 
   await emitirEvento(EVENTS.PURCHASE_ORDER_EDITED, {
     order_id:    id,
@@ -276,7 +290,7 @@ export async function vincularPedidoLote(pedidoId: string, loteId: string | null
   revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
 }
 
-export async function confirmarDebitoPedido(pedidoId: string) {
+export async function aprovarDebitoPedido(pedidoId: string) {
   await verificarPermissao(PERMISSIONS.FINANCEIRO_PEDIDO_CONFIRMAR_DEBITO);
 
   const admin = createAdminClient();
@@ -298,6 +312,31 @@ export async function confirmarDebitoPedido(pedidoId: string) {
   });
 
   if (error) throw new Error(error.message);
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
+  revalidatePath("/squadframe/financeiro");
+}
+
+// Não mexe em carteiras/ledger — só registra a decisão. Reversível:
+// aprovarDebitoPedido continua podendo aprovar depois de uma rejeição (o
+// guard dela é só debito_registrado, nunca tocado por esta função).
+// alterarStatusPedido bloqueia o pedido de avançar de status enquanto
+// debito_status='REJEITADO' (exceto pra CANCELADO).
+export async function rejeitarDebitoPedido(pedidoId: string, motivo: string) {
+  await verificarPermissao(PERMISSIONS.FINANCEIRO_PEDIDO_CONFIRMAR_DEBITO);
+  if (!motivo.trim()) throw new Error("Informe o motivo da rejeição.");
+
+  const admin = createAdminClient();
+  const usuario_id = await getUsuarioId();
+
+  const { error } = await admin.rpc("rejeitar_debito_pedido", {
+    p_pedido_id:  pedidoId,
+    p_usuario_id: usuario_id,
+    p_motivo:     motivo.trim(),
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
+  revalidatePath("/squadframe/financeiro");
 }
 
 export async function adicionarAnotacao(pedidoId: string, texto: string) {
@@ -357,21 +396,84 @@ export async function registrarValorFinal(pedidoId: string, valorFinal: number) 
     await distribuirValorFinalPorPeso(admin, pedidoId, valorFinal);
   }
 
-  // Revalida já — o valor final foi salvo com sucesso a partir daqui. Se o
-  // débito da carteira (abaixo) falhar, a tela não pode continuar mostrando
-  // o valor antigo: o dado no banco já mudou.
   revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
   revalidatePath("/squadframe/financeiro");
 
-  if (ped.usa_carteira && !ped.debito_registrado) {
-    const { error: errDebito } = await admin.rpc("confirmar_debito_carteira", {
-      p_pedido_id:  pedidoId,
-      p_usuario_id: usuario_id,
-    });
-    if (errDebito) {
-      throw new Error(`Valor final salvo, mas não foi possível debitar a carteira: ${errDebito.message}`);
-    }
+  // Débito de faturamento direto NÃO é mais automático aqui — precisa de
+  // aprovação explícita (ver aprovarDebitoPedido/rejeitarDebitoPedido
+  // abaixo). Salvar o valor final só deixa o pedido pronto pra essa decisão.
+}
+
+const STATUS_PERMITE_VALOR_FINAL = ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
+
+async function lerArquivoPdf(formData: FormData): Promise<Buffer> {
+  const arquivo = formData.get("arquivo") as File | null;
+  if (!arquivo) throw new Error("Selecione o PDF da devolutiva.");
+  if (arquivo.type !== "application/pdf" && !arquivo.name.toLowerCase().endsWith(".pdf")) {
+    throw new Error("Envie um arquivo PDF.");
   }
+  return Buffer.from(await arquivo.arrayBuffer());
+}
+
+// Primeira etapa do fluxo "devolutiva em PDF": só extrai e devolve os
+// candidatos a valor final pro comprador conferir na tela — nada é salvo
+// aqui ainda (ver confirmarValorFinalComDevolutiva).
+export async function extrairValorFinalDaDevolutiva(
+  pedidoId: string,
+  formData: FormData,
+): Promise<ResultadoExtracaoValorFinal> {
+  await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
+  const admin = createAdminClient();
+
+  const { data: ped } = await admin.from("pedidos_compra").select("status").eq("id", pedidoId).single();
+  if (!ped || !STATUS_PERMITE_VALOR_FINAL.includes(ped.status)) {
+    throw new Error("Valor final só pode ser registrado após a emissão do pedido.");
+  }
+
+  const buffer = await lerArquivoPdf(formData);
+  let resultado: ResultadoExtracaoValorFinal;
+  try {
+    resultado = await extrairValorFinalPdf(buffer);
+  } catch {
+    throw new Error("Não foi possível ler este PDF — verifique se o arquivo não está corrompido ou protegido por senha.");
+  }
+  if (!resultado.melhorCandidato) {
+    throw new Error("Não foi encontrado nenhum valor em R$ neste PDF. Digite o valor manualmente.");
+  }
+  return resultado;
+}
+
+// Segunda etapa: o comprador já confirmou (ou ajustou) o valor na tela —
+// salva exatamente como o fluxo manual (registrarValorFinal) e, além disso,
+// guarda o PDF da devolutiva como documento do pedido (evidência do valor).
+export async function confirmarValorFinalComDevolutiva(
+  pedidoId: string,
+  valorFinal: number,
+  formData: FormData,
+): Promise<void> {
+  await registrarValorFinal(pedidoId, valorFinal);
+
+  const admin = createAdminClient();
+  const usuario_id = await getUsuarioId();
+  const buffer = await lerArquivoPdf(formData);
+  const arquivo = formData.get("arquivo") as File;
+  const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const caminho = `pedidos/${pedidoId}/${Date.now()}-${nomeSeguro}`;
+
+  const { error: erroUpload } = await admin.storage
+    .from("pedido-docs")
+    .upload(caminho, buffer, { contentType: "application/pdf" });
+  if (erroUpload) throw new Error(`Valor final salvo, mas falha ao guardar o PDF: ${erroUpload.message}`);
+
+  await admin.from("pedido_documentos").insert({
+    pedido_id: pedidoId,
+    usuario_id,
+    nome_arquivo: `Devolutiva - ${arquivo.name}`,
+    caminho_storage: caminho,
+    tamanho_bytes: buffer.length,
+  });
+
+  revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);
 }
 
 // Prazo de entrega já é obrigatório para emitir o pedido (ver

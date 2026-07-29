@@ -37,7 +37,8 @@ export const MODULOS: Modulo[] = [
     slug: "squadstock",
     nome: "SquadStock",
     descricao: "Gerenciador de estoque, materiais, ferramentas e ativos.",
-    ativo: false,
+    ativo: true,
     cor: "success",
+    logo: "/logo-stock.png",
   },
 ];

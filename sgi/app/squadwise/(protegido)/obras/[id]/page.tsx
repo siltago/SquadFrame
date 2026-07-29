@@ -56,14 +56,14 @@ export default async function ObraPage({ params }: { params: { id: string } }) {
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) redirect("/");
 
-  const obra = await buscarObra(params.id, wiseUsuario.empresa_id);
+  const obra = await buscarObra(params.id);
   if (!obra) notFound();
 
   const [clientes, statusOptions, unidades, lotes] =
     await Promise.all([
       listarClientes(),
       listarStatusObra(),
-      listarUnidades(wiseUsuario.empresa_id),
+      listarUnidades(),
       buscarLotes(params.id),
     ]);
 

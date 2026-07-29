@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/shared/database/supabase-admin";
-import { recalcularPrecoKgPerfis } from "@/modules/squadframe/lib/preco-kg-perfis";
+import { recalcularPrecoKgPerfis } from "@/modules/squadstock/lib/preco-kg-perfis";
 
 // Job agendado (ver vercel.json) — roda no dia 1 e no dia 16 de cada mês,
 // recalculando o preço/kg médio dos perfis a partir dos pedidos com valor

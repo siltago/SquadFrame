@@ -16,8 +16,8 @@ export async function listarPermissoesAction(): Promise<WisePermissao[]> {
   return service.listarPermissoes();
 }
 
-export async function listarPapeisAction(empresaId: string): Promise<WisePapel[]> {
-  return service.listarPapeis(empresaId);
+export async function listarPapeisAction(): Promise<WisePapel[]> {
+  return service.listarPapeis();
 }
 
 export async function buscarPapelComPermissoesAction(papelId: string): Promise<WisePapelComPermissoes | null> {
@@ -25,7 +25,6 @@ export async function buscarPapelComPermissoesAction(papelId: string): Promise<W
 }
 
 export async function criarPapelAction(dados: {
-  empresa_id: string;
   nome: string;
   descricao?: string;
   is_admin?: boolean;
@@ -60,7 +59,7 @@ export async function listarPapeisDoUsuarioAction(usuarioId: string): Promise<Wi
 export async function atribuirPapelAction(usuarioId: string, papelId: string) {
   const ator = await usuarioAtual();
   if (!ator) return { ok: false as const, erro: "Não autenticado" };
-  const resultado = await service.atribuirPapel(usuarioId, papelId, ator.id, ator.empresa_id);
+  const resultado = await service.atribuirPapel(usuarioId, papelId, ator.id);
   if (resultado.ok) revalidatePath("/squadwise/usuarios");
   return resultado;
 }
@@ -68,7 +67,7 @@ export async function atribuirPapelAction(usuarioId: string, papelId: string) {
 export async function revogarPapelAction(usuarioId: string, papelId: string) {
   const ator = await usuarioAtual();
   if (!ator) return { ok: false as const, erro: "Não autenticado" };
-  const resultado = await service.revogarPapel(usuarioId, papelId, ator.id, ator.empresa_id);
+  const resultado = await service.revogarPapel(usuarioId, papelId, ator.id);
   if (resultado.ok) revalidatePath("/squadwise/usuarios");
   return resultado;
 }

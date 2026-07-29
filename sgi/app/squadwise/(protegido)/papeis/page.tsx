@@ -14,9 +14,9 @@ export default async function SquadWisePapeisPage() {
   if (!wiseUsuario) redirect("/");
 
   const [papeis, permissoes] = await Promise.all([
-    listarPapeis(wiseUsuario.empresa_id),
+    listarPapeis(),
     listarPermissoes(),
   ]);
 
-  return <PapeisCrud empresaId={wiseUsuario.empresa_id} papeisIniciais={papeis} permissoes={permissoes} />;
+  return <PapeisCrud papeisIniciais={papeis} permissoes={permissoes} />;
 }

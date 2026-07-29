@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+  ResponsiveContainer,
+} from "recharts";
 
 export interface PedidoStatusItem {
   id: string;
@@ -33,76 +37,113 @@ export interface SolicitacaoStatusCount {
   itens: SolicitacaoStatusItem[];
 }
 
-function Chevron({ aberto }: { aberto: boolean }) {
+const COR_BARRA = "rgb(var(--color-primary))";
+const COR_BARRA_ATIVA = "rgb(var(--color-primary-hover))";
+const COR_GRADE = "rgb(var(--color-border))";
+const COR_EIXO = "rgb(var(--color-text-3))";
+
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: { label: string; total: number } }[] }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
   return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-      className={`shrink-0 text-text-3 transition-transform duration-150 ${aberto ? "rotate-90" : ""}`}
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
+    <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-lg">
+      <p className="font-semibold text-text">{p.label}</p>
+      <p className="mt-0.5 tabular-nums text-text-2">
+        {p.total} {p.total === 1 ? "registro" : "registros"}
+      </p>
+    </div>
   );
 }
 
-// Comparação de magnitude entre categorias — um hue só (sequencial), barra
-// com extremidade arredondada, valor direto na ponta. Cada linha é clicável
-// e expande a lista de itens daquele status (refinamento).
-// `renderItem` só pode ser passado por um componente client (funções não
-// atravessam a fronteira server→client) — por isso os wrappers exportados
-// no fim do arquivo (PedidoStatusBarChart/SolicitacaoStatusBarChart) fixam
-// o renderItem aqui dentro e só recebem dados serializáveis de fora.
+// Comparação de magnitude entre categorias de status — barra horizontal
+// (rótulos de status variam bastante em comprimento, ex. "Aguardando
+// Recebimento", então orientação horizontal evita truncar/rotacionar
+// texto). Um hue só (sequencial): não há hierarquia de identidade entre
+// status aqui, só contagem. Cada barra é clicável e expande a lista de
+// itens daquele status — refinamento, não navegação separada.
 function StatusBarChart<T extends { id: string; numero: string }>({
   titulo,
+  total,
   dados,
   renderItem,
 }: {
   titulo: string;
+  total: number;
   dados: { status: string; label: string; total: number; itens: T[] }[];
   renderItem: (item: T) => React.ReactNode;
 }) {
   const [aberto, setAberto] = useState<string | null>(null);
-  const max = Math.max(1, ...dados.map((d) => d.total));
+  const altura = Math.max(120, dados.length * 34);
 
   return (
-    <div className="card p-5">
-      <h2 className="text-sm font-semibold text-text">{titulo}</h2>
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <h2 className="text-sm font-semibold text-text">{titulo}</h2>
+        <span className="text-xs tabular-nums text-text-3">{total} no total</span>
+      </div>
+
       {dados.length === 0 ? (
-        <p className="mt-4 text-sm text-text-3">Nenhum dado ainda.</p>
+        <p className="px-5 py-8 text-center text-sm text-text-3">Nenhum dado ainda.</p>
       ) : (
-        <div className="mt-4 flex flex-col gap-1">
-          {dados.map((d) => {
-            const expandido = aberto === d.status;
+        <>
+          <div className="px-2 pt-3" style={{ height: altura }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={dados}
+                layout="vertical"
+                margin={{ top: 0, right: 20, bottom: 0, left: 0 }}
+                barCategoryGap={10}
+                onClick={(state) => {
+                  const label = (state as { activeLabel?: string })?.activeLabel;
+                  const clicado = dados.find((d) => d.label === label);
+                  if (clicado) setAberto(aberto === clicado.status ? null : clicado.status);
+                }}
+              >
+                <CartesianGrid horizontal={false} stroke={COR_GRADE} strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  tick={{ fill: COR_EIXO, fontSize: 11 }}
+                  axisLine={{ stroke: COR_GRADE }}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={132}
+                  tick={{ fill: COR_EIXO, fontSize: 11 }}
+                  axisLine={{ stroke: COR_GRADE }}
+                  tickLine={false}
+                />
+                <Tooltip content={(props: any) => <ChartTooltip {...props} />} cursor={{ fill: "rgb(var(--color-surface-2))" }} isAnimationActive={false} />
+                <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false} cursor="pointer">
+                  {dados.map((d) => (
+                    <Cell key={d.status} fill={aberto === d.status ? COR_BARRA_ATIVA : COR_BARRA} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {aberto && (() => {
+            const secao = dados.find((d) => d.status === aberto);
+            if (!secao) return null;
             return (
-              <div key={d.status}>
-                <button
-                  type="button"
-                  onClick={() => setAberto(expandido ? null : d.status)}
-                  className="-mx-1 flex w-full items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-bg"
-                >
-                  <Chevron aberto={expandido} />
-                  <span className="w-32 shrink-0 truncate text-left text-xs text-text-2">{d.label}</span>
-                  <div className="h-2.5 flex-1 rounded-full bg-surface-2">
-                    <div
-                      className="h-2.5 rounded-full bg-primary"
-                      style={{ width: `${Math.max(4, (d.total / max) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums text-text">{d.total}</span>
-                </button>
-                {expandido && (
-                  <div className="ml-8 mb-2 mt-1 flex flex-col gap-0.5 border-l-2 border-border pl-4">
-                    {d.itens.length === 0 ? (
-                      <p className="py-1 text-xs text-text-3">Nenhum item.</p>
-                    ) : d.itens.map((item) => (
+              <div className="border-t border-border bg-bg/40 px-5 py-3">
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-3">{secao.label}</p>
+                {secao.itens.length === 0 ? (
+                  <p className="py-1 text-xs text-text-3">Nenhum item.</p>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {secao.itens.map((item) => (
                       <div key={item.id}>{renderItem(item)}</div>
                     ))}
                   </div>
                 )}
               </div>
             );
-          })}
-        </div>
+          })()}
+        </>
       )}
     </div>
   );
@@ -112,11 +153,11 @@ function PedidoStatusItemRow({ item }: { item: PedidoStatusItem }) {
   return (
     <Link
       href={`/squadframe/compras/pedidos/${item.id}`}
-      className="flex items-center gap-2 rounded-md py-1 text-xs hover:bg-bg"
+      className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-surface-2"
     >
       <span className="shrink-0 font-mono font-semibold text-primary">{item.numero}</span>
       <span className="min-w-0 flex-1 truncate text-text-2">{item.obra} · {item.fornecedor}</span>
-      <span className="shrink-0 text-text-3">{item.dias}d</span>
+      <span className="shrink-0 tabular-nums text-text-3">{item.dias}d</span>
     </Link>
   );
 }
@@ -125,19 +166,21 @@ function SolicitacaoStatusItemRow({ item }: { item: SolicitacaoStatusItem }) {
   return (
     <Link
       href={`/squadframe/compras/solicitacoes/${item.id}`}
-      className="flex items-center gap-2 rounded-md py-1 text-xs hover:bg-bg"
+      className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-surface-2"
     >
       <span className="shrink-0 font-mono font-semibold text-primary">{item.numero}</span>
       <span className="min-w-0 flex-1 truncate text-text-2">{item.obra} · {item.solicitante}</span>
-      <span className="shrink-0 text-text-3">{item.dias}d</span>
+      <span className="shrink-0 tabular-nums text-text-3">{item.dias}d</span>
     </Link>
   );
 }
 
 export function PedidoStatusBarChart({ titulo, dados }: { titulo: string; dados: PedidoStatusCount[] }) {
-  return <StatusBarChart titulo={titulo} dados={dados} renderItem={(item) => <PedidoStatusItemRow item={item} />} />;
+  const total = dados.reduce((acc, d) => acc + d.total, 0);
+  return <StatusBarChart titulo={titulo} total={total} dados={dados} renderItem={(item) => <PedidoStatusItemRow item={item} />} />;
 }
 
 export function SolicitacaoStatusBarChart({ titulo, dados }: { titulo: string; dados: SolicitacaoStatusCount[] }) {
-  return <StatusBarChart titulo={titulo} dados={dados} renderItem={(item) => <SolicitacaoStatusItemRow item={item} />} />;
+  const total = dados.reduce((acc, d) => acc + d.total, 0);
+  return <StatusBarChart titulo={titulo} total={total} dados={dados} renderItem={(item) => <SolicitacaoStatusItemRow item={item} />} />;
 }

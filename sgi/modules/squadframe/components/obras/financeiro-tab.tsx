@@ -2,7 +2,6 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import Link from "next/link";
-import { ObraDepositarForm } from "./obra-depositar-form";
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,13 +23,11 @@ export async function FinanceiroTab({ obraId }: { obraId: string }) {
   const admin = createAdminClient();
 
   const podeVerCarteira  = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes(PERMISSIONS.FINANCEIRO_CARTEIRA_VER);
-  const podeDepositar    = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes(PERMISSIONS.FINANCEIRO_CARTEIRA_DEPOSITAR);
   const podeDashboard    = usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes(PERMISSIONS.FINANCEIRO_DASHBOARD_VER);
 
   const [
     { data: pedidos },
     { data: carteiras },
-    { data: fornecedores },
   ] = await Promise.all([
     admin
       .from("pedidos_compra")
@@ -45,9 +42,6 @@ export async function FinanceiroTab({ obraId }: { obraId: string }) {
           .select("id, saldo_atual, fornecedor:fornecedores(id, nome)")
           .eq("obra_id", obraId)
           .order("saldo_atual", { ascending: false })
-      : Promise.resolve({ data: [] }),
-    podeDepositar
-      ? admin.from("fornecedores").select("id, nome").eq("ativo", true).order("nome")
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -167,8 +161,8 @@ export async function FinanceiroTab({ obraId }: { obraId: string }) {
           {carteirasList.length === 0 ? (
             <div className="mt-3 card p-8 text-center">
               <p className="text-sm text-text-3">
-                Nenhuma carteira ainda.{" "}
-                {podeDepositar && "Faça um depósito abaixo para criar a primeira."}
+                Nenhuma carteira ainda. Carteiras são financiadas alocando valor de um{" "}
+                <Link href="/squadframe/financeiro/contratos" className="text-primary hover:underline">contrato</Link> a um fornecedor.
               </p>
             </div>
           ) : (
@@ -189,16 +183,6 @@ export async function FinanceiroTab({ obraId }: { obraId: string }) {
                   </Link>
                 );
               })}
-            </div>
-          )}
-
-          {/* Formulário de depósito */}
-          {podeDepositar && (
-            <div className="mt-4 card p-5">
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-3">
-                Novo depósito
-              </h3>
-              <ObraDepositarForm obraId={obraId} fornecedores={fornecedores ?? []} />
             </div>
           )}
         </div>

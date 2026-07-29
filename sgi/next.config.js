@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["sharp", "dxf", "web-push"],
+    serverComponentsExternalPackages: ["sharp", "dxf", "web-push", "pdf-parse"],
   },
 
   images: {
@@ -12,6 +12,19 @@ const nextConfig = {
         pathname: "/storage/v1/object/**",
       },
     ],
+  },
+
+  // Catálogo migrou de /squadframe/catalogo para /squadstock/catalogo
+  // (código movido de módulo, banco intacto). Mantém links/favoritos
+  // antigos funcionando.
+  async redirects() {
+    return [
+      {
+        source: "/squadframe/catalogo/:path*",
+        destination: "/squadstock/catalogo/:path*",
+        permanent: false,
+      },
+    ];
   },
 
   // Permite que o service worker em /sw.js controle todo o escopo /

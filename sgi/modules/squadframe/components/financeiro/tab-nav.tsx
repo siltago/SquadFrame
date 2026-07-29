@@ -6,17 +6,22 @@ import { usePathname, useSearchParams } from "next/navigation";
 const ABAS = [
   { slug: "dashboard", label: "Dashboard" },
   { slug: "carteiras", label: "Carteiras" },
+  { slug: "faturamento-direto", label: "Faturamento Direto" },
 ] as const;
 
 export function FinanceiroTabNav({
   podeDashboard,
   podeCarteiras,
+  podeContratos,
 }: {
   podeDashboard: boolean;
   podeCarteiras: boolean;
+  podeContratos?: boolean;
 }) {
   const searchParams = useSearchParams();
-  const abaAtual = searchParams.get("aba") ?? "dashboard";
+  const pathname = usePathname();
+  const emContratos = pathname?.startsWith("/squadframe/financeiro/contratos");
+  const abaAtual = emContratos ? null : (searchParams.get("aba") ?? "dashboard");
 
   return (
     <div className="flex gap-1 border-b border-border mt-6">
@@ -38,6 +43,18 @@ export function FinanceiroTabNav({
           </Link>
         );
       })}
+      {podeContratos && (
+        <Link
+          href="/squadframe/financeiro/contratos"
+          className={
+            emContratos
+              ? "border-b-2 border-primary px-4 py-2.5 text-sm font-semibold text-text shrink-0"
+              : "px-4 py-2.5 text-sm font-medium text-text-3 hover:text-text-2 shrink-0"
+          }
+        >
+          Contratos
+        </Link>
+      )}
     </div>
   );
 }

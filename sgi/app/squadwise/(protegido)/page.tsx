@@ -15,11 +15,11 @@ export default async function SquadWiseVisaoGeralPage() {
   if (!wiseUsuario) redirect("/");
 
   const [usuarios, setores, cargos, papeis, auditoria] = await Promise.all([
-    listarUsuarios(wiseUsuario.empresa_id),
-    listarSetores(wiseUsuario.empresa_id),
-    listarCargos(wiseUsuario.empresa_id),
-    listarPapeis(wiseUsuario.empresa_id),
-    listarAuditoria(wiseUsuario.empresa_id, 0),
+    listarUsuarios(),
+    listarSetores(),
+    listarCargos(),
+    listarPapeis(),
+    listarAuditoria(0),
   ]);
 
   return (

@@ -12,22 +12,21 @@ async function atorWiseId(): Promise<string | null> {
   return wiseUsuario?.id ?? null;
 }
 
-export async function listarSetoresAction(empresaId: string): Promise<WiseSetor[]> {
-  return service.listarSetores(empresaId);
+export async function listarSetoresAction(): Promise<WiseSetor[]> {
+  return service.listarSetores();
 }
 
-export async function criarSetorAction(dados: { empresa_id: string; nome: string; cor?: string; ordem?: number }) {
+export async function criarSetorAction(dados: { nome: string; cor?: string; ordem?: number }) {
   const resultado = await service.criarSetor(dados);
   if (resultado.ok) revalidatePath("/squadwise");
   return resultado;
 }
 
-export async function listarCargosAction(empresaId: string): Promise<WiseCargo[]> {
-  return service.listarCargos(empresaId);
+export async function listarCargosAction(): Promise<WiseCargo[]> {
+  return service.listarCargos();
 }
 
 export async function criarCargoAction(dados: {
-  empresa_id: string;
   setor_id?: string | null;
   nome: string;
   nivel?: number;
@@ -39,8 +38,8 @@ export async function criarCargoAction(dados: {
   return resultado;
 }
 
-export async function listarUsuariosAction(empresaId: string): Promise<WiseUsuario[]> {
-  return service.listarUsuarios(empresaId);
+export async function listarUsuariosAction(): Promise<WiseUsuario[]> {
+  return service.listarUsuarios();
 }
 
 export async function trocarSetorCargoAction(usuarioId: string, dados: { setor_id: string | null; cargo_id: string | null }) {
@@ -51,7 +50,6 @@ export async function trocarSetorCargoAction(usuarioId: string, dados: { setor_i
 }
 
 export async function convidarUsuarioAction(dados: {
-  empresa_id: string;
   nome: string;
   email: string;
   setor_id?: string | null;

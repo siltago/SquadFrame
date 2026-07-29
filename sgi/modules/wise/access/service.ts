@@ -10,8 +10,8 @@ export async function listarPermissoes(): Promise<WisePermissao[]> {
   return repo.listarPermissoes();
 }
 
-export async function listarPapeis(empresaId: string): Promise<WisePapel[]> {
-  return repo.listarPapeis(empresaId);
+export async function listarPapeis(): Promise<WisePapel[]> {
+  return repo.listarPapeis();
 }
 
 export async function buscarPapelComPermissoes(papelId: string): Promise<WisePapelComPermissoes | null> {
@@ -19,7 +19,6 @@ export async function buscarPapelComPermissoes(papelId: string): Promise<WisePap
 }
 
 export async function criarPapel(dados: {
-  empresa_id: string;
   nome: string;
   descricao?: string;
   is_admin?: boolean;
@@ -28,7 +27,6 @@ export async function criarPapel(dados: {
   if (!nome) return { ok: false, erro: "Nome do papel é obrigatório" };
 
   const papel = await repo.inserirPapel({
-    empresa_id: dados.empresa_id,
     nome,
     descricao: dados.descricao?.trim() || null,
     is_admin: dados.is_admin ?? false,
@@ -77,11 +75,9 @@ export async function atribuirPapel(
   usuarioId: string,
   papelId: string,
   atribuidoPor: string | null,
-  empresaId: string,
 ): Promise<ResultadoServico<true>> {
   await repo.atribuirPapelAoUsuario(usuarioId, papelId, atribuidoPor);
   await registrarAuditoria({
-    empresa_id: empresaId,
     usuario_id: atribuidoPor,
     entidade: "usuario_papel",
     entidade_id: usuarioId,
@@ -95,11 +91,9 @@ export async function revogarPapel(
   usuarioId: string,
   papelId: string,
   atorId: string | null,
-  empresaId: string,
 ): Promise<ResultadoServico<true>> {
   await repo.revogarPapelDoUsuario(usuarioId, papelId);
   await registrarAuditoria({
-    empresa_id: empresaId,
     usuario_id: atorId,
     entidade: "usuario_papel",
     entidade_id: usuarioId,

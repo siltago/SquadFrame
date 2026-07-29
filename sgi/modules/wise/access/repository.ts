@@ -11,13 +11,9 @@ export async function listarPermissoes(): Promise<WisePermissao[]> {
   return (data ?? []) as WisePermissao[];
 }
 
-export async function listarPapeis(empresaId: string): Promise<WisePapel[]> {
+export async function listarPapeis(): Promise<WisePapel[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("wise_papeis")
-    .select("*")
-    .eq("empresa_id", empresaId)
-    .order("nome");
+  const { data } = await admin.from("wise_papeis").select("*").order("nome");
   return (data ?? []) as WisePapel[];
 }
 
@@ -39,7 +35,6 @@ export async function buscarPapelComPermissoes(papelId: string): Promise<WisePap
 }
 
 export async function inserirPapel(dados: {
-  empresa_id: string;
   nome: string;
   descricao: string | null;
   is_admin: boolean;

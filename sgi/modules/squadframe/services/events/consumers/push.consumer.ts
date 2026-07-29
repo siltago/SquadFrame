@@ -29,7 +29,7 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       const admin = createAdminClient();
       const { data: ped } = await admin
         .from("pedidos_compra")
-        .select("numero, tipo_linha, obras(nome), comprador:usuarios(nome)")
+        .select("numero, tipo_linha, obras(nome), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
         .eq("id", p.order_id)
         .single();
 

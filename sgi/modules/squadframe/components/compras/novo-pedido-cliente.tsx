@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { criarPedido } from "@/app/squadframe/compras/actions";
+import { consultarSaldoFaturamentoDireto, type SaldoFaturamentoDireto } from "@/modules/squadframe/actions/compras/contratos";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { calcMedida, calcPesoTotal, calcPrecoUnit } from "@/modules/squadframe/lib/tipo-unidade";
 import { Button } from "@/ui/components/Button";
@@ -239,6 +240,7 @@ export function NovoPedidoCliente({
   );
   const [corUnicaId, setCorUnicaId] = useState("");
   const [formaPagId, setFormaPagId] = useState("");
+  const [saldoFat, setSaldoFat] = useState<SaldoFaturamentoDireto | null>(null);
   const [pending, start] = useTransition();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
@@ -248,6 +250,24 @@ export function NovoPedidoCliente({
     if (fromSolicitacao) importarSolicitacao(fromSolicitacao);
     if (fromNecessidades?.length) importarNecessidades(fromNecessidades);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formaSelecionadaFatDireto = formasPagamento.find((f) => f.id === formaPagId)?.is_faturamento_direto ?? false;
+
+  // Verificação em tempo real (avisa, não bloqueia): a obra tem contrato de
+  // faturamento direto com esse fornecedor? Qual o saldo agregado (pool
+  // entre obras) disponível? O bloqueio duro de verdade só acontece na
+  // confirmação de débito, na emissão do pedido.
+  useEffect(() => {
+    if (!formaSelecionadaFatDireto || !obraId || !fornecedorId) {
+      setSaldoFat(null);
+      return;
+    }
+    let cancelado = false;
+    consultarSaldoFaturamentoDireto(obraId, fornecedorId).then((r) => {
+      if (!cancelado) setSaldoFat(r);
+    });
+    return () => { cancelado = true; };
+  }, [formaSelecionadaFatDireto, obraId, fornecedorId]);
 
   const outrasSolicitacoes = fromSolicitacao
     ? solicitacoesAprovadas.filter((s) => s.id !== fromSolicitacao.id)
@@ -564,14 +584,15 @@ export function NovoPedidoCliente({
               </div>
             )}
             <div>
-              <label className="label">Forma de pagamento <span className="text-text-3 font-normal">(opcional)</span></label>
+              <label className="label">Forma de pagamento <span className="text-danger">*</span></label>
               <select
                 name="forma_pagamento_id"
+                required
                 className="field"
                 onChange={(e) => setFormaPagId(e.target.value)}
                 value={formaPagId}
               >
-                <option value="">Não definida</option>
+                <option value="" disabled>Selecione</option>
                 {formasPagamento.map((fp) => <option key={fp.id} value={fp.id}>{fp.nome}</option>)}
               </select>
               {(() => {
@@ -579,7 +600,7 @@ export function NovoPedidoCliente({
                 if (forma?.is_faturamento_direto) {
                   return (
                     <p className="mt-1 text-xs text-primary font-medium">
-                      O valor será debitado da carteira da obra ao emitir o pedido.
+                      O valor será debitado da carteira do fornecedor ao emitir o pedido.
                     </p>
                   );
                 }
@@ -592,6 +613,17 @@ export function NovoPedidoCliente({
                 }
                 return null;
               })()}
+              {formaSelecionadaFatDireto && saldoFat && (
+                saldoFat.temContrato ? (
+                  <p className="mt-1 text-xs text-text-2">
+                    Saldo disponível em {nomeFornecedorAtual} (todas as obras): <strong>{saldoFat.saldoPooled.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-warning font-medium">
+                    Esta obra não tem contrato de faturamento direto com {nomeFornecedorAtual}.
+                  </p>
+                )
+              )}
             </div>
             {coresRal.length > 0 && (
               <div className="sm:col-span-2">
@@ -912,6 +944,15 @@ export function NovoPedidoCliente({
                   </tr>
                 </tfoot>
               </table>
+              {formaSelecionadaFatDireto && saldoFat && totalValor > saldoFat.saldoPooled && (
+                <Alert variant="warning" className="mt-3">
+                  Atenção: o valor deste pedido (
+                  {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) pode
+                  ultrapassar o saldo disponível em {nomeFornecedorAtual} (
+                  {saldoFat.saldoPooled.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  ). Isso não impede salvar o pedido agora — só será bloqueado na confirmação de débito, ao emitir.
+                </Alert>
+              )}
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-3">

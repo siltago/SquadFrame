@@ -10,7 +10,7 @@ import { Modal } from "@/ui/components/Modal";
 import type { WiseSetor } from "../types";
 import { criarSetorAction } from "../actions";
 
-export function SetoresLista({ empresaId, setores: setoresIniciais }: { empresaId: string; setores: WiseSetor[] }) {
+export function SetoresLista({ setores: setoresIniciais }: { setores: WiseSetor[] }) {
   const [setores, setSetores] = useState(setoresIniciais);
   const [modalNovo, setModalNovo] = useState(false);
 
@@ -46,13 +46,13 @@ export function SetoresLista({ empresaId, setores: setoresIniciais }: { empresaI
       </Section>
 
       <Modal open={modalNovo} onClose={() => setModalNovo(false)} title="Novo setor" size="sm">
-        <NovoSetorForm empresaId={empresaId} onCriado={(s) => { setSetores((prev) => [...prev, s]); setModalNovo(false); }} />
+        <NovoSetorForm onCriado={(s) => { setSetores((prev) => [...prev, s]); setModalNovo(false); }} />
       </Modal>
     </Container>
   );
 }
 
-function NovoSetorForm({ empresaId, onCriado }: { empresaId: string; onCriado: (s: WiseSetor) => void }) {
+function NovoSetorForm({ onCriado }: { onCriado: (s: WiseSetor) => void }) {
   const [nome, setNome] = useState("");
   const [cor, setCor] = useState("#475569");
   const [erro, setErro] = useState<string | null>(null);
@@ -61,7 +61,7 @@ function NovoSetorForm({ empresaId, onCriado }: { empresaId: string; onCriado: (
   function submeter() {
     setErro(null);
     startTransition(async () => {
-      const resultado = await criarSetorAction({ empresa_id: empresaId, nome, cor });
+      const resultado = await criarSetorAction({ nome, cor });
       if (!resultado.ok) { setErro(resultado.erro); return; }
       onCriado(resultado.dados);
     });

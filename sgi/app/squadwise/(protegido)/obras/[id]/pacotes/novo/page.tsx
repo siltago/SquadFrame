@@ -8,11 +8,10 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
-async function buscarResponsaveis(empresaId: string) {
+async function buscarResponsaveis() {
   const { data } = await createAdminClient()
     .from("wise_usuarios")
     .select("id, nome")
-    .eq("empresa_id", empresaId)
     .eq("status", "ativo")
     .order("nome");
   return (data ?? []) as { id: string; nome: string }[];
@@ -25,12 +24,12 @@ export default async function NovoPacotePage({ params }: { params: { id: string 
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) redirect("/");
 
-  const obra = await buscarObra(params.id, wiseUsuario.empresa_id);
+  const obra = await buscarObra(params.id);
   if (!obra) notFound();
 
   const [estrutura, responsaveis] = await Promise.all([
     listarEstruturaFlat(params.id),
-    buscarResponsaveis(wiseUsuario.empresa_id),
+    buscarResponsaveis(),
   ]);
 
   return (

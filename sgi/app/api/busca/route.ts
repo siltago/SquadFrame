@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       id: p.id,
       titulo: p.nome,
       subtitulo: [p.codigo_mestre, p.linha?.nome].filter(Boolean).join(" · "),
-      href: `/squadframe/catalogo/${p.linha?.id}/${p.id}`,
+      href: `/squadstock/catalogo/${p.linha?.id}/${p.id}`,
     })),
     ...(fornecedores.data ?? []).map((f: any) => ({
       tipo: "fornecedor" as const,

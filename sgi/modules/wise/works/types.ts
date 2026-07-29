@@ -23,7 +23,6 @@ export type WiseObra = {
   codigo: string | null;
   numero: number | null;
   nome: string;
-  empresa_id: string | null;
   unidade_id: string | null;
   cliente_id: string;
   endereco: string | null;

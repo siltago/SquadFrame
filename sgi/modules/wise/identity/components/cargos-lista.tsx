@@ -12,11 +12,9 @@ import type { WiseCargo, WiseSetor } from "../types";
 import { criarCargoAction } from "../actions";
 
 export function CargosLista({
-  empresaId,
   cargos: cargosIniciais,
   setores,
 }: {
-  empresaId: string;
   cargos: WiseCargo[];
   setores: WiseSetor[];
 }) {
@@ -59,18 +57,16 @@ export function CargosLista({
       </Section>
 
       <Modal open={modalNovo} onClose={() => setModalNovo(false)} title="Novo cargo" size="sm">
-        <NovoCargoForm empresaId={empresaId} setores={setores} onCriado={(c) => { setCargos((prev) => [...prev, c]); setModalNovo(false); }} />
+        <NovoCargoForm setores={setores} onCriado={(c) => { setCargos((prev) => [...prev, c]); setModalNovo(false); }} />
       </Modal>
     </Container>
   );
 }
 
 function NovoCargoForm({
-  empresaId,
   setores,
   onCriado,
 }: {
-  empresaId: string;
   setores: WiseSetor[];
   onCriado: (c: WiseCargo) => void;
 }) {
@@ -83,7 +79,7 @@ function NovoCargoForm({
   function submeter() {
     setErro(null);
     startTransition(async () => {
-      const resultado = await criarCargoAction({ empresa_id: empresaId, nome, setor_id: setorId || null, cor });
+      const resultado = await criarCargoAction({ nome, setor_id: setorId || null, cor });
       if (!resultado.ok) { setErro(resultado.erro); return; }
       onCriado(resultado.dados);
     });

@@ -54,7 +54,7 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
       .select(`*,
         obra:obras(id, nome, codigo, numero),
         fornecedor:fornecedores(nome, razao_social, cnpj, telefone, email),
-        comprador:usuarios(nome, cargo:cargos(nome)),
+        comprador:usuarios!pedidos_compra_comprador_id_fkey(nome, cargo:cargos(nome)),
         forma_pagamento:formas_pagamento(nome)
       `)
       .eq("id", params.id)

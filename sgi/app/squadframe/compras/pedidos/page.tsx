@@ -38,7 +38,7 @@ export default async function PedidosPage({
 
   let q = admin
     .from("pedidos_compra")
-    .select("id, numero, status, prazo_entrega, criado_em, obra:obras(nome), fornecedor:fornecedores(nome), comprador:usuarios(nome)", { count: "exact" })
+    .select("id, numero, status, prazo_entrega, criado_em, obra:obras(nome), fornecedor:fornecedores(nome), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)", { count: "exact" })
     .order("criado_em", { ascending: false })
     .range(from, from + POR_PAGINA - 1);
 

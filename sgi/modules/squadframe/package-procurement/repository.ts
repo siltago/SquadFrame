@@ -6,7 +6,7 @@ import {
   criarProdutoRapido as criarProdutoRapidoCatalogo,
   criarLinhaRapida as criarLinhaRapidaCatalogo,
   listarTiposLinha as listarTiposLinhaCatalogo,
-} from "@/modules/squadframe/actions/catalogo/actions";
+} from "@/modules/squadstock/actions/catalogo/actions";
 import type {
   WisePacoteCompras, WiseNecessidade,
   AlocacaoSolicitacao, AlocacaoPedido, AlocacaoRecebimento, PedidoItemDisponivel,

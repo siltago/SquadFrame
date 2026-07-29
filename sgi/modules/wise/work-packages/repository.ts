@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 const PACOTE_SELECT = `
-  id, obra_id, empresa_id, nome, codigo, descricao, status,
+  id, obra_id, nome, codigo, descricao, status,
   prioridade, prazo, responsavel_id, tipo, revisao, criado_em,
   responsavel:usuarios(id, nome),
   obra:obras(id, nome, codigo),
@@ -23,11 +23,10 @@ export async function listarPacotesDaObra(obraId: string): Promise<WisePacote[]>
   return (data ?? []) as unknown as WisePacote[];
 }
 
-export async function listarPacotesDaEmpresa(empresaId: string): Promise<WisePacote[]> {
+export async function listarTodosPacotes(): Promise<WisePacote[]> {
   const { data } = await createAdminClient()
     .from("lotes_obra")
     .select(PACOTE_SELECT)
-    .eq("empresa_id", empresaId)
     .order("criado_em", { ascending: false });
   return (data ?? []) as unknown as WisePacote[];
 }
@@ -42,13 +41,13 @@ export async function buscarPacotePorId(id: string): Promise<WisePacote | null> 
 }
 
 export async function inserirPacote(
-  dados: WisePacoteInput & { empresa_id: string; status: WisePacoteStatus; codigo: string },
+  dados: WisePacoteInput & { status: WisePacoteStatus; codigo: string },
 ): Promise<WisePacote> {
   const { modulos, ...campos } = dados;
   const { data, error } = await createAdminClient()
     .from("lotes_obra")
     .insert(campos)
-    .select("id, nome, codigo, empresa_id, obra_id, status")
+    .select("id, nome, codigo, obra_id, status")
     .single();
   if (error) throw new Error(error.message);
   return data as unknown as WisePacote;
@@ -147,7 +146,6 @@ export async function listarEscopoTipologias(
 // ── Eventos ──────────────────────────────────────────────────────────────────
 
 export async function publicarEvento(dados: {
-  empresa_id: string;
   tipo: string;
   payload: Record<string, unknown>;
   obra_id?: string;

@@ -10,12 +10,11 @@ export type ResultadoServico<T> = { ok: true; dados: T } | { ok: false; erro: st
 
 const CONVITE_VALIDADE_HORAS = 24;
 
-export async function listarSetores(empresaId: string): Promise<WiseSetor[]> {
-  return repo.listarSetores(empresaId);
+export async function listarSetores(): Promise<WiseSetor[]> {
+  return repo.listarSetores();
 }
 
 export async function criarSetor(dados: {
-  empresa_id: string;
   nome: string;
   cor?: string;
   ordem?: number;
@@ -24,7 +23,6 @@ export async function criarSetor(dados: {
   if (!nome) return { ok: false, erro: "Nome do setor é obrigatório" };
 
   const setor = await repo.inserirSetor({
-    empresa_id: dados.empresa_id,
     nome,
     cor: dados.cor ?? "#475569",
     ordem: dados.ordem ?? 0,
@@ -32,12 +30,11 @@ export async function criarSetor(dados: {
   return { ok: true, dados: setor };
 }
 
-export async function listarCargos(empresaId: string): Promise<WiseCargo[]> {
-  return repo.listarCargos(empresaId);
+export async function listarCargos(): Promise<WiseCargo[]> {
+  return repo.listarCargos();
 }
 
 export async function criarCargo(dados: {
-  empresa_id: string;
   setor_id?: string | null;
   nome: string;
   nivel?: number;
@@ -48,7 +45,6 @@ export async function criarCargo(dados: {
   if (!nome) return { ok: false, erro: "Nome do cargo é obrigatório" };
 
   const cargo = await repo.inserirCargo({
-    empresa_id: dados.empresa_id,
     setor_id: dados.setor_id ?? null,
     nome,
     nivel: dados.nivel ?? 1,
@@ -58,8 +54,8 @@ export async function criarCargo(dados: {
   return { ok: true, dados: cargo };
 }
 
-export async function listarUsuarios(empresaId: string): Promise<WiseUsuario[]> {
-  return repo.listarUsuarios(empresaId);
+export async function listarUsuarios(): Promise<WiseUsuario[]> {
+  return repo.listarUsuarios();
 }
 
 export async function buscarUsuarioPorAuthId(authId: string): Promise<WiseUsuario | null> {
@@ -76,7 +72,6 @@ export async function trocarSetorCargo(
 
   if (antes) {
     await registrarAuditoria({
-      empresa_id: antes.empresa_id,
       usuario_id: atorId,
       entidade: "usuario",
       entidade_id: usuarioId,
@@ -93,7 +88,6 @@ export async function trocarSetorCargo(
 // manualmente (decisão confirmada com o usuário). Ver seção 5 do
 // documento de arquitetura.
 export async function convidarUsuario(dados: {
-  empresa_id: string;
   nome: string;
   email: string;
   setor_id?: string | null;
@@ -105,14 +99,13 @@ export async function convidarUsuario(dados: {
   if (!nome) return { ok: false, erro: "Nome é obrigatório" };
   if (!email || !email.includes("@")) return { ok: false, erro: "E-mail inválido" };
 
-  const existente = await repo.buscarUsuarioPorEmail(dados.empresa_id, email);
-  if (existente) return { ok: false, erro: "Já existe um usuário com esse e-mail nesta empresa" };
+  const existente = await repo.buscarUsuarioPorEmail(email);
+  if (existente) return { ok: false, erro: "Já existe um usuário com esse e-mail" };
 
   const token = randomBytes(24).toString("base64url");
   const expiraEm = new Date(Date.now() + CONVITE_VALIDADE_HORAS * 60 * 60 * 1000).toISOString();
 
   const usuario = await repo.inserirConvite({
-    empresa_id: dados.empresa_id,
     nome,
     email,
     setor_id: dados.setor_id ?? null,
@@ -122,7 +115,6 @@ export async function convidarUsuario(dados: {
   });
 
   await registrarAuditoria({
-    empresa_id: dados.empresa_id,
     usuario_id: dados.convidadoPor,
     entidade: "usuario",
     entidade_id: usuario.id,
@@ -160,7 +152,6 @@ export async function ativarConvite(token: string, senha: string): Promise<Resul
   await repo.ativarUsuarioConvidado(convite.dados.id, data.user.id);
 
   await registrarAuditoria({
-    empresa_id: convite.dados.empresa_id,
     usuario_id: convite.dados.id,
     entidade: "usuario",
     entidade_id: convite.dados.id,
@@ -176,7 +167,6 @@ export async function bloquearUsuario(usuarioId: string, atorId: string | null):
 
   await repo.atualizarStatusUsuario(usuarioId, "bloqueado");
   await registrarAuditoria({
-    empresa_id: antes.empresa_id,
     usuario_id: atorId,
     entidade: "usuario",
     entidade_id: usuarioId,
@@ -193,7 +183,6 @@ export async function desbloquearUsuario(usuarioId: string, atorId: string | nul
 
   await repo.atualizarStatusUsuario(usuarioId, "ativo");
   await registrarAuditoria({
-    empresa_id: antes.empresa_id,
     usuario_id: atorId,
     entidade: "usuario",
     entidade_id: usuarioId,

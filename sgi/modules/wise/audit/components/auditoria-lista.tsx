@@ -23,12 +23,10 @@ function RelativeTime({ ts }: { ts: string }) {
 }
 
 export function AuditoriaLista({
-  empresaId,
   registrosIniciais,
   total,
   porPagina,
 }: {
-  empresaId: string;
   registrosIniciais: WiseAuditoria[];
   total: number;
   porPagina: number;
@@ -41,7 +39,7 @@ export function AuditoriaLista({
 
   function irPara(novaPagina: number) {
     startTransition(async () => {
-      const resultado = await listarAuditoriaAction(empresaId, novaPagina);
+      const resultado = await listarAuditoriaAction(novaPagina);
       setRegistros(resultado.registros);
       setPagina(novaPagina);
     });

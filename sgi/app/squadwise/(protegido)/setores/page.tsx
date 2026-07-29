@@ -12,7 +12,7 @@ export default async function SquadWiseSetoresPage() {
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) redirect("/");
 
-  const setores = await listarSetores(wiseUsuario.empresa_id);
+  const setores = await listarSetores();
 
-  return <SetoresLista empresaId={wiseUsuario.empresa_id} setores={setores} />;
+  return <SetoresLista setores={setores} />;
 }

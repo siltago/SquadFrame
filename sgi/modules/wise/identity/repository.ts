@@ -5,18 +5,13 @@ import type { WiseSetor, WiseCargo, WiseUsuario } from "./types";
 
 // Repository burro por design — regra de negócio vive em service.ts.
 
-export async function listarSetores(empresaId: string): Promise<WiseSetor[]> {
+export async function listarSetores(): Promise<WiseSetor[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("wise_setores")
-    .select("*")
-    .eq("empresa_id", empresaId)
-    .order("ordem");
+  const { data } = await admin.from("wise_setores").select("*").order("ordem");
   return (data ?? []) as WiseSetor[];
 }
 
 export async function inserirSetor(dados: {
-  empresa_id: string;
   nome: string;
   cor: string;
   ordem: number;
@@ -27,18 +22,13 @@ export async function inserirSetor(dados: {
   return data as WiseSetor;
 }
 
-export async function listarCargos(empresaId: string): Promise<WiseCargo[]> {
+export async function listarCargos(): Promise<WiseCargo[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("wise_cargos")
-    .select("*")
-    .eq("empresa_id", empresaId)
-    .order("ordem");
+  const { data } = await admin.from("wise_cargos").select("*").order("ordem");
   return (data ?? []) as WiseCargo[];
 }
 
 export async function inserirCargo(dados: {
-  empresa_id: string;
   setor_id: string | null;
   nome: string;
   nivel: number;
@@ -51,13 +41,9 @@ export async function inserirCargo(dados: {
   return data as WiseCargo;
 }
 
-export async function listarUsuarios(empresaId: string): Promise<WiseUsuario[]> {
+export async function listarUsuarios(): Promise<WiseUsuario[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("wise_usuarios")
-    .select("*")
-    .eq("empresa_id", empresaId)
-    .order("nome");
+  const { data } = await admin.from("wise_usuarios").select("*").order("nome");
   return (data ?? []) as WiseUsuario[];
 }
 
@@ -67,12 +53,11 @@ export async function buscarUsuarioPorAuthId(authId: string): Promise<WiseUsuari
   return (data as WiseUsuario) ?? null;
 }
 
-export async function buscarUsuarioPorEmail(empresaId: string, email: string): Promise<WiseUsuario | null> {
+export async function buscarUsuarioPorEmail(email: string): Promise<WiseUsuario | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("wise_usuarios")
     .select("*")
-    .eq("empresa_id", empresaId)
     .ilike("email", email)
     .maybeSingle();
   return (data as WiseUsuario) ?? null;
@@ -88,7 +73,6 @@ export async function atualizarSetorCargoUsuario(
 }
 
 export async function inserirConvite(dados: {
-  empresa_id: string;
   nome: string;
   email: string;
   setor_id: string | null;

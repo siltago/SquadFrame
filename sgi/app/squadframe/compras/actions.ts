@@ -15,7 +15,10 @@ export {
   adicionarAnotacao,
   excluirPedidos,
   registrarValorFinal,
-  confirmarDebitoPedido,
+  extrairValorFinalDaDevolutiva,
+  confirmarValorFinalComDevolutiva,
+  aprovarDebitoPedido,
+  rejeitarDebitoPedido,
   atualizarPrazoEntrega,
   vincularPedidoLote,
 } from "@/modules/squadframe/actions/compras/pedidos";

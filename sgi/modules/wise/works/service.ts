@@ -9,19 +9,15 @@ import type {
 
 // ── Obras ──────────────────────────────────────────────────────────────────
 
-export async function listarObras(empresaId: string): Promise<WiseObra[]> {
-  return repo.listarObras(empresaId);
+export async function listarObras(): Promise<WiseObra[]> {
+  return repo.listarObras();
 }
 
-export async function buscarObra(
-  id: string,
-  empresaId: string,
-): Promise<WiseObra | null> {
-  return repo.buscarObraPorId(id, empresaId);
+export async function buscarObra(id: string): Promise<WiseObra | null> {
+  return repo.buscarObraPorId(id);
 }
 
 export async function criarObra(
-  empresaId: string,
   usuarioId: string,
   input: WiseObraInput,
 ): Promise<ServiceResult<WiseObra>> {
@@ -29,7 +25,7 @@ export async function criarObra(
   if (!input.cliente_id) return { ok: false, erro: "Cliente é obrigatório." };
   if (!input.status_id)  return { ok: false, erro: "Status é obrigatório." };
   try {
-    const obra = await repo.inserirObra({ ...input, empresa_id: empresaId, criado_por: usuarioId });
+    const obra = await repo.inserirObra({ ...input, criado_por: usuarioId });
     return { ok: true, data: obra };
   } catch (e: any) {
     return { ok: false, erro: e.message };
@@ -38,25 +34,21 @@ export async function criarObra(
 
 export async function editarObra(
   id: string,
-  empresaId: string,
   input: Partial<WiseObraInput>,
 ): Promise<ServiceResult> {
   if (input.nome !== undefined && !input.nome.trim())
     return { ok: false, erro: "Nome da obra não pode ser vazio." };
   try {
-    await repo.atualizarObra(id, empresaId, input);
+    await repo.atualizarObra(id, input);
     return { ok: true, data: undefined };
   } catch (e: any) {
     return { ok: false, erro: e.message };
   }
 }
 
-export async function arquivarObra(
-  id: string,
-  empresaId: string,
-): Promise<ServiceResult> {
+export async function arquivarObra(id: string): Promise<ServiceResult> {
   try {
-    await repo.arquivarObra(id, empresaId);
+    await repo.arquivarObra(id);
     return { ok: true, data: undefined };
   } catch (e: any) {
     return { ok: false, erro: e.message };

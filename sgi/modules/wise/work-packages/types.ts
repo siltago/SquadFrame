@@ -43,7 +43,6 @@ export const PRIORIDADE_COR: Record<WisePrioridade, string> = {
 export type WisePacote = {
   id: string;
   obra_id: string;
-  empresa_id: string | null;
   nome: string;
   codigo: string | null;
   descricao: string | null;

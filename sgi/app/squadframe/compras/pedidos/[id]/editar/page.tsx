@@ -16,7 +16,7 @@ export default async function EditarPedidoPage({ params }: { params: { id: strin
         .eq("pedido_id", params.id),
       admin.from("fornecedores").select("id,nome,ativo").order("nome"),
       admin.from("obras").select("id,nome,codigo").is("deleted_at", null).order("nome"),
-      admin.from("formas_pagamento").select("id,nome").eq("ativo", true).order("nome"),
+      admin.from("formas_pagamento").select("id,nome,is_faturamento_direto").eq("ativo", true).order("nome"),
     ]);
 
   if (!ped) notFound();

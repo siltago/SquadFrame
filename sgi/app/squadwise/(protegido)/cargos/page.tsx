@@ -13,9 +13,9 @@ export default async function SquadWiseCargosPage() {
   if (!wiseUsuario) redirect("/");
 
   const [cargos, setores] = await Promise.all([
-    listarCargos(wiseUsuario.empresa_id),
-    listarSetores(wiseUsuario.empresa_id),
+    listarCargos(),
+    listarSetores(),
   ]);
 
-  return <CargosLista empresaId={wiseUsuario.empresa_id} cargos={cargos} setores={setores} />;
+  return <CargosLista cargos={cargos} setores={setores} />;
 }

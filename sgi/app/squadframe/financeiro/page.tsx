@@ -4,7 +4,12 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { CarteirasContent } from "@/modules/squadframe/components/compras/carteiras-content";
+import { FaturamentoDiretoContent } from "@/modules/squadframe/components/financeiro/faturamento-direto-content";
 import { FinanceiroTabNav } from "@/modules/squadframe/components/financeiro/tab-nav";
+import { RankingBarChart } from "@/modules/squadframe/components/financeiro/ranking-bar-chart";
+import { EvolucaoMensalChart } from "@/modules/squadframe/components/financeiro/evolucao-mensal-chart";
+import { StatCard } from "@/modules/squadframe/components/stat-card";
+import { BarChartIcon, CheckCircleIcon, ClockIcon, UsersIcon, CreditCardIcon } from "@/ui/icons";
 import Link from "next/link";
 import { Button } from "@/ui/components/Button";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
@@ -23,6 +28,7 @@ export default async function FinanceiroPage({
     status?: string;
     de?: string;
     ate?: string;
+    faturamento?: string;
   };
 }) {
   const usuario = await getUsuarioAtual();
@@ -30,6 +36,7 @@ export default async function FinanceiroPage({
 
   const podeDashboard = !!(usuario.permissoes?.includes("*") || usuario.permissoes?.includes(PERMISSIONS.FINANCEIRO_DASHBOARD_VER));
   const podeCarteiras = !!(usuario.permissoes?.includes("*") || usuario.permissoes?.includes(PERMISSIONS.FINANCEIRO_CARTEIRA_VER));
+  const podeContratos = !!(usuario.permissoes?.includes("*") || usuario.permissoes?.includes(PERMISSIONS.FINANCEIRO_CONTRATO_GERENCIAR));
 
   if (!podeDashboard && !podeCarteiras) {
     return (
@@ -40,9 +47,11 @@ export default async function FinanceiroPage({
   }
 
   const abaAtual =
-    searchParams.aba === "carteiras" && podeCarteiras ? "carteiras" : "dashboard";
+    searchParams.aba === "carteiras" && podeCarteiras ? "carteiras" :
+    searchParams.aba === "faturamento-direto" && podeCarteiras ? "faturamento-direto" :
+    "dashboard";
 
-  const tabNavProps = { podeDashboard, podeCarteiras };
+  const tabNavProps = { podeDashboard, podeCarteiras, podeContratos };
 
   // ── Aba Carteiras ──────────────────────────────────────────
   if (abaAtual === "carteiras") {
@@ -52,6 +61,21 @@ export default async function FinanceiroPage({
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
         <FinanceiroTabNav {...tabNavProps} />
         <CarteirasContent />
+      </div>
+    );
+  }
+
+  // ── Aba Faturamento Direto ───────────────────────────────────
+  if (abaAtual === "faturamento-direto") {
+    return (
+      <div className="px-8 py-8 max-w-6xl">
+        <RealtimeRefresher
+          channelName="financeiro-faturamento-direto"
+          subs={[{ table: "pedidos_compra" }, { table: "carteiras" }, { table: "carteira_movimentacoes" }]}
+        />
+        <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
+        <FinanceiroTabNav {...tabNavProps} />
+        <FaturamentoDiretoContent />
       </div>
     );
   }
@@ -72,6 +96,7 @@ export default async function FinanceiroPage({
   const filtroStatus     = searchParams.status ?? "";
   const filtroDe         = searchParams.de ?? "";
   const filtroAte        = searchParams.ate ?? "";
+  const filtroFaturamento = searchParams.faturamento ?? ""; // "direto" | "outros" | ""
 
   const [{ data: fornecedores }, { data: obras }] = await Promise.all([
     admin.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
@@ -81,7 +106,7 @@ export default async function FinanceiroPage({
   let q = admin
     .from("pedidos_compra")
     .select(`
-      id, numero, status, criado_em, valor_final,
+      id, numero, status, criado_em, valor_final, usa_carteira,
       fornecedor:fornecedores(id, nome),
       obra:obras(id, nome, codigo)
     `)
@@ -91,6 +116,8 @@ export default async function FinanceiroPage({
   if (filtroObra)       q = q.eq("obra_id", filtroObra);
   if (filtroDe)         q = q.gte("criado_em", filtroDe);
   if (filtroAte)        q = q.lte("criado_em", filtroAte + "T23:59:59");
+  if (filtroFaturamento === "direto") q = q.eq("usa_carteira", true);
+  if (filtroFaturamento === "outros") q = q.eq("usa_carteira", false);
 
   const { data: pedidos } = await q.order("criado_em", { ascending: false }).limit(500);
 
@@ -117,6 +144,9 @@ export default async function FinanceiroPage({
   const totalConfirmado = pedidosComValor
     .filter((p: any) => !p.valor_estimado)
     .reduce((s: number, p: any) => s + p.valor_efetivo, 0);
+
+  const pedidosFaturamentoDireto = pedidosComValor.filter((p: any) => p.usa_carteira);
+  const totalFaturamentoDireto = pedidosFaturamentoDireto.reduce((s: number, p: any) => s + p.valor_efetivo, 0);
 
   const porFornecedor: Record<string, { nome: string; total: number; count: number }> = {};
   for (const p of pedidosComValor) {
@@ -160,7 +190,7 @@ export default async function FinanceiroPage({
       />
       <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
       <p className="mt-1 text-sm text-text-2">
-        Gasto consolidado em compras. Valores sem confirmação são estimados pela soma dos itens.
+        Gasto consolidado em compras. Pedidos sem valor final registrado mostram a soma estimada dos itens.
       </p>
 
       <FinanceiroTabNav {...tabNavProps} />
@@ -199,139 +229,62 @@ export default async function FinanceiroPage({
           <label className="label">De</label>
           <input type="date" name="de" defaultValue={filtroDe} className="field h-9 text-sm" />
         </div>
+        <div className="min-w-[160px]">
+          <label className="label">Forma de pagamento</label>
+          <select name="faturamento" defaultValue={filtroFaturamento} className="field h-9 text-sm">
+            <option value="">Todas</option>
+            <option value="direto">Só faturamento direto</option>
+            <option value="outros">Só outras formas</option>
+          </select>
+        </div>
         <div>
           <label className="label">Até</label>
           <input type="date" name="ate" defaultValue={filtroAte} className="field h-9 text-sm" />
         </div>
         <Button type="submit" className="h-9 px-4 text-sm shrink-0">Filtrar</Button>
-        {(filtroFornecedor || filtroObra || filtroStatus || filtroDe || filtroAte) && (
+        {(filtroFornecedor || filtroObra || filtroStatus || filtroDe || filtroAte || filtroFaturamento) && (
           <Button as="a" href="/squadframe/financeiro" variant="ghost" className="h-9 px-3 text-sm shrink-0">Limpar</Button>
         )}
       </form>
 
       {/* Cards de resumo */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="card p-4">
-          <p className="text-xs uppercase tracking-wide text-text-3">Total geral</p>
-          <p className="mt-1 text-2xl font-bold text-text">{fmt(totalGeral)}</p>
-          <p className="text-xs text-text-3 mt-0.5">{pedidosComValor.length} pedidos</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs uppercase tracking-wide text-text-3">Confirmado</p>
-          <p className="mt-1 text-2xl font-bold text-success">{fmt(totalConfirmado)}</p>
-          <p className="text-xs text-text-3 mt-0.5">{pedidosComValor.filter((p: any) => !p.valor_estimado).length} pedidos</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs uppercase tracking-wide text-text-3">Estimado</p>
-          <p className="mt-1 text-2xl font-bold text-warning">{fmt(totalGeral - totalConfirmado)}</p>
-          <p className="text-xs text-text-3 mt-0.5">{pedidosComValor.filter((p: any) => p.valor_estimado).length} pedidos</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs uppercase tracking-wide text-text-3">Fornecedores</p>
-          <p className="mt-1 text-2xl font-bold text-text">{rankFornecedores.length}</p>
-        </div>
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard label="Total geral" value={fmt(totalGeral)} sub={`${pedidosComValor.length} pedidos`} icon={BarChartIcon} />
+        <StatCard
+          label="Confirmado"
+          value={fmt(totalConfirmado)}
+          sub={`${pedidosComValor.filter((p: any) => !p.valor_estimado).length} pedidos`}
+          tone="success"
+          icon={CheckCircleIcon}
+        />
+        <StatCard
+          label="Sem valor final"
+          value={fmt(totalGeral - totalConfirmado)}
+          sub={`${pedidosComValor.filter((p: any) => p.valor_estimado).length} pedidos`}
+          tone="warning"
+          icon={ClockIcon}
+        />
+        <StatCard
+          label="Faturamento direto"
+          value={fmt(totalFaturamentoDireto)}
+          sub={`${pedidosFaturamentoDireto.length} pedido${pedidosFaturamentoDireto.length !== 1 ? "s" : ""}`}
+          icon={CreditCardIcon}
+        />
+        <StatCard label="Fornecedores" value={rankFornecedores.length} icon={UsersIcon} />
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="card">
-          <div className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-semibold text-text">Por fornecedor</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {rankFornecedores.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-text-3 text-center">Nenhum dado no período.</p>
-            ) : rankFornecedores.map((f, i) => {
-              const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0;
-              return (
-                <div key={i} className="px-5 py-3">
-                  <div className="flex items-center justify-between gap-4 mb-1">
-                    <span className="text-sm font-medium text-text truncate">{f.nome}</span>
-                    <span className="text-sm font-semibold text-text shrink-0">{fmt(f.total)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs text-text-3 w-12 text-right">{pct.toFixed(1)}%</span>
-                  </div>
-                  <p className="text-xs text-text-3 mt-0.5">{f.count} pedido{f.count !== 1 ? "s" : ""}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-semibold text-text">Por obra</h2>
-          </div>
-          <div className="divide-y divide-border max-h-96 overflow-y-auto">
-            {rankObras.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-text-3 text-center">Nenhum dado no período.</p>
-            ) : rankObras.map((o, i) => {
-              const pct = totalGeral > 0 ? (o.total / totalGeral) * 100 : 0;
-              return (
-                <div key={i} className="px-5 py-3">
-                  <div className="flex items-center justify-between gap-4 mb-1">
-                    <span className="text-sm font-medium text-text truncate">
-                      {o.codigo && <span className="font-mono text-xs text-text-3 mr-1.5">[{o.codigo}]</span>}
-                      {o.nome}
-                    </span>
-                    <span className="text-sm font-semibold text-text shrink-0">{fmt(o.total)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs text-text-3 w-12 text-right">{pct.toFixed(1)}%</span>
-                  </div>
-                  <p className="text-xs text-text-3 mt-0.5">{o.count} pedido{o.count !== 1 ? "s" : ""}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <RankingBarChart titulo="Por fornecedor" dados={rankFornecedores} />
+        <RankingBarChart titulo="Por obra" dados={rankObras.map((o) => ({ ...o, nome: o.codigo ? `[${o.codigo}] ${o.nome}` : o.nome }))} />
       </div>
 
       {meses.length > 0 && (
-        <div className="mt-6 card">
-          <div className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-semibold text-text">Evolução mensal</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
-                  <th className="px-5 py-2 font-medium">Mês</th>
-                  <th className="px-5 py-2 font-medium text-right">Valor</th>
-                  <th className="px-5 py-2 font-medium">Distribuição</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meses.map(([mes, val]) => {
-                  const pct = totalGeral > 0 ? (val / totalGeral) * 100 : 0;
-                  return (
-                    <tr key={mes} className="border-b border-border last:border-0">
-                      <td className="px-5 py-2.5 font-medium text-text">{fmtMes(mes)}</td>
-                      <td className="px-5 py-2.5 text-right font-semibold text-text">{fmt(val)}</td>
-                      <td className="px-5 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-32 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                            <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-xs text-text-3">{pct.toFixed(1)}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="mt-4">
+          <EvolucaoMensalChart dados={meses.map(([mes, valor]) => ({ mes, mesLabel: fmtMes(mes), valor }))} />
         </div>
       )}
 
-      <div className="mt-6 card overflow-x-auto">
+      <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text">Pedidos</h2>
           <span className="text-xs text-text-3">{pedidosComValor.length} resultado{pedidosComValor.length !== 1 ? "s" : ""}</span>
@@ -356,9 +309,16 @@ export default async function FinanceiroPage({
             ) : pedidosComValor.map((p: any) => (
               <tr key={p.id} className="border-b border-border last:border-0 hover:bg-bg/50">
                 <td className="px-5 py-2.5">
-                  <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-xs font-medium text-primary hover:underline">
-                    {p.numero}
-                  </Link>
+                  <div className="flex items-center gap-1.5">
+                    <Link href={`/squadframe/compras/pedidos/${p.id}`} className="font-mono text-xs font-medium text-primary hover:underline">
+                      {p.numero}
+                    </Link>
+                    {p.usa_carteira && (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        FD
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-text-3">{new Date(p.criado_em).toLocaleDateString("pt-BR")}</p>
                 </td>
                 <td className="px-5 py-2.5 text-text-2">{(p.fornecedor as any)?.nome ?? "—"}</td>
@@ -374,11 +334,11 @@ export default async function FinanceiroPage({
                   </span>
                 </td>
                 <td className="px-5 py-2.5 text-right">
-                  <span className={`font-semibold ${p.valor_estimado ? "text-warning" : "text-text"}`}>
+                  <span className={`font-semibold tabular-nums ${p.valor_estimado ? "text-warning" : "text-text"}`}>
                     {fmt(p.valor_efetivo)}
                   </span>
                   {p.valor_estimado && (
-                    <p className="text-[10px] text-amber-500">estimado</p>
+                    <p className="text-[10px] text-amber-500">sem valor final</p>
                   )}
                 </td>
               </tr>

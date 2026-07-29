@@ -20,8 +20,8 @@ export async function listarPacotesDaObra(obraId: string): Promise<WisePacote[]>
   return repo.listarPacotesDaObra(obraId);
 }
 
-export async function listarPacotesDaEmpresa(empresaId: string): Promise<WisePacote[]> {
-  return repo.listarPacotesDaEmpresa(empresaId);
+export async function listarTodosPacotes(): Promise<WisePacote[]> {
+  return repo.listarTodosPacotes();
 }
 
 export async function buscarPacote(id: string): Promise<WisePacote | null> {
@@ -29,7 +29,6 @@ export async function buscarPacote(id: string): Promise<WisePacote | null> {
 }
 
 export async function criarPacote(
-  empresaId: string,
   input: WisePacoteInput,
 ): Promise<ServiceResult<WisePacote>> {
   if (!input.nome.trim()) return { ok: false, erro: "Nome do pacote é obrigatório." };
@@ -39,7 +38,6 @@ export async function criarPacote(
     const { modulos, ...campos } = input;
     const pacote = await repo.inserirPacote({
       ...campos,
-      empresa_id: empresaId,
       status: 'RASCUNHO',
       codigo,
     });
@@ -52,7 +50,6 @@ export async function criarPacote(
 
     // Publicar evento de criação
     await repo.publicarEvento({
-      empresa_id: empresaId,
       tipo: 'wise.work_package.created',
       payload: {
         pacote_id: pacote.id,
@@ -89,7 +86,6 @@ export async function editarPacote(
 
 export async function transicionarStatus(
   id: string,
-  empresaId: string,
   novoStatus: WisePacoteStatus,
 ): Promise<ServiceResult> {
   const pacote = await repo.buscarPacotePorId(id);
@@ -103,7 +99,6 @@ export async function transicionarStatus(
   try {
     await repo.atualizarStatusPacote(id, novoStatus);
     await repo.publicarEvento({
-      empresa_id: empresaId,
       tipo: `wise.work_package.${novoStatus.toLowerCase()}`,
       payload: { pacote_id: id, status_anterior: pacote.status, status_novo: novoStatus },
       obra_id: pacote.obra_id,

@@ -15,7 +15,7 @@ export default async function SquadWiseObrasPage() {
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) redirect("/");
 
-  const obras = await listarObras(wiseUsuario.empresa_id);
+  const obras = await listarObras();
 
   return (
     <div className="px-4 py-6 sm:px-8 sm:py-8">

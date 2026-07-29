@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { InboxIcon, DocumentIcon, TruckIcon, AlertTriangleIcon } from "@/ui/icons";
+import { StatCard } from "@/modules/squadframe/components/stat-card";
 import {
   PedidoStatusBarChart,
   SolicitacaoStatusBarChart,
@@ -47,17 +49,6 @@ export interface PedidoPrazoRow {
   dias_atraso: number;
 }
 
-function KpiCard({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: "warning" | "danger" }) {
-  const cor = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : "text-text";
-  return (
-    <div className="card p-4">
-      <p className="text-xs uppercase tracking-wide text-text-3">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${cor}`}>{value}</p>
-      {sub && <p className="text-xs text-text-3 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
 function formatarData(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR");
 }
@@ -102,26 +93,27 @@ export function CobrancaDashboard({
       {alertas && <div className="mt-6">{alertas}</div>}
 
       {/* KPIs */}
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KpiCard label="Pedidos a aprovar" value={kpis.pedidosAguardandoAprovacao} />
-        <KpiCard label="Solicitações a aprovar" value={kpis.solicitacoesAguardandoAprovacao} />
-        <KpiCard label="Pedidos em entrega" value={kpis.pedidosEmEntrega} sub="Aguardando Recebimento" />
-        <KpiCard
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Pedidos a aprovar" value={kpis.pedidosAguardandoAprovacao} icon={InboxIcon} />
+        <StatCard label="Solicitações a aprovar" value={kpis.solicitacoesAguardandoAprovacao} icon={DocumentIcon} />
+        <StatCard label="Pedidos em entrega" value={kpis.pedidosEmEntrega} sub="Aguardando recebimento" icon={TruckIcon} />
+        <StatCard
           label="Pedidos atrasados"
           value={kpis.pedidosPrazoVencido}
           sub="Prazo de entrega vencido"
           tone={kpis.pedidosPrazoVencido > 0 ? "danger" : undefined}
+          icon={AlertTriangleIcon}
         />
       </div>
 
       {/* Gráficos */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <PedidoStatusBarChart titulo="Pedidos por status" dados={statusPedidos} />
         <SolicitacaoStatusBarChart titulo="Solicitações por status" dados={statusSolicitacoes} />
       </div>
 
       {/* Pedidos aguardando aprovação */}
-      <div className="mt-6 card overflow-x-auto">
+      <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text">Pedidos a aprovar</h2>
           <span className="text-xs text-text-3">
@@ -149,7 +141,7 @@ export function CobrancaDashboard({
                 </td>
                 <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
                 <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
-                <td className="px-5 py-2.5 text-text-2">{p.dias_aberto}d</td>
+                <td className="px-5 py-2.5 tabular-nums text-text-2">{p.dias_aberto}d</td>
               </tr>
             ))}
           </tbody>
@@ -157,7 +149,7 @@ export function CobrancaDashboard({
       </div>
 
       {/* Solicitações aguardando aprovação */}
-      <div className="mt-6 card overflow-x-auto">
+      <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text">Solicitações a aprovar</h2>
           <span className="text-xs text-text-3">
@@ -185,7 +177,7 @@ export function CobrancaDashboard({
                 </td>
                 <td className="px-5 py-2.5 text-text-2">{s.obra}</td>
                 <td className="px-5 py-2.5 text-text-2">{s.solicitante}</td>
-                <td className="px-5 py-2.5 text-text-2">{s.dias_aberto}d</td>
+                <td className="px-5 py-2.5 tabular-nums text-text-2">{s.dias_aberto}d</td>
               </tr>
             ))}
           </tbody>
@@ -193,7 +185,7 @@ export function CobrancaDashboard({
       </div>
 
       {/* Pedidos em entrega */}
-      <div className="mt-6 card overflow-x-auto">
+      <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text">Pedidos em entrega</h2>
           <span className="text-xs text-text-3">
@@ -223,7 +215,7 @@ export function CobrancaDashboard({
                 <td className="px-5 py-2.5 text-text-2">{p.obra}</td>
                 <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
                 <td className="px-5 py-2.5 text-text-2">{p.prazo_entrega ? formatarData(p.prazo_entrega) : "Sem prazo definido"}</td>
-                <td className="px-5 py-2.5 text-text-2">{p.dias_restantes != null ? `${p.dias_restantes}d` : "—"}</td>
+                <td className="px-5 py-2.5 tabular-nums text-text-2">{p.dias_restantes != null ? `${p.dias_restantes}d` : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -231,7 +223,7 @@ export function CobrancaDashboard({
       </div>
 
       {/* Pedidos com prazo de entrega vencido */}
-      <div className="mt-6 card overflow-x-auto">
+      <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text">Pedidos atrasados</h2>
           <span className="text-xs text-text-3">
@@ -262,7 +254,7 @@ export function CobrancaDashboard({
                 <td className="px-5 py-2.5 text-text-2">{p.fornecedor}</td>
                 <td className="px-5 py-2.5 text-text-2">{formatarData(p.prazo_entrega)}</td>
                 <td className="px-5 py-2.5">
-                  <span className="text-danger font-medium">{p.dias_atraso}d</span>
+                  <span className="tabular-nums font-medium text-danger">{p.dias_atraso}d</span>
                 </td>
               </tr>
             ))}

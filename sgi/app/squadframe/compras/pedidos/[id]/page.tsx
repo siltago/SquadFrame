@@ -21,7 +21,7 @@ export default async function PedidoPage({ params }: { params: { id: string } })
   const [{ data: ped }, { data: itens }, { data: recebimentos }, { data: hist }, tiposLinha] =
     await Promise.all([
       admin.from("pedidos_compra")
-        .select("*, obra:obras(id,nome,codigo), fornecedor:fornecedores(nome,email,telefone), comprador:usuarios(nome), forma_pagamento:formas_pagamento(nome)")
+        .select("*, obra:obras(id,nome,codigo), fornecedor:fornecedores(nome,email,telefone), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome), forma_pagamento:formas_pagamento(nome), debito_aprovador:usuarios!pedidos_compra_debito_decidido_por_fkey(nome)")
         .eq("id", params.id).single(),
       admin.from("vw_pedido_itens")
         .select("*, produto:produtos(codigo_mestre, nome, peso_metro, tamanho_mm)")

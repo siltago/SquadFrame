@@ -21,7 +21,7 @@ export async function buscarPedidosCompras(): Promise<BoardPedidoCard[]> {
       valor_final, criado_em, fornecedor_id,
       obra:obras(id, nome, deleted_at),
       fornecedor:fornecedores(nome),
-      comprador:usuarios(nome),
+      comprador:usuarios!pedidos_compra_comprador_id_fkey(nome),
       etiquetas:pedido_board_etiqueta(etiqueta:board_etiquetas(id, nome, cor, criado_em))
     `)
     .is("lote_id", null)

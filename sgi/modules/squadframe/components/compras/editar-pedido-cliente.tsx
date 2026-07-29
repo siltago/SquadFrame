@@ -11,7 +11,7 @@ import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm?: number | null; peso_metro?: number | null; preco_metro?: number | null };
 type Fornecedor = { id: string; nome: string; ativo?: boolean };
 type Obra = { id: string; nome: string; codigo: string };
-type FormaPagamento = { id: string; nome: string };
+type FormaPagamento = { id: string; nome: string; is_faturamento_direto?: boolean };
 type CorRal = { id: string; codigo_ral: string; nome: string | null; tipos: string[] };
 
 type Item = {
@@ -110,6 +110,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
   const router = useRouter();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
+  const [formaPagId, setFormaPagId] = useState(pedido.forma_pagamento_id ?? "");
   const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">(() =>
     itensIniciais.some((i) => i.cor_id) ? "por-item" : "unica"
   );
@@ -226,11 +227,22 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
               </select>
             </div>
             <div>
-              <label className="label">Forma de pagamento <span className="text-text-3 font-normal">(opcional)</span></label>
-              <select name="forma_pagamento_id" defaultValue={pedido.forma_pagamento_id ?? ""} className="field">
-                <option value="">Não definida</option>
+              <label className="label">Forma de pagamento <span className="text-danger">*</span></label>
+              <select
+                name="forma_pagamento_id"
+                required
+                value={formaPagId}
+                onChange={(e) => setFormaPagId(e.target.value)}
+                className="field"
+              >
+                <option value="" disabled>Selecione</option>
                 {formasPagamento.map((fp) => <option key={fp.id} value={fp.id}>{fp.nome}</option>)}
               </select>
+              {formasPagamento.find((f) => f.id === formaPagId)?.is_faturamento_direto && (
+                <p className="mt-1 text-xs text-primary font-medium">
+                  O valor será debitado da carteira do fornecedor ao emitir o pedido.
+                </p>
+              )}
             </div>
             {coresRal.length > 0 && (
               <div className="sm:col-span-2">

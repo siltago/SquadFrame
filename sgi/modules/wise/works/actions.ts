@@ -13,24 +13,24 @@ async function contexto() {
   if (!usuario) throw new Error("Não autenticado.");
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) throw new Error("Usuário não encontrado no SquadWise.");
-  return { empresaId: wiseUsuario.empresa_id, usuarioId: wiseUsuario.id };
+  return { usuarioId: wiseUsuario.id };
 }
 
 // ── Obras ──────────────────────────────────────────────────────────────────
 
 export async function listarObrasAction() {
-  const { empresaId } = await contexto();
-  return service.listarObras(empresaId);
+  await contexto();
+  return service.listarObras();
 }
 
 export async function buscarObraAction(id: string) {
-  const { empresaId } = await contexto();
-  return service.buscarObra(id, empresaId);
+  await contexto();
+  return service.buscarObra(id);
 }
 
 export async function criarObraAction(input: WiseObraInput) {
-  const { empresaId, usuarioId } = await contexto();
-  const resultado = await service.criarObra(empresaId, usuarioId, input);
+  const { usuarioId } = await contexto();
+  const resultado = await service.criarObra(usuarioId, input);
   if (resultado.ok) {
     revalidatePath("/squadwise/obras");
   }
@@ -38,8 +38,8 @@ export async function criarObraAction(input: WiseObraInput) {
 }
 
 export async function editarObraAction(id: string, input: Partial<WiseObraInput>) {
-  const { empresaId } = await contexto();
-  const resultado = await service.editarObra(id, empresaId, input);
+  await contexto();
+  const resultado = await service.editarObra(id, input);
   if (resultado.ok) {
     revalidatePath("/squadwise/obras");
     revalidatePath(`/squadwise/obras/${id}`);
@@ -48,8 +48,8 @@ export async function editarObraAction(id: string, input: Partial<WiseObraInput>
 }
 
 export async function arquivarObraAction(id: string) {
-  const { empresaId } = await contexto();
-  const resultado = await service.arquivarObra(id, empresaId);
+  await contexto();
+  const resultado = await service.arquivarObra(id);
   if (resultado.ok) {
     revalidatePath("/squadwise/obras");
   }

@@ -7,7 +7,7 @@ import { cn } from "@/ui/lib/cn";
 import { Tooltip } from "@/ui/components/Tooltip";
 import {
   DashboardIcon, BuildingIcon, LayersIcon, BriefcaseIcon,
-  UsersIcon, ShieldIcon, GridIcon, ActivityIcon,
+  UsersIcon, ShieldIcon, ActivityIcon,
   ChevronLeftIcon, ChevronRightIcon, MenuIcon, CloseIcon,
   HomeIcon,
 } from "@/ui/icons";
@@ -31,7 +31,7 @@ const NAV: NavGroup[] = [
   {
     label: "Organização",
     items: [
-      { href: "/squadwise/empresa", label: "Empresa", icon: <BuildingIcon size={18} /> },
+      { href: "/squadwise/unidades", label: "Unidades", icon: <BuildingIcon size={18} /> },
       { href: "/squadwise/setores", label: "Setores",  icon: <LayersIcon size={18} /> },
       { href: "/squadwise/cargos",  label: "Cargos",   icon: <BriefcaseIcon size={18} /> },
     ],
@@ -52,7 +52,6 @@ const NAV: NavGroup[] = [
   {
     label: "Sistema",
     items: [
-      { href: "/squadwise/modulos",   label: "Módulos",   icon: <GridIcon size={18} /> },
       { href: "/squadwise/auditoria", label: "Auditoria", icon: <ActivityIcon size={18} /> },
     ],
   },

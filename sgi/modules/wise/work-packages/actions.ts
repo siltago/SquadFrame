@@ -11,7 +11,7 @@ async function contexto() {
   if (!usuario) throw new Error("Não autenticado.");
   const wiseUsuario = await buscarUsuarioPorAuthId(usuario.auth_id);
   if (!wiseUsuario) throw new Error("Usuário não encontrado no SquadWise.");
-  return { empresaId: wiseUsuario.empresa_id, usuarioId: wiseUsuario.id };
+  return { usuarioId: wiseUsuario.id };
 }
 
 export async function listarPacotesDaObraAction(obraId: string) {
@@ -20,8 +20,8 @@ export async function listarPacotesDaObraAction(obraId: string) {
 }
 
 export async function listarPacotesDaEmpresaAction() {
-  const { empresaId } = await contexto();
-  return service.listarPacotesDaEmpresa(empresaId);
+  await contexto();
+  return service.listarTodosPacotes();
 }
 
 export async function buscarPacoteAction(id: string) {
@@ -30,8 +30,8 @@ export async function buscarPacoteAction(id: string) {
 }
 
 export async function criarPacoteAction(input: WisePacoteInput) {
-  const { empresaId } = await contexto();
-  const resultado = await service.criarPacote(empresaId, input);
+  await contexto();
+  const resultado = await service.criarPacote(input);
   if (resultado.ok) {
     revalidatePath(`/squadwise/obras/${input.obra_id}`);
     revalidatePath("/squadwise/obras");
@@ -58,8 +58,8 @@ export async function transicionarStatusAction(
   obraId: string,
   novoStatus: WisePacoteStatus,
 ) {
-  const { empresaId } = await contexto();
-  const resultado = await service.transicionarStatus(id, empresaId, novoStatus);
+  await contexto();
+  const resultado = await service.transicionarStatus(id, novoStatus);
   if (resultado.ok) {
     revalidatePath(`/squadwise/obras/${obraId}`);
   }

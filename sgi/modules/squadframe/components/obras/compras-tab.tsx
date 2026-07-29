@@ -42,7 +42,7 @@ export async function ComprasTab({ obraId }: { obraId: string }) {
   const [resPed, resSol] = await Promise.all([
     supabase
       .from("pedidos_compra")
-      .select("id, numero, status, tipo_linha, criado_em, atualizado_em, fornecedor:fornecedores(nome), comprador:usuarios(nome)")
+      .select("id, numero, status, tipo_linha, criado_em, atualizado_em, fornecedor:fornecedores(nome), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
       .eq("obra_id", obraId)
       .order("criado_em", { ascending: false }),
 

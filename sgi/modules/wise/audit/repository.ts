@@ -4,7 +4,6 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import type { WiseAuditoria } from "./types";
 
 export async function inserirAuditoria(dados: {
-  empresa_id: string;
   usuario_id: string | null;
   entidade: string;
   entidade_id: string;
@@ -19,7 +18,6 @@ export async function inserirAuditoria(dados: {
 }
 
 export async function listarAuditoria(
-  empresaId: string,
   opts: { pagina: number; porPagina: number },
 ): Promise<{ registros: WiseAuditoria[]; total: number }> {
   const admin = createAdminClient();
@@ -29,7 +27,6 @@ export async function listarAuditoria(
   const { data, count } = await admin
     .from("wise_auditoria")
     .select("*", { count: "exact" })
-    .eq("empresa_id", empresaId)
     .order("criado_em", { ascending: false })
     .range(de, ate);
 

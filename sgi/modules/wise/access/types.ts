@@ -8,7 +8,6 @@ export type WisePermissao = {
 
 export type WisePapel = {
   id: string;
-  empresa_id: string;
   nome: string;
   descricao: string | null;
   is_admin: boolean;

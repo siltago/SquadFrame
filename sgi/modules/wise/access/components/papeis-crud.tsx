@@ -17,11 +17,9 @@ import {
 } from "../actions";
 
 export function PapeisCrud({
-  empresaId,
   papeisIniciais,
   permissoes,
 }: {
-  empresaId: string;
   papeisIniciais: WisePapel[];
   permissoes: WisePermissao[];
 }) {
@@ -116,7 +114,6 @@ export function PapeisCrud({
       {/* Novo papel */}
       <Modal open={modalNovo} onClose={() => setModalNovo(false)} title="Novo papel" size="sm">
         <NovoPapelForm
-          empresaId={empresaId}
           onCriado={(papel) => {
             setPapeis((prev) => [...prev, papel]);
             setModalNovo(false);
@@ -164,10 +161,8 @@ export function PapeisCrud({
 }
 
 function NovoPapelForm({
-  empresaId,
   onCriado,
 }: {
-  empresaId: string;
   onCriado: (papel: WisePapel) => void;
 }) {
   const [nome, setNome] = useState("");
@@ -178,7 +173,7 @@ function NovoPapelForm({
   function submeter() {
     setErro(null);
     startTransition(async () => {
-      const resultado = await criarPapelAction({ empresa_id: empresaId, nome, descricao });
+      const resultado = await criarPapelAction({ nome, descricao });
       if (!resultado.ok) { setErro(resultado.erro); return; }
       onCriado(resultado.dados);
     });

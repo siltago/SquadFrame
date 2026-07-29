@@ -40,7 +40,7 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       // notificação, não influenciam quem é notificado.
       const { data: pedDetalhe } = await admin
         .from("pedidos_compra")
-        .select("numero, tipo_linha, obras(nome), comprador:usuarios(nome)")
+        .select("numero, tipo_linha, obras(nome), comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
         .eq("id", order_id)
         .single();
       const numero = pedDetalhe?.numero ?? null;

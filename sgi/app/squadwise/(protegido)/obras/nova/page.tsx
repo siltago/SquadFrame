@@ -19,7 +19,7 @@ export default async function NovaObraPage() {
   const [clientes, statusOptions, unidades] = await Promise.all([
     listarClientes(),
     listarStatusObra(),
-    listarUnidades(wiseUsuario.empresa_id),
+    listarUnidades(),
   ]);
 
   return (

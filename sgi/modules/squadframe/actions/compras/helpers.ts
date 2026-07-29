@@ -33,6 +33,24 @@ export async function gerarNumeroPedido(
   return data as string;
 }
 
+// Fonte única de verdade pra "esse pedido usa faturamento direto (carteira)?"
+// — sempre derivado de formas_pagamento.is_faturamento_direto, nunca um
+// toggle manual solto. Chamado tanto em criarPedido() quanto editarPedido()
+// pra não repetir o bug de usa_carteira ficar desatualizado quando a forma
+// de pagamento muda numa edição.
+export async function derivarUsaCarteira(
+  admin: ReturnType<typeof createAdminClient>,
+  formaPagamentoId: string | null,
+): Promise<boolean> {
+  if (!formaPagamentoId) return false;
+  const { data } = await admin
+    .from("formas_pagamento")
+    .select("is_faturamento_direto")
+    .eq("id", formaPagamentoId)
+    .single();
+  return Boolean(data?.is_faturamento_direto);
+}
+
 export function enriquecerItensChapa<T extends {
   unidade?: string;
   largura_m?: number | null;

@@ -17,11 +17,10 @@ export default async function SquadWiseAuditoriaPage() {
   const podeVer = await verificarPermissaoWise(wiseUsuario.id, "wise.auditoria.visualizar");
   if (!podeVer) redirect("/squadwise/usuarios");
 
-  const { registros, total, porPagina } = await listarAuditoria(wiseUsuario.empresa_id, 0);
+  const { registros, total, porPagina } = await listarAuditoria(0);
 
   return (
     <AuditoriaLista
-      empresaId={wiseUsuario.empresa_id}
       registrosIniciais={registros}
       total={total}
       porPagina={porPagina}

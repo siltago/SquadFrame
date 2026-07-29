@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (!ids.length) return NextResponse.json([]);
 
   let qProd = admin.from("produtos")
-    .select("id, codigo_mestre, nome, unidade, fornecedor_mestre_id, peso_metro, preco_metro, tamanho_mm")
+    .select("id, codigo_mestre, nome, unidade, fornecedor_mestre_id, peso_metro, preco_metro, preco_kg, tamanho_mm")
     .in("id", ids)
     .eq("status", true);
   if (linhaIds.length) qProd = qProd.in("linha_id", linhaIds);
@@ -91,8 +91,19 @@ export async function GET(req: NextRequest) {
     }));
   }
 
-  return NextResponse.json(produtos.map((p: any) => ({
-    id: p.id, codigo_mestre: p.codigo_mestre, nome: p.nome, unidade: p.unidade,
-    peso_metro: p.peso_metro ?? null, preco_metro: p.preco_metro ?? null, tamanho_mm: p.tamanho_mm ?? null,
-  })));
+  // Sem fornecedor selecionado ainda (ex: solicitação de compra, antes de
+  // escolher fornecedor) — mesma derivação peso×preço/kg do branch acima,
+  // só que a partir do produto mestre em vez de uma alias. Sem isso, um
+  // perfil cujo preco_metro nunca foi recalculado (só preco_kg está
+  // preenchido) sempre voltava com preço zerado aqui, mesmo tendo uma
+  // referência de preço válida.
+  return NextResponse.json(produtos.map((p: any) => {
+    const precoMetroEfetivo = p.preco_metro ?? (
+      p.preco_kg != null && p.peso_metro != null ? p.peso_metro * p.preco_kg : null
+    );
+    return {
+      id: p.id, codigo_mestre: p.codigo_mestre, nome: p.nome, unidade: p.unidade,
+      peso_metro: p.peso_metro ?? null, preco_metro: precoMetroEfetivo, tamanho_mm: p.tamanho_mm ?? null,
+    };
+  }));
 }

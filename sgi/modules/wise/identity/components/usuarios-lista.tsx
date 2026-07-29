@@ -29,12 +29,10 @@ const STATUS_BADGE: Record<WiseUsuario["status"], { label: string; variant: "suc
 
 export function UsuariosLista({
   usuarios: usuariosIniciais,
-  empresaId,
   setores,
   cargos,
 }: {
   usuarios: UsuarioComPapeis[];
-  empresaId: string;
   setores: WiseSetor[];
   cargos: WiseCargo[];
 }) {
@@ -153,7 +151,6 @@ export function UsuariosLista({
           </div>
         ) : (
           <ConviteForm
-            empresaId={empresaId}
             setores={setores}
             cargos={cargos}
             onCriado={(usuario, token) => {
@@ -168,12 +165,10 @@ export function UsuariosLista({
 }
 
 function ConviteForm({
-  empresaId,
   setores,
   cargos,
   onCriado,
 }: {
-  empresaId: string;
   setores: WiseSetor[];
   cargos: WiseCargo[];
   onCriado: (usuario: WiseUsuario, token: string) => void;
@@ -189,7 +184,6 @@ function ConviteForm({
     setErro(null);
     startTransition(async () => {
       const resultado = await convidarUsuarioAction({
-        empresa_id: empresaId,
         nome,
         email,
         setor_id: setorId || null,

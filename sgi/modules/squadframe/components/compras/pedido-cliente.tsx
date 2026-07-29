@@ -3,8 +3,9 @@
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alterarStatusPedido, registrarValorFinal, confirmarDebitoPedido, atualizarPrazoEntrega } from "@/app/squadframe/compras/actions";
-import { recalcularPrecoKgPerfisAction } from "@/modules/squadframe/actions/catalogo/actions";
+import { alterarStatusPedido, registrarValorFinal, extrairValorFinalDaDevolutiva, confirmarValorFinalComDevolutiva, aprovarDebitoPedido, rejeitarDebitoPedido, atualizarPrazoEntrega } from "@/app/squadframe/compras/actions";
+import type { ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
+import { recalcularPrecoKgPerfisAction } from "@/modules/squadstock/actions/catalogo/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
@@ -65,9 +66,18 @@ export function PedidoCliente({
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const [showValorFinal, setShowValorFinal] = useState(false);
+  // Primária: subir o PDF da devolutiva e deixar o sistema achar o valor.
+  // "manual" fica como opção secundária pra quando o PDF não tem um valor
+  // reconhecível (layout muito fora do padrão) ou o comprador só quer digitar.
+  const [modoValorFinal, setModoValorFinal] = useState<"pdf" | "manual">("pdf");
   const [valorFinalInput, setValorFinalInput] = useState(
     pedido.valor_final != null ? String(pedido.valor_final) : ""
   );
+  const [arquivoDevolutiva, setArquivoDevolutiva] = useState<File | null>(null);
+  const [extraindo, startExtracao] = useTransition();
+  const [resultadoExtracao, setResultadoExtracao] = useState<ResultadoExtracaoValorFinal | null>(null);
+  const [erroExtracao, setErroExtracao] = useState<string | null>(null);
+  const [valorConfirmadoInput, setValorConfirmadoInput] = useState("");
   const [pendingVF, startVF] = useTransition();
   const [erroVF, setErroVF] = useState<string | null>(null);
   const [showConfirmarPrecoKg, setShowConfirmarPrecoKg] = useState(false);
@@ -76,6 +86,8 @@ export function PedidoCliente({
   const [pendingDebito, startDebito] = useTransition();
   const [erroDebito, setErroDebito] = useState<string | null>(null);
   const [okDebito, setOkDebito] = useState(false);
+  const [showRejeitarDebito, setShowRejeitarDebito] = useState(false);
+  const [motivoRejeicaoDebito, setMotivoRejeicaoDebito] = useState("");
   const router = useRouter();
 
   const podeEditarAgora = podeCriar && ["RASCUNHO", "AGUARDANDO_APROVACAO", "REJEITADO"].includes(pedido.status);
@@ -85,20 +97,40 @@ export function PedidoCliente({
   const podeAbrirRetorno   = podeRetornar && STATUS_RETORNAVEL.includes(pedido.status) && !hasRecebimentos && !temRetornoPendente;
   const podeAbrirDevolucao = podeDevolver && hasRecebimentos;
 
-  // Débito pendente: pedido emitido com FD mas sem débito registrado (sem carteira ou saldo insuficiente na época)
+  // Débito de faturamento direto: três estados possíveis enquanto usa_carteira.
+  // Nunca é automático — sempre exige aprovar ou rejeitar explicitamente
+  // (ver aprovarDebitoPedido/rejeitarDebitoPedido).
   const STATUS_POS_EMISSAO = ["AGUARDANDO_RECEBIMENTO", "EMITIDO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
   const temDebitoPendente =
     pedido.usa_carteira &&
     !pedido.debito_registrado &&
+    pedido.debito_status == null &&
     STATUS_POS_EMISSAO.includes(pedido.status);
+  const debitoRejeitado = pedido.usa_carteira && pedido.debito_status === "REJEITADO";
+  const debitoAprovado  = pedido.usa_carteira && pedido.debito_status === "APROVADO";
 
-  function handleConfirmarDebito() {
+  function handleAprovarDebito() {
     setErroDebito(null);
     setOkDebito(false);
     startDebito(async () => {
       try {
-        await confirmarDebitoPedido(pedido.id);
+        await aprovarDebitoPedido(pedido.id);
         setOkDebito(true);
+        router.refresh();
+      } catch (e: any) {
+        setErroDebito(e.message);
+      }
+    });
+  }
+
+  function handleRejeitarDebito() {
+    if (!motivoRejeicaoDebito.trim()) { setErroDebito("Informe o motivo da rejeição."); return; }
+    setErroDebito(null);
+    startDebito(async () => {
+      try {
+        await rejeitarDebitoPedido(pedido.id, motivoRejeicaoDebito.trim());
+        setShowRejeitarDebito(false);
+        setMotivoRejeicaoDebito("");
         router.refresh();
       } catch (e: any) {
         setErroDebito(e.message);
@@ -170,22 +202,63 @@ export function PedidoCliente({
 
   const ehPedidoDePerfil = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL");
 
-  function salvarValorFinal() {
-    // Aceita formato brasileiro (1.234,56): remove separador de milhar antes
-    // de trocar a vírgula decimal por ponto.
-    const v = parseFloat(
-      valorFinalInput.replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")
+  // Aceita formato brasileiro (1.234,56): remove separador de milhar antes
+  // de trocar a vírgula decimal por ponto.
+  function parseValorBr(valor: string): number {
+    return parseFloat(
+      valor.replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")
     );
+  }
+
+  function aposSalvarValorFinal() {
+    setShowValorFinal(false);
+    router.refresh();
+    // Só pedidos de perfil têm peso por item — o preço/kg médio do mês só
+    // faz sentido pra eles (mesma regra da distribuição por peso).
+    if (ehPedidoDePerfil) { setResultadoPrecoKg(null); setShowConfirmarPrecoKg(true); }
+  }
+
+  function salvarValorFinal() {
+    const v = parseValorBr(valorFinalInput);
     if (isNaN(v) || v <= 0) { setErroVF("Insira um valor válido."); return; }
     setErroVF(null);
     startVF(async () => {
       try {
         await registrarValorFinal(pedido.id, v);
-        setShowValorFinal(false);
-        router.refresh();
-        // Só pedidos de perfil têm peso por item — o preço/kg médio do mês
-        // só faz sentido pra eles (mesma regra da distribuição por peso).
-        if (ehPedidoDePerfil) { setResultadoPrecoKg(null); setShowConfirmarPrecoKg(true); }
+        aposSalvarValorFinal();
+      } catch (e: any) { setErroVF(e.message); }
+    });
+  }
+
+  function extrairValorDaDevolutiva() {
+    if (!arquivoDevolutiva) { setErroExtracao("Selecione o PDF da devolutiva."); return; }
+    setErroExtracao(null);
+    startExtracao(async () => {
+      try {
+        const fd = new FormData();
+        fd.set("arquivo", arquivoDevolutiva);
+        const resultado = await extrairValorFinalDaDevolutiva(pedido.id, fd);
+        setResultadoExtracao(resultado);
+        setValorConfirmadoInput(
+          resultado.melhorCandidato != null
+            ? resultado.melhorCandidato.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : ""
+        );
+      } catch (e: any) { setErroExtracao(e.message); }
+    });
+  }
+
+  function confirmarValorDaDevolutiva() {
+    const v = parseValorBr(valorConfirmadoInput);
+    if (isNaN(v) || v <= 0) { setErroVF("Insira um valor válido."); return; }
+    if (!arquivoDevolutiva) { setErroVF("Selecione o PDF novamente."); return; }
+    setErroVF(null);
+    startVF(async () => {
+      try {
+        const fd = new FormData();
+        fd.set("arquivo", arquivoDevolutiva);
+        await confirmarValorFinalComDevolutiva(pedido.id, v, fd);
+        aposSalvarValorFinal();
       } catch (e: any) { setErroVF(e.message); }
     });
   }
@@ -197,7 +270,7 @@ export function PedidoCliente({
         const resultado = await recalcularPrecoKgPerfisAction();
         setResultadoPrecoKg(
           resultado
-            ? `Preço/kg médio atualizado para ${resultado.mediaKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — ${resultado.produtosAtualizados} produto(s) de perfil atualizado(s), com base em ${resultado.pedidosConsiderados} pedido(s) do mês.`
+            ? `Preço/kg médio atualizado para ${resultado.mediaKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — ${resultado.produtosAtualizados} produto(s) e ${resultado.aliasesAtualizados} alias(es) de perfil atualizado(s), com base em ${resultado.pedidosConsiderados} pedido(s) do mês.`
             : "Nenhum pedido de perfil com valor final e peso conhecido neste mês — nada foi atualizado."
         );
       } catch (e: any) {
@@ -218,30 +291,94 @@ export function PedidoCliente({
         />
       )}
 
-      {/* Banner de débito pendente */}
+      {/* Banner de débito de faturamento direto — pendente de aprovação */}
       {temDebitoPendente && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-warning-soft p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Débito pendente na carteira
+                Débito pendente de aprovação
               </p>
               <p className="mt-0.5 text-xs text-warning dark:text-amber-400">
-                Este pedido usa faturamento direto mas o débito ainda não foi registrado.
-                {" "}Verifique se há saldo na carteira desta obra/fornecedor e confirme o débito.
+                Este pedido usa faturamento direto e precisa que alguém aprove o débito na carteira
+                {" "}(ou rejeite, se não houver saldo/autorização).
               </p>
               {erroDebito && <p className="mt-1 text-xs text-danger">{erroDebito}</p>}
-              {okDebito && <p className="mt-1 text-xs text-success">Débito registrado com sucesso.</p>}
+              {okDebito && <p className="mt-1 text-xs text-success">Débito aprovado com sucesso.</p>}
+              {showRejeitarDebito && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={motivoRejeicaoDebito}
+                    onChange={(e) => setMotivoRejeicaoDebito(e.target.value)}
+                    placeholder="Motivo da rejeição"
+                    className="field h-8 min-w-[220px] flex-1 text-xs"
+                  />
+                  <Button size="sm" variant="danger" disabled={pendingDebito} onClick={handleRejeitarDebito}>
+                    {pendingDebito ? "Enviando…" : "Confirmar rejeição"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowRejeitarDebito(false); setMotivoRejeicaoDebito(""); setErroDebito(null); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+            </div>
+            {!showRejeitarDebito && (
+              <div className="flex shrink-0 gap-2">
+                <button
+                  disabled={pendingDebito}
+                  onClick={() => setShowRejeitarDebito(true)}
+                  className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                >
+                  Rejeitar
+                </button>
+                <button
+                  disabled={pendingDebito}
+                  onClick={handleAprovarDebito}
+                  className="rounded-lg border border-amber-300 bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {pendingDebito ? "Aprovando…" : "Aprovar débito"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Banner de débito rejeitado — pedido travado até resolver */}
+      {debitoRejeitado && (
+        <div className="mb-3 rounded-lg border border-danger/30 bg-danger-soft p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-danger">Débito de faturamento direto rejeitado</p>
+              <p className="mt-0.5 text-xs text-danger/90">
+                {pedido.debito_rejeitado_motivo ?? "Sem motivo informado."}
+              </p>
+              <p className="mt-1 text-xs text-text-3">
+                Rejeitado por {(pedido as any).debito_aprovador?.nome ?? "—"}
+                {pedido.debito_decidido_em && ` em ${new Date(pedido.debito_decidido_em).toLocaleString("pt-BR")}`}
+                {" — "}o pedido não avança até isso ser resolvido.
+              </p>
+              {erroDebito && <p className="mt-1 text-xs text-danger">{erroDebito}</p>}
+              {okDebito && <p className="mt-1 text-xs text-success">Débito aprovado com sucesso.</p>}
             </div>
             <button
               disabled={pendingDebito}
-              onClick={handleConfirmarDebito}
-              className="shrink-0 rounded-lg border border-amber-300 bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              onClick={handleAprovarDebito}
+              className="shrink-0 rounded-lg border border-danger bg-danger px-3 py-1.5 text-xs font-medium text-white hover:bg-danger-hover disabled:opacity-50"
             >
-              {pendingDebito ? "Debitando…" : "Confirmar débito"}
+              {pendingDebito ? "Aprovando…" : "Aprovar mesmo assim"}
             </button>
           </div>
         </div>
+      )}
+
+      {/* Nota discreta de débito já aprovado — mesma info do "Autorizado por" do extrato */}
+      {debitoAprovado && (
+        <p className="mb-3 text-xs text-text-3">
+          Débito aprovado por <span className="font-medium text-text-2">{(pedido as any).debito_aprovador?.nome ?? "—"}</span>
+          {pedido.debito_decidido_em && ` em ${new Date(pedido.debito_decidido_em).toLocaleString("pt-BR")}`}.
+        </p>
       )}
 
       <div className="flex flex-col items-end gap-2">
@@ -301,30 +438,117 @@ export function PedidoCliente({
         </div>
 
         {showValorFinal && (
-          <div className="w-80 rounded-xl border border-border bg-surface p-4 shadow-lg">
-            <p className="text-sm font-semibold text-text mb-1">Valor final do pedido</p>
+          <div className="w-96 rounded-xl border border-border bg-surface p-4 shadow-lg">
+            <div className="mb-1 flex items-center justify-between">
+              <p className="text-sm font-semibold text-text">Valor final do pedido</p>
+              <button
+                onClick={() => { setShowValorFinal(false); setErroVF(null); }}
+                className="text-text-3 hover:text-text"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
             <p className="text-xs text-text-2 mb-3">
               Informe o valor real confirmado com o fornecedor. Esse valor será usado no controle financeiro.
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-text-2 shrink-0">R$</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={valorFinalInput}
-                onChange={(e) => setValorFinalInput(e.target.value)}
-                placeholder="0,00"
-                className="field h-9 flex-1 text-sm font-mono"
-                onKeyDown={(e) => e.key === "Enter" && salvarValorFinal()}
-                autoFocus
-              />
-              <Button onClick={salvarValorFinal} disabled={pendingVF} className="h-9 px-3 text-sm shrink-0">
-                {pendingVF ? "…" : "Salvar"}
-              </Button>
-              <Button variant="ghost" onClick={() => { setShowValorFinal(false); setErroVF(null); }} className="h-9 px-3 text-sm shrink-0">
-                ✕
-              </Button>
-            </div>
+
+            {modoValorFinal === "pdf" ? (
+              <>
+                <label className="flex w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-xs font-medium text-text-2 hover:bg-border/40">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span className="truncate">{arquivoDevolutiva ? arquivoDevolutiva.name : "Escolher arquivo PDF"}</span>
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => {
+                      setArquivoDevolutiva(e.target.files?.[0] ?? null);
+                      setResultadoExtracao(null);
+                      setErroExtracao(null);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+
+                {!resultadoExtracao && (
+                  <Button
+                    onClick={extrairValorDaDevolutiva}
+                    disabled={extraindo || !arquivoDevolutiva}
+                    className="mt-3 h-9 w-full text-sm"
+                  >
+                    {extraindo ? "Lendo PDF…" : "Extrair valor do PDF"}
+                  </Button>
+                )}
+
+                {erroExtracao && <p className="mt-2 text-xs text-danger">{erroExtracao}</p>}
+
+                {resultadoExtracao && (
+                  <div className="mt-3">
+                    {resultadoExtracao.melhorCandidato ? (
+                      <p className="mb-2 text-xs text-text-2">
+                        Valor encontrado perto de <span className="italic">"{resultadoExtracao.melhorCandidato.linha}"</span>. Confira e confirme:
+                      </p>
+                    ) : (
+                      <p className="mb-2 text-xs text-warning">
+                        Não encontrei um valor claro no PDF — digite o valor abaixo.
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-text-2 shrink-0">R$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={valorConfirmadoInput}
+                        onChange={(e) => setValorConfirmadoInput(e.target.value)}
+                        placeholder="0,00"
+                        className="field h-9 flex-1 text-sm font-mono"
+                        onKeyDown={(e) => e.key === "Enter" && confirmarValorDaDevolutiva()}
+                        autoFocus
+                      />
+                      <Button onClick={confirmarValorDaDevolutiva} disabled={pendingVF} className="h-9 px-3 text-sm shrink-0">
+                        {pendingVF ? "…" : "Confirmar e salvar"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => { setModoValorFinal("manual"); setErroVF(null); }}
+                  className="mt-3 text-xs text-text-3 underline hover:text-text"
+                >
+                  ou digitar o valor manualmente
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-2 shrink-0">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={valorFinalInput}
+                    onChange={(e) => setValorFinalInput(e.target.value)}
+                    placeholder="0,00"
+                    className="field h-9 flex-1 text-sm font-mono"
+                    onKeyDown={(e) => e.key === "Enter" && salvarValorFinal()}
+                    autoFocus
+                  />
+                  <Button onClick={salvarValorFinal} disabled={pendingVF} className="h-9 px-3 text-sm shrink-0">
+                    {pendingVF ? "…" : "Salvar"}
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setModoValorFinal("pdf"); setErroVF(null); }}
+                  className="mt-3 text-xs text-text-3 underline hover:text-text"
+                >
+                  ou enviar a devolutiva em PDF
+                </button>
+              </>
+            )}
+
             {erroVF && <p className="mt-2 text-xs text-danger">{erroVF}</p>}
           </div>
         )}

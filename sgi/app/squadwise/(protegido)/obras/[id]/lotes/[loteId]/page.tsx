@@ -125,7 +125,7 @@ export default async function LotePage({
   if (!wiseUsuario) redirect("/");
 
   const [obra, lote, { pedidos, solicitacoes }, contextoCompras, necessidades, itensPedidoDisponiveis, itensSolicitacaoDisponiveis] = await Promise.all([
-    buscarObra(params.id, wiseUsuario.empresa_id),
+    buscarObra(params.id),
     buscarLote(params.loteId, params.id),
     buscarPedidosEsolicitacoes(params.loteId),
     obterContexto(params.loteId),

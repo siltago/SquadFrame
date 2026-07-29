@@ -1,5 +1,4 @@
 import "server-only";
-import { PDFParse } from "pdf-parse";
 
 export type CandidatoValorFinal = { valor: number; linha: string };
 
@@ -45,6 +44,15 @@ function valoresDaLinha(linha: string): number[] {
 // de palavra-chave; na ausência de qualquer palavra-chave, o maior valor
 // monetário do documento, já que totais tendem a ser o maior número).
 export async function extrairValorFinalPdf(buffer: Buffer): Promise<ResultadoExtracaoValorFinal> {
+  // Import dinâmico de propósito: "pdf-parse" carrega a build legacy do
+  // pdfjs-dist, que referencia DOMMatrix (API de navegador) no topo do
+  // módulo. Um import estático aqui faria QUALQUER arquivo que importe este
+  // módulo (mesmo sem nunca chamar extrairValorFinalPdf) puxar pdfjs pro
+  // bundle do servidor — e como pedidos.ts é reexportado pelo barrel
+  // app/squadframe/compras/actions.ts, isso quebrava até páginas sem nenhuma
+  // relação com PDF (ex: /squadframe/compras/fornecedores) com
+  // "ReferenceError: DOMMatrix is not defined" na inicialização do módulo.
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   let texto = "";
   try {

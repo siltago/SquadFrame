@@ -104,6 +104,8 @@ export default async function PedidoPage({ params }: { params: { id: string } })
             { table: "pedido_itens",    filter: `pedido_id=eq.${params.id}` },
             { table: "recebimentos",    filter: `pedido_id=eq.${params.id}` },
             { table: "compra_historico", filter: `entidade_id=eq.${params.id}` },
+            { table: "pedido_retornos", filter: `pedido_id=eq.${params.id}` },
+            { table: "devolucoes_compra", filter: `pedido_id=eq.${params.id}` },
           ]}
         />
         <div className="flex items-center gap-2">

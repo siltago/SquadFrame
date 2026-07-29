@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { sendPushToSubscriptions, type PushPayload, type PushSubscription } from "@/shared/providers/push/web-push";
 import { DomainEvent, EVENTS } from "../event-types";
+import { getUsuariosComPermissao as getUsersWithPermission } from "./permissoes";
 
 async function getSubsForUsers(userIds: string[]): Promise<PushSubscription[]> {
   if (!userIds.length) return [];
@@ -11,31 +12,6 @@ async function getSubsForUsers(userIds: string[]): Promise<PushSubscription[]> {
     .select("endpoint, p256dh, auth")
     .in("user_id", userIds);
   return (data ?? []) as PushSubscription[];
-}
-
-async function getUsersWithPermission(chave: string): Promise<string[]> {
-  const admin = createAdminClient();
-  const { data: perm } = await admin
-    .from("permissoes")
-    .select("id")
-    .eq("chave", chave)
-    .maybeSingle();
-  if (!perm?.id) return [];
-
-  const { data: cargoPerms } = await admin
-    .from("cargo_permissoes")
-    .select("cargo_id")
-    .eq("permissao_id", perm.id);
-  if (!cargoPerms?.length) return [];
-
-  const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
-  const { data: usuarios } = await admin
-    .from("usuarios")
-    .select("id")
-    .in("cargo_id", cargoIds)
-    .eq("ativo", true);
-
-  return (usuarios ?? []).map((u) => u.id);
 }
 
 async function push(userIds: string[], payload: PushPayload) {
@@ -234,6 +210,35 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
         url: `/squadframe/compras/pedidos/${p.order_id}`,
         tag: `devolucao-aprovacao-${p.devolucao_id}`,
         actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_APPROVED:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_REJECTED:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_SENT:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_DELIVERED: {
+      const admin = createAdminClient();
+      const { data: dev } = await admin
+        .from("devolucoes_compra")
+        .select("numero, criado_por, pedido:pedidos_compra(numero)")
+        .eq("id", p.devolucao_id)
+        .single();
+      if (!dev?.criado_por) break;
+
+      const numeroPedido = (dev.pedido as any)?.numero ?? "";
+      const TITULO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_APPROVED]:  "Devolução aprovada",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_REJECTED]:  "Devolução rejeitada",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_SENT]:      "Devolução enviada ao fornecedor",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_DELIVERED]: "Devolução entregue",
+      };
+
+      await push([dev.criado_por], {
+        title: TITULO_POR_EVENTO[event.tipo],
+        body: `Devolução ${dev.numero} do pedido ${numeroPedido}`,
+        url: `/squadframe/compras/pedidos/${p.order_id}`,
+        tag: `devolucao-status-${p.devolucao_id}`,
       });
       break;
     }

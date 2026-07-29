@@ -8,25 +8,36 @@ export interface Destinatario {
 }
 
 // Mesma query já usada em notificacoes.consumer.ts (permissoes → cargo_permissoes → usuarios),
-// extraída aqui para ser reaproveitada pela cobrança.
+// extraída aqui para ser reaproveitada pela cobrança. Inclui cargos com
+// is_admin=true mesmo sem linha em cargo_permissoes — admins bypassam a
+// checagem de permissão em toda a aplicação (ver temPermissao() em
+// shared/auth/auth.ts), então também precisam ser considerados aqui, senão
+// um aprovador cujo acesso vem só do is_admin nunca recebe a cobrança.
 export async function resolverUsuariosComPermissao(
   admin: SupabaseClient,
   chave: string,
 ): Promise<{ id: string; whatsapp: string | null }[]> {
+  const { data: cargosAdmin } = await admin.from("cargos").select("id").eq("is_admin", true);
+  const cargoIdsAdmin = (cargosAdmin ?? []).map((c) => c.id);
+
   const { data: perm } = await admin
     .from("permissoes")
     .select("id")
     .eq("chave", chave)
     .maybeSingle();
-  if (!perm?.id) return [];
 
-  const { data: cargoPerms } = await admin
-    .from("cargo_permissoes")
-    .select("cargo_id")
-    .eq("permissao_id", perm.id);
-  if (!cargoPerms?.length) return [];
+  let cargoIdsPermissao: string[] = [];
+  if (perm?.id) {
+    const { data: cargoPerms } = await admin
+      .from("cargo_permissoes")
+      .select("cargo_id")
+      .eq("permissao_id", perm.id);
+    cargoIdsPermissao = (cargoPerms ?? []).map((cp) => cp.cargo_id);
+  }
 
-  const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
+  const cargoIds = Array.from(new Set([...cargoIdsAdmin, ...cargoIdsPermissao]));
+  if (!cargoIds.length) return [];
+
   const { data: usuarios } = await admin
     .from("usuarios")
     .select("id, whatsapp")

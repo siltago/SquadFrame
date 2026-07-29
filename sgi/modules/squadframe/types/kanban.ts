@@ -17,6 +17,10 @@ export type NotificacaoTipo =
   | 'retorno_pedido_aprovado'
   | 'retorno_pedido_rejeitado'
   | 'devolucao_pedido_criada'
+  | 'devolucao_pedido_aprovada'
+  | 'devolucao_pedido_rejeitada'
+  | 'devolucao_pedido_enviada'
+  | 'devolucao_pedido_entregue'
   // SquadBoard
   | 'board_card_atribuido'
   | 'board_card_movido'
@@ -44,6 +48,10 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'retorno_pedido_aprovado',
     'retorno_pedido_rejeitado',
     'devolucao_pedido_criada',
+    'devolucao_pedido_aprovada',
+    'devolucao_pedido_rejeitada',
+    'devolucao_pedido_enviada',
+    'devolucao_pedido_entregue',
   ],
   squadboard: [
     'board_card_atribuido',

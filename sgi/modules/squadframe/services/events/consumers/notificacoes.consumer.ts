@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { DomainEvent, EVENTS } from "../event-types";
+import { getUsuariosComPermissao } from "./permissoes";
 
 export async function notificacoesConsumerHandler(event: DomainEvent): Promise<void> {
   const admin = createAdminClient();
@@ -47,35 +48,12 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
       const criado_por_nome = (pedDetalhe?.comprador as any)?.nome ?? null;
 
-      // Busca IDs de permissão para aprovar pedidos
-      const { data: perm } = await admin
-        .from("permissoes")
-        .select("id")
-        .eq("chave", "compras.pedido.aprovar")
-        .maybeSingle();
-
-      if (!perm?.id) break;
-
-      // Busca usuários que têm essa permissão via cargo
-      const { data: cargoPerms } = await admin
-        .from("cargo_permissoes")
-        .select("cargo_id")
-        .eq("permissao_id", perm.id);
-
-      if (!cargoPerms?.length) break;
-
-      const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
-      const { data: usuarios } = await admin
-        .from("usuarios")
-        .select("id")
-        .in("cargo_id", cargoIds)
-        .eq("ativo", true);
-
-      if (!usuarios?.length) break;
+      const usuarioIds = await getUsuariosComPermissao("compras.pedido.aprovar");
+      if (!usuarioIds.length) break;
 
       await admin.from("notificacoes").insert(
-        usuarios.map((u) => ({
-          usuario_id: u.id,
+        usuarioIds.map((id) => ({
+          usuario_id: id,
           tipo: "pedido_aguardando_aprovacao",
           payload: { numero, order_id, tipo_linha, obra_nome, criado_por_nome },
         }))
@@ -140,30 +118,12 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       const tipo_linha = pedDetalhe?.tipo_linha ?? null;
       const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
 
-      const { data: perm } = await admin
-        .from("permissoes")
-        .select("id")
-        .eq("chave", "compras.pedido.aprovar_retorno")
-        .maybeSingle();
-      if (!perm?.id) break;
-
-      const { data: cargoPerms } = await admin
-        .from("cargo_permissoes")
-        .select("cargo_id")
-        .eq("permissao_id", perm.id);
-      if (!cargoPerms?.length) break;
-
-      const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
-      const { data: usuarios } = await admin
-        .from("usuarios")
-        .select("id")
-        .in("cargo_id", cargoIds)
-        .eq("ativo", true);
-      if (!usuarios?.length) break;
+      const usuarioIds = await getUsuariosComPermissao("compras.pedido.aprovar_retorno");
+      if (!usuarioIds.length) break;
 
       await admin.from("notificacoes").insert(
-        usuarios.map((u) => ({
-          usuario_id: u.id,
+        usuarioIds.map((id) => ({
+          usuario_id: id,
           tipo: "retorno_pedido_solicitado",
           payload: { numero, order_id, retorno_id, tipo_linha, obra_nome },
         }))
@@ -226,34 +186,47 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       const numero_pedido = pedDetalhe?.numero ?? null;
       const obra_nome = (pedDetalhe?.obras as any)?.nome ?? null;
 
-      const { data: perm } = await admin
-        .from("permissoes")
-        .select("id")
-        .eq("chave", "compras.pedido.aprovar_devolucao")
-        .maybeSingle();
-      if (!perm?.id) break;
-
-      const { data: cargoPerms } = await admin
-        .from("cargo_permissoes")
-        .select("cargo_id")
-        .eq("permissao_id", perm.id);
-      if (!cargoPerms?.length) break;
-
-      const cargoIds = cargoPerms.map((cp) => cp.cargo_id);
-      const { data: usuarios } = await admin
-        .from("usuarios")
-        .select("id")
-        .in("cargo_id", cargoIds)
-        .eq("ativo", true);
-      if (!usuarios?.length) break;
+      const usuarioIds = await getUsuariosComPermissao("compras.pedido.aprovar_devolucao");
+      if (!usuarioIds.length) break;
 
       await admin.from("notificacoes").insert(
-        usuarios.map((u) => ({
-          usuario_id: u.id,
+        usuarioIds.map((id) => ({
+          usuario_id: id,
           tipo: "devolucao_pedido_criada",
           payload: { numero_devolucao, order_id, devolucao_id, numero_pedido, obra_nome },
         }))
       );
+      break;
+    }
+
+    // Devolução aprovada / rejeitada-cancelada / enviada ao fornecedor /
+    // entregue → notifica quem registrou a devolução.
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_APPROVED:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_REJECTED:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_SENT:
+    case EVENTS.PURCHASE_ORDER_DEVOLUTION_DELIVERED: {
+      const { order_id, devolucao_id } = p;
+      if (!order_id || !devolucao_id) break;
+
+      const { data: dev } = await admin
+        .from("devolucoes_compra")
+        .select("numero, criado_por")
+        .eq("id", devolucao_id)
+        .single();
+      if (!dev?.criado_por) break;
+
+      const TIPO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_APPROVED]:  "devolucao_pedido_aprovada",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_REJECTED]:  "devolucao_pedido_rejeitada",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_SENT]:      "devolucao_pedido_enviada",
+        [EVENTS.PURCHASE_ORDER_DEVOLUTION_DELIVERED]: "devolucao_pedido_entregue",
+      };
+
+      await admin.from("notificacoes").insert({
+        usuario_id: dev.criado_por,
+        tipo: TIPO_POR_EVENTO[event.tipo],
+        payload: { numero_devolucao: dev.numero, order_id, devolucao_id },
+      });
       break;
     }
 

@@ -135,6 +135,24 @@ export async function alterarStatusDevolucao(
       dados:       { devolucao_id: devolucaoId, obs },
       usuario_id,
     });
+
+    // Notifica quem registrou a devolução quando o status muda de forma
+    // relevante pra ela (aprovada, rejeitada/cancelada ou enviada ao
+    // fornecedor) — CANCELADO cobre tanto o cancelamento direto quanto a
+    // "rejeição" feita a partir de AGUARDANDO_APROVACAO (ver devolucoes-lista.tsx).
+    const EVENTO_POR_STATUS: Record<string, string> = {
+      APROVADO:  EVENTS.PURCHASE_ORDER_DEVOLUTION_APPROVED,
+      CANCELADO: EVENTS.PURCHASE_ORDER_DEVOLUTION_REJECTED,
+      ENVIO:     EVENTS.PURCHASE_ORDER_DEVOLUTION_SENT,
+    };
+    const evento = EVENTO_POR_STATUS[novoStatus];
+    if (evento) {
+      await emitirEvento(evento, {
+        order_id:     pedidoId,
+        devolucao_id: devolucaoId,
+        usuario_id,
+      });
+    }
   }
 
   revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);

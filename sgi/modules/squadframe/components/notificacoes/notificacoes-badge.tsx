@@ -26,6 +26,10 @@ const TIPO_LABEL: Record<string, string> = {
   retorno_pedido_aprovado:     "Retorno de pedido aprovado",
   retorno_pedido_rejeitado:    "Retorno de pedido rejeitado",
   devolucao_pedido_criada:     "Devolução de pedido criada",
+  devolucao_pedido_aprovada:   "Devolução de pedido aprovada",
+  devolucao_pedido_rejeitada:  "Devolução de pedido rejeitada",
+  devolucao_pedido_enviada:    "Devolução enviada ao fornecedor",
+  devolucao_pedido_entregue:   "Devolução entregue",
   // SquadBoard
   board_card_atribuido:        "Card atribuído a você",
   board_card_movido:           "Card movido de coluna",
@@ -70,6 +74,14 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
         titulo: `Devolução ${p.numero_devolucao} aguardando aprovação`,
         corpo: `Devolução do pedido ${p.numero_pedido}${obraLabel} foi criada`,
       };
+    case "devolucao_pedido_aprovada":
+      return { titulo: "Devolução de pedido aprovada", corpo: `Devolução ${p.numero_devolucao} foi aprovada` };
+    case "devolucao_pedido_rejeitada":
+      return { titulo: "Devolução de pedido rejeitada", corpo: `Devolução ${p.numero_devolucao} foi rejeitada/cancelada` };
+    case "devolucao_pedido_enviada":
+      return { titulo: "Devolução enviada ao fornecedor", corpo: `Devolução ${p.numero_devolucao} foi enviada ao fornecedor` };
+    case "devolucao_pedido_entregue":
+      return { titulo: "Devolução entregue", corpo: `Devolução ${p.numero_devolucao} foi entregue` };
     case "solicitacao_aprovada":
       return { titulo: "Solicitação aprovada", corpo: `Solicitação ${p.numero} foi aprovada` };
     case "solicitacao_rejeitada":
@@ -102,6 +114,10 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "retorno_pedido_aprovado":
     case "retorno_pedido_rejeitado":
     case "devolucao_pedido_criada":
+    case "devolucao_pedido_aprovada":
+    case "devolucao_pedido_rejeitada":
+    case "devolucao_pedido_enviada":
+    case "devolucao_pedido_entregue":
       if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
       break;
     case "solicitacao_aprovada":

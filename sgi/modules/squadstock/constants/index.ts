@@ -1,5 +1,6 @@
 export const STOCK_PERMISSIONS = {
   MOVIMENTACAO_GERENCIAR: "stock.movimentacao.gerenciar",
+  LOCAL_GERENCIAR: "stock.local.gerenciar",
 } as const;
 
 // Migrado de modules/squadframe/lib/permissions.ts junto com o código do

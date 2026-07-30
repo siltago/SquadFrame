@@ -28,6 +28,7 @@ interface MovimentacaoRow {
   observacoes: string | null;
   criado_em: string;
   produto: { codigo_mestre: string; nome: string; unidade: string | null } | { codigo_mestre: string; nome: string; unidade: string | null }[] | null;
+  local: { nome: string } | { nome: string }[] | null;
   obra: { nome: string } | { nome: string }[] | null;
   usuario: { nome: string } | { nome: string }[] | null;
 }
@@ -44,19 +45,23 @@ function formatarData(iso: string): string {
 export default async function MovimentacoesPage({
   searchParams,
 }: {
-  searchParams: { obra_id?: string; tipo?: string };
+  searchParams: { obra_id?: string; local_id?: string; tipo?: string; produto_id?: string };
 }) {
   const usuario = await getUsuarioAtual();
   if (!usuario) redirect("/login");
 
   const admin = createAdminClient();
-  const [{ data: obras }] = await Promise.all([admin.from("obras").select("id, nome").order("nome").limit(200)]);
+  const [{ data: obras }, { data: locais }] = await Promise.all([
+    admin.from("obras").select("id, nome").order("nome").limit(200),
+    admin.from("stock_locais").select("id, nome").order("nome"),
+  ]);
 
   let q = admin
     .from("stock_movimentacoes")
     .select(`
       id, numero, tipo, quantidade, origem_tipo, observacoes, criado_em,
       produto:produtos(codigo_mestre, nome, unidade),
+      local:stock_locais(nome),
       obra:obras(nome),
       usuario:usuarios(nome)
     `)
@@ -64,6 +69,8 @@ export default async function MovimentacoesPage({
     .limit(200);
 
   if (searchParams.obra_id) q = q.eq("obra_id", searchParams.obra_id);
+  if (searchParams.local_id) q = q.eq("local_id", searchParams.local_id);
+  if (searchParams.produto_id) q = q.eq("produto_id", searchParams.produto_id);
   if (searchParams.tipo) q = q.eq("tipo", searchParams.tipo);
 
   const { data } = await q;
@@ -87,6 +94,17 @@ export default async function MovimentacoesPage({
       </div>
 
       <form method="GET" className="mt-6 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="label">Local</label>
+          <select name="local_id" defaultValue={searchParams.local_id ?? ""} className="field h-9 text-sm">
+            <option value="">Todos</option>
+            {(locais ?? []).map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="label">Obra</label>
           <select name="obra_id" defaultValue={searchParams.obra_id ?? ""} className="field h-9 text-sm">
@@ -116,6 +134,7 @@ export default async function MovimentacoesPage({
             <tr>
               <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Número</th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Produto</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Local</th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Obra</th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Tipo</th>
               <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Quantidade</th>
@@ -126,7 +145,7 @@ export default async function MovimentacoesPage({
           <tbody>
             {movimentacoes.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-text-3">
+                <td colSpan={8} className="px-4 py-10 text-center text-text-3">
                   Nenhuma movimentação encontrada.
                 </td>
               </tr>
@@ -137,7 +156,8 @@ export default async function MovimentacoesPage({
                 <tr key={m.id} className="border-t border-border">
                   <td className="px-4 py-2.5 text-text-3 font-mono text-xs">{m.numero}</td>
                   <td className="px-4 py-2.5">{p?.nome ?? "—"}</td>
-                  <td className="px-4 py-2.5">{nomeRelacao(m.obra)}</td>
+                  <td className="px-4 py-2.5 text-text-2">{nomeRelacao(m.local)}</td>
+                  <td className="px-4 py-2.5 text-text-2">{m.obra ? nomeRelacao(m.obra) : <span className="text-text-3">—</span>}</td>
                   <td className="px-4 py-2.5">
                     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${TIPO_BADGE[m.tipo] ?? "bg-surface-2 text-text-2"}`}>
                       {TIPO_LABEL[m.tipo] ?? m.tipo}

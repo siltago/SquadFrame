@@ -16,7 +16,17 @@ interface Obra {
   nome: string;
 }
 
-export function NovaMovimentacaoForm({ obras, produtos }: { obras: Obra[]; produtos: Produto[] }) {
+interface Local {
+  id: string;
+  nome: string;
+}
+
+export function NovaMovimentacaoForm({
+  obras, produtos, locais, defaultObraId, defaultProdutoId, defaultLocalId,
+}: {
+  obras: Obra[]; produtos: Produto[]; locais: Local[];
+  defaultObraId?: string; defaultProdutoId?: string; defaultLocalId?: string;
+}) {
   const router = useRouter();
   const [tipo, setTipo] = useState<"SAIDA" | "AJUSTE">("SAIDA");
   const [erro, setErro] = useState<string | null>(null);
@@ -62,11 +72,25 @@ export function NovaMovimentacaoForm({ obras, produtos }: { obras: Obra[]; produ
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text mb-1.5">Obra</label>
-        <select name="obra_id" required defaultValue="" className="field w-full">
+        <label className="block text-sm font-medium text-text mb-1.5">Local</label>
+        <select name="local_id" required defaultValue={defaultLocalId ?? ""} className="field w-full">
           <option value="" disabled>
-            Selecione uma obra
+            Selecione um local
           </option>
+          {locais.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text mb-1.5">
+          Obra <span className="font-normal text-text-3">(opcional — reserva o saldo pra ela)</span>
+        </label>
+        <select name="obra_id" defaultValue={defaultObraId ?? ""} className="field w-full">
+          <option value="">Nenhuma (estoque geral)</option>
           {obras.map((o) => (
             <option key={o.id} value={o.id}>
               {o.nome}
@@ -77,7 +101,7 @@ export function NovaMovimentacaoForm({ obras, produtos }: { obras: Obra[]; produ
 
       <div>
         <label className="block text-sm font-medium text-text mb-1.5">Produto</label>
-        <select name="produto_id" required defaultValue="" className="field w-full">
+        <select name="produto_id" required defaultValue={defaultProdutoId ?? ""} className="field w-full">
           <option value="" disabled>
             Selecione um produto
           </option>

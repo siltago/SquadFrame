@@ -4,7 +4,8 @@ import { HeaderUser } from "@/modules/squadframe/components/header-user";
 import { AppHeader } from "@/ui/layout/AppHeader";
 
 const NAV_ITEMS = [
-  { href: "/squadstock", label: "Saldos", exact: true },
+  { href: "/squadstock", label: "Estoque", exact: true },
+  { href: "/squadstock/chegadas", label: "Chegadas" },
   { href: "/squadstock/movimentacoes", label: "Movimentações" },
   { href: "/squadstock/catalogo", label: "Catálogo" },
 ];

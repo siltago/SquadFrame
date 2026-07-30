@@ -60,8 +60,6 @@ export default async function ProdutoPage({
   // ── Dados por aba ───────────────────────────────────────────
 
   let cores: any[] = [];
-  let coresDisponiveis: any[] = [];
-  let acabamentos: any[] = [];
   let aliases: any[] = [];
   let coresVinculadas: { id: string; codigo_ral: string; nome: string | null; hex: string | null }[] = [];
   let fornecedoresDisponiveis: any[] = [];
@@ -90,23 +88,12 @@ export default async function ProdutoPage({
   }
 
   if (abaAtiva === "cores") {
-    // Só oferece pra vincular as cores que se aplicam ao tipo desta linha
-    // (perfil só vê cor de perfil, vidro só de vidro, etc — cores_ral.tipos).
-    let coresDisponiveisQuery = supabase.from("cores_ral").select("id, codigo_ral, nome, hex").order("codigo_ral");
-    if (linha?.tipo) coresDisponiveisQuery = coresDisponiveisQuery.contains("tipos", [linha.tipo]);
-
-    const results = await Promise.all([
-      supabase
-        .from("produto_cores")
-        .select("cor:cores_ral(id, codigo_ral, nome, hex), acabamento:acabamentos(id, nome)")
-        .eq("produto_id", params.produtoId)
-        .order("cor_id"),
-      coresDisponiveisQuery,
-      supabase.from("acabamentos").select("id, nome").order("nome"),
-    ]);
-    cores = results[0].data ?? [];
-    coresDisponiveis = results[1].data ?? [];
-    acabamentos = results[2].data ?? [];
+    const { data } = await supabase
+      .from("produto_cores")
+      .select("cor:cores_ral(id, codigo_ral, nome, hex), acabamento:acabamentos(id, nome)")
+      .eq("produto_id", params.produtoId)
+      .order("cor_id");
+    cores = data ?? [];
   }
 
   if (abaAtiva === "aliases") {
@@ -203,15 +190,7 @@ export default async function ProdutoPage({
       )}
 
       {/* ── Aba: Cores ─────────────────────────────────────── */}
-      {abaAtiva === "cores" && (
-        <AbaCores
-          produtoId={params.produtoId}
-          linhaId={params.linhaId}
-          cores={cores}
-          coresDisponiveis={coresDisponiveis}
-          acabamentos={acabamentos}
-        />
-      )}
+      {abaAtiva === "cores" && <AbaCores cores={cores} />}
 
       {/* ── Aba: Aliases ───────────────────────────────────── */}
       {abaAtiva === "aliases" && (

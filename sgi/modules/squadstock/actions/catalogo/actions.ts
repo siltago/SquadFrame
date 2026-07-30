@@ -29,6 +29,63 @@ async function buscarPesoMestre(
   return data?.peso_metro ?? null;
 }
 
+// Vínculo produto×cor é sempre automático por tipo — não existe mais tela
+// pra vincular cor manualmente num produto (ver AbaCores, só leitura).
+// Quando uma cor passa a valer pra um tipo (criada ou editada), essa
+// função aplica o vínculo em todos os produtos já existentes daquele
+// tipo, de uma vez — os produtos criados DEPOIS já recebem isso em
+// criarProduto/criarProdutoRapido/importarPerfisXml.
+async function vincularCorATodosProdutosDosTipos(
+  supabase: ReturnType<typeof createClient>,
+  corId: string,
+  acabamentoId: string | null,
+  tipos: string[]
+) {
+  if (tipos.length === 0) return;
+
+  const { data: linhasDosTipos } = await supabase.from("linhas").select("id").in("tipo", tipos);
+  const linhaIds = (linhasDosTipos ?? []).map((l) => l.id);
+  if (linhaIds.length === 0) return;
+
+  const { data: produtosDosTipos } = await supabase.from("produtos").select("id").in("linha_id", linhaIds);
+  if (!produtosDosTipos || produtosDosTipos.length === 0) return;
+
+  const { data: jaVinculados } = await supabase.from("produto_cores").select("produto_id").eq("cor_id", corId);
+  const vinculadosSet = new Set((jaVinculados ?? []).map((r) => r.produto_id));
+
+  const novos = produtosDosTipos.filter((p) => !vinculadosSet.has(p.id));
+  if (novos.length === 0) return;
+
+  await supabase.from("produto_cores").insert(
+    novos.map((p) => {
+      const row: Record<string, string> = { produto_id: p.id, cor_id: corId };
+      if (acabamentoId) row.acabamento_id = acabamentoId;
+      return row;
+    })
+  );
+}
+
+// Complemento da função acima: quando um tipo é desmarcado de uma cor
+// (edição), desfaz o vínculo automático nos produtos daquele tipo que
+// não se encaixam em nenhum tipo restante da cor.
+async function desvincularCorDosTiposRemovidos(
+  supabase: ReturnType<typeof createClient>,
+  corId: string,
+  tiposRemovidos: string[]
+) {
+  if (tiposRemovidos.length === 0) return;
+
+  const { data: linhasDosTipos } = await supabase.from("linhas").select("id").in("tipo", tiposRemovidos);
+  const linhaIds = (linhasDosTipos ?? []).map((l) => l.id);
+  if (linhaIds.length === 0) return;
+
+  const { data: produtosDosTipos } = await supabase.from("produtos").select("id").in("linha_id", linhaIds);
+  const produtoIds = (produtosDosTipos ?? []).map((p) => p.id);
+  if (produtoIds.length === 0) return;
+
+  await supabase.from("produto_cores").delete().eq("cor_id", corId).in("produto_id", produtoIds);
+}
+
 // ─── Abas (tipos de linha) ───────────────────────────────────
 
 export async function criarAba(formData: FormData) {
@@ -512,68 +569,6 @@ export async function listarTiposLinha(): Promise<{ nome: string; slug: string }
   return data ?? [];
 }
 
-// ─── Cores ───────────────────────────────────────────────────
-
-export async function vincularTodasCores(produtoId: string, linhaId: string) {
-  await verificarPermissao("catalogo.editar");
-  const supabase = createClient();
-
-  const tipo = await tipoDaLinha(supabase, linhaId);
-  let coresQuery = supabase.from("cores_ral").select("id, acabamento_id");
-  if (tipo) coresQuery = coresQuery.contains("tipos", [tipo]);
-
-  const [{ data: todasCores }, { data: jaVinculadas }] = await Promise.all([
-    coresQuery,
-    supabase
-      .from("produto_cores")
-      .select("cor_id")
-      .eq("produto_id", produtoId),
-  ]);
-
-  if (!todasCores || todasCores.length === 0) return;
-
-  const vinculadasIds = new Set((jaVinculadas ?? []).map((r) => r.cor_id));
-  const novas = todasCores.filter((c) => !vinculadasIds.has(c.id));
-
-  if (novas.length === 0) return;
-
-  const { error } = await supabase.from("produto_cores").insert(
-    novas.map((c) => {
-      const row: Record<string, string> = { produto_id: produtoId, cor_id: c.id };
-      if (c.acabamento_id) row.acabamento_id = c.acabamento_id;
-      return row;
-    })
-  );
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/squadstock/catalogo/${linhaId}/${produtoId}`);
-}
-
-export async function vincularCor(
-  produtoId: string,
-  linhaId: string,
-  corId: string,
-  acabamentoId: string | null
-) {
-  await verificarPermissao("catalogo.editar");
-  const supabase = createClient();
-
-  if (!corId) throw new Error("Selecione uma cor.");
-
-  const insertData: Record<string, string> = { produto_id: produtoId, cor_id: corId };
-  if (acabamentoId) insertData.acabamento_id = acabamentoId;
-
-  const { error } = await supabase.from("produto_cores").insert(insertData);
-
-  if (error) {
-    if (error.code === "23505") throw new Error("Esta cor já está vinculada a este produto.");
-    throw new Error(error.message);
-  }
-
-  revalidatePath(`/squadstock/catalogo/${linhaId}/${produtoId}`);
-}
-
 // ─── Produto (editar) ────────────────────────────────────────
 
 export async function editarProduto(
@@ -848,7 +843,7 @@ export async function criarCorRal(formData: FormData) {
   // à cor existente, não duplicar o cadastro.
   const { data: existente } = await supabase
     .from("cores_ral")
-    .select("id, tipos, nome, hex")
+    .select("id, tipos, nome, hex, acabamento_id")
     .ilike("codigo_ral", codigo_ral)
     .maybeSingle();
 
@@ -863,17 +858,23 @@ export async function criarCorRal(formData: FormData) {
       })
       .eq("id", existente.id);
     if (error) throw new Error(error.message);
+    await vincularCorATodosProdutosDosTipos(supabase, existente.id, existente.acabamento_id, tiposMesclados);
     revalidateTag("cores_ral");
     revalidatePath("/squadstock/catalogo");
     return;
   }
 
-  const { error } = await supabase.from("cores_ral").insert({ codigo_ral, nome, hex, tipos });
+  const { data: nova, error } = await supabase
+    .from("cores_ral")
+    .insert({ codigo_ral, nome, hex, tipos })
+    .select("id, acabamento_id")
+    .single();
   if (error) {
     if (error.code === "23505") throw new Error(`Já existe uma cor com o código "${codigo_ral}".`);
     throw new Error(error.message);
   }
 
+  await vincularCorATodosProdutosDosTipos(supabase, nova.id, nova.acabamento_id, tipos);
   revalidateTag("cores_ral");
   revalidatePath("/squadstock/catalogo");
 }
@@ -885,8 +886,20 @@ export async function editarCor(id: string, formData: FormData) {
   const hex = String(formData.get("hex") || "").trim() || null;
   const tipos = formData.getAll("tipos").map(String).filter(Boolean);
 
+  const { data: antes } = await supabase.from("cores_ral").select("tipos, acabamento_id").eq("id", id).maybeSingle();
+
   const { error } = await supabase.from("cores_ral").update({ nome, hex, tipos }).eq("id", id);
   if (error) throw new Error(error.message);
+
+  // Mantém o vínculo automático em dia: tipo marcado a mais → vincula nos
+  // produtos daquele tipo; tipo desmarcado → desfaz o vínculo.
+  const tiposAntes: string[] = antes?.tipos ?? [];
+  const tiposAdicionados = tipos.filter((t) => !tiposAntes.includes(t));
+  const tiposRemovidos = tiposAntes.filter((t: string) => !tipos.includes(t));
+  await Promise.all([
+    vincularCorATodosProdutosDosTipos(supabase, id, antes?.acabamento_id ?? null, tiposAdicionados),
+    desvincularCorDosTiposRemovidos(supabase, id, tiposRemovidos),
+  ]);
 
   revalidateTag("cores_ral");
   revalidatePath("/squadstock/catalogo");

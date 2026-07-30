@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
+import { getUsuarioAtual } from "@/shared/auth/auth";
+import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { StatCard } from "@/modules/squadframe/components/stat-card";
 import { Alert } from "@/ui/components/Alert";
 import { ClockIcon, AlertTriangleIcon, CreditCardIcon } from "@/ui/icons";
 import { listarSaldosPorFornecedor, filtrarSaldoBaixo } from "@/modules/squadframe/services/financeiro/carteira-alertas";
+import { AjusteSaldoForm, type FornecedorSaldoOpcao } from "@/modules/squadframe/components/financeiro/ajuste-saldo-form";
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -14,8 +17,10 @@ function diasDesde(iso: string): number {
 
 export async function FaturamentoDiretoContent() {
   const admin = createAdminClient();
+  const usuario = await getUsuarioAtual();
+  const podeAjustar = !!(usuario?.permissoes?.includes("*") || usuario?.permissoes?.includes(PERMISSIONS.FINANCEIRO_CARTEIRA_AJUSTAR));
 
-  const [{ data: pedidos }, saldosPorFornecedor] = await Promise.all([
+  const [{ data: pedidos }, saldosPorFornecedor, { data: ajustesRaw }] = await Promise.all([
     admin
       .from("pedidos_compra")
       .select(`
@@ -27,7 +32,24 @@ export async function FaturamentoDiretoContent() {
       .eq("debito_registrado", false)
       .order("criado_em", { ascending: true }),
     listarSaldosPorFornecedor(admin),
+    podeAjustar
+      ? admin
+          .from("carteira_ajustes")
+          .select(`
+            id, valor_anterior, valor_novo, motivo, criado_em,
+            usuario:usuarios(nome),
+            fornecedor:fornecedores(nome)
+          `)
+          .order("criado_em", { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: [] as any[] }),
   ]);
+
+  const fornecedorOpcoes: FornecedorSaldoOpcao[] = saldosPorFornecedor.map((s) => ({
+    fornecedorId: s.fornecedorId,
+    fornecedor: s.fornecedor,
+    saldoAtual: s.saldo,
+  }));
 
   const lista = pedidos ?? [];
 
@@ -163,6 +185,53 @@ export async function FaturamentoDiretoContent() {
           </tbody>
         </table>
       </div>
+
+      {/* Ajuste manual de saldo — só pra quem tem a permissão dedicada */}
+      {podeAjustar && (
+        <>
+          <div className="mt-6">
+            <AjusteSaldoForm fornecedores={fornecedorOpcoes} />
+          </div>
+
+          {(ajustesRaw ?? []).length > 0 && (
+            <div className="mt-4 card overflow-x-auto">
+              <div className="border-b border-border px-5 py-3">
+                <h2 className="text-sm font-semibold text-text">Últimos ajustes</h2>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
+                    <th className="px-5 py-2 font-medium">Data</th>
+                    <th className="px-5 py-2 font-medium">Fornecedor</th>
+                    <th className="px-5 py-2 font-medium">Motivo</th>
+                    <th className="px-5 py-2 font-medium">Por</th>
+                    <th className="px-5 py-2 font-medium text-right">De → Para</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(ajustesRaw ?? []).map((a: any) => {
+                    const forn = Array.isArray(a.fornecedor) ? a.fornecedor[0] : a.fornecedor;
+                    const usuarioNome = Array.isArray(a.usuario) ? a.usuario[0]?.nome : a.usuario?.nome;
+                    return (
+                      <tr key={a.id} className="border-b border-border last:border-0">
+                        <td className="px-5 py-2.5 text-xs text-text-3">{new Date(a.criado_em).toLocaleString("pt-BR")}</td>
+                        <td className="px-5 py-2.5 text-text-2">{forn?.nome ?? "—"}</td>
+                        <td className="px-5 py-2.5 text-text-2 max-w-xs truncate" title={a.motivo}>{a.motivo}</td>
+                        <td className="px-5 py-2.5 text-xs text-text-3">{usuarioNome ?? "—"}</td>
+                        <td className="px-5 py-2.5 text-right tabular-nums text-xs">
+                          <span className="text-text-3">{fmt(a.valor_anterior)}</span>
+                          {" → "}
+                          <span className="font-semibold text-text">{fmt(a.valor_novo)}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

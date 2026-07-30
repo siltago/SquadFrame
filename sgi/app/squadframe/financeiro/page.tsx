@@ -71,7 +71,7 @@ export default async function FinanceiroPage({
       <div className="px-8 py-8 max-w-6xl">
         <RealtimeRefresher
           channelName="financeiro-faturamento-direto"
-          subs={[{ table: "pedidos_compra" }, { table: "carteiras" }, { table: "carteira_movimentacoes" }]}
+          subs={[{ table: "pedidos_compra" }, { table: "carteiras" }, { table: "carteira_movimentacoes" }, { table: "carteira_ajustes" }]}
         />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
         <FinanceiroTabNav {...tabNavProps} />

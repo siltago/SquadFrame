@@ -54,6 +54,7 @@ export const PERMISSIONS = {
   // manual em carteira também não existe mais — carteira só é financiada via
   // contrato (financeiro.contrato.gerenciar, ver criar_contrato_alocacao).
   FINANCEIRO_CARTEIRA_VER:       "financeiro.carteira.ver",
+  FINANCEIRO_CARTEIRA_AJUSTAR:   "financeiro.carteira.ajustar",
   FINANCEIRO_PEDIDO_CONFIRMAR_DEBITO: "financeiro.pedido.confirmar_debito",
   FINANCEIRO_DASHBOARD_VER:      "financeiro.dashboard.ver",
   FINANCEIRO_CONTRATO_GERENCIAR: "financeiro.contrato.gerenciar",

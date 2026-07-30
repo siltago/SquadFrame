@@ -23,6 +23,12 @@ interface ContratoInfo {
   criadoPor: string | null;
 }
 
+interface AjusteInfo {
+  motivo: string;
+  valorAnterior: number;
+  valorNovo: number;
+}
+
 export default async function CarteiraDetailPage({
   params,
 }: {
@@ -116,6 +122,23 @@ export default async function CarteiraDetailPage({
     }
   }
 
+  // ── AJUSTE: motivo completo (o "descricao" no ledger é só o padronizado
+  // "Ajuste interno: <usuário>") — ver ajustar_saldo_fornecedor.
+  const ajusteIds = linhas
+    .filter((m) => m.referencia_tipo === "ajuste" && m.referencia_id)
+    .map((m) => m.referencia_id as string);
+
+  const ajustesMap = new Map<string, AjusteInfo>();
+  if (ajusteIds.length > 0) {
+    const { data: ajustes } = await admin
+      .from("carteira_ajustes")
+      .select("id, motivo, valor_anterior, valor_novo")
+      .in("id", ajusteIds);
+    for (const a of ajustes ?? []) {
+      ajustesMap.set(a.id, { motivo: a.motivo, valorAnterior: a.valor_anterior, valorNovo: a.valor_novo });
+    }
+  }
+
   const obra = carteira.obra as any;
   const forn = carteira.fornecedor as any;
 
@@ -181,6 +204,7 @@ export default async function CarteiraDetailPage({
               const usuarioNome = (m.usuario as any)?.nome ?? "—";
               const pedido = m.referencia_tipo === "pedido" && m.referencia_id ? pedidosMap.get(m.referencia_id) : null;
               const contrato = m.referencia_tipo === "contrato" && m.referencia_id ? contratosMap.get(m.referencia_id) : null;
+              const ajuste = m.referencia_tipo === "ajuste" && m.referencia_id ? ajustesMap.get(m.referencia_id) : null;
               const overflow = pedido?.obra && obra?.id && pedido.obra.id !== obra.id;
 
               return (
@@ -235,6 +259,11 @@ export default async function CarteiraDetailPage({
                           </>
                         ) : m.referencia_tipo === "pedido" ? (
                           <span className="text-xs italic text-text-3">Pedido excluído</span>
+                        ) : m.referencia_tipo === "ajuste" ? (
+                          <>
+                            <span className="font-semibold text-warning">Ajuste manual</span>
+                            {ajuste?.motivo && <span className="text-text-2"> — {ajuste.motivo}</span>}
+                          </>
                         ) : (
                           <span className="text-text-2">{m.descricao ?? "—"}</span>
                         )}
@@ -247,6 +276,8 @@ export default async function CarteiraDetailPage({
                             Solicitado por <span className="font-medium text-text-2">{pedido.comprador?.nome ?? "—"}</span>
                             {" · "}Autorizado por <span className="font-medium text-text-2">{usuarioNome}</span>
                           </>
+                        ) : m.referencia_tipo === "ajuste" ? (
+                          <>Ajustado por <span className="font-medium text-text-2">{usuarioNome}</span></>
                         ) : contrato ? (
                           <>
                             Contrato criado por <span className="font-medium text-text-2">{contrato.criadoPor ?? "—"}</span>

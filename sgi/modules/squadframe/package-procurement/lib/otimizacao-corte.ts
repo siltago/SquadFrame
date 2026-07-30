@@ -9,6 +9,12 @@ export type ResultadoCorte = {
   sobras: number[]; // sobra restante em cada barra usada, na ordem de abertura
 };
 
+// Únicas — server (confirmarImportacaoXml) e client (revisão de import de
+// solicitação) usam exatamente os mesmos valores, evitando cálculo de
+// barras divergente entre os dois fluxos.
+export const KERF_MM = 5;
+export const COMPRIMENTO_BARRA_PADRAO_MM = 6000;
+
 export function calcularBarras(
   cortesMm: number[],
   comprimentoBarraMm: number,

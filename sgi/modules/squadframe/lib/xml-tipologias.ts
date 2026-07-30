@@ -1,6 +1,7 @@
 // Parsing de XML de tipologias (janelas/portas) exportado por ERP/CAD externo
-// — só usa Web APIs (FileReader/DOMParser), sem dependência externa. Portado
-// do SquadFrame (aba-producao.tsx) na migração do import de XML pro Wise.
+// — só usa Web APIs (FileReader/DOMParser), sem dependência externa. Fonte
+// original desta lógica (também usada, com o mesmo formato, no import de
+// lote do SquadWise em modules/wise/works/lib/xml-tipologias.ts).
 
 export type TipologiaParseada = {
   nome: string;

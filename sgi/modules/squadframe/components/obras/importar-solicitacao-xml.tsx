@@ -4,27 +4,31 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   resolverCodigosImportadosAction,
-  confirmarImportacaoXmlAction,
   listarLinhasAction,
   listarTiposLinhaAction,
   criarProdutoRapidoAction,
   criarLinhaRapidaAction,
+  descartarCodigoXmlAction,
+  criarAliasParaCodigoXmlAction,
 } from "@/modules/squadframe/package-procurement/actions";
-import { parseNecessidadesXml, type NecessidadeParseada } from "@/modules/squadframe/package-procurement/lib/xml-necessidades";
-import { lerArquivoXml } from "@/modules/wise/works/lib/xml-tipologias";
+import { parseNecessidadesXml } from "@/modules/squadframe/package-procurement/lib/xml-necessidades";
+import { calcularBarras, KERF_MM, COMPRIMENTO_BARRA_PADRAO_MM } from "@/modules/squadframe/package-procurement/lib/otimizacao-corte";
+import { lerArquivoXml } from "@/modules/squadframe/lib/xml-tipologias";
+import { criarSolicitacao } from "@/modules/squadframe/actions/compras/solicitacoes";
 import type { ItemXmlResolvido, DecisaoItemXml } from "@/modules/squadframe/package-procurement/types";
 
 type ProdutoBusca = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm: number | null };
 
-type LinhaRevisao = NecessidadeParseada & {
+type LinhaRevisao = ReturnType<typeof parseNecessidadesXml>[number] & {
   incluir: boolean;
   produto_id: string | null;
   produto_codigo_mestre: string | null;
   produto_nome: string | null;
   tamanho_mm: number | null;
-  jaResolvido: boolean; // veio resolvido automático — código mestre/alias não editável
+  cor_id: string | null;
+  jaResolvido: boolean;
   precisaCriarAlias: boolean;
-  cadastrando: boolean; // mini-form de cadastro aberto
+  cadastrando: boolean;
 };
 
 function ItemResolvidoCount({ n }: { n: number }) {
@@ -36,28 +40,36 @@ function ItemResolvidoCount({ n }: { n: number }) {
   );
 }
 
-export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
+// Mesmo fluxo de import de XML de necessidades já usado no SquadWise
+// (resolve código→produto automaticamente por codigo_mestre/alias, revisão
+// manual só do que sobrou), mas o "Confirmar importação" aqui vira uma
+// Solicitação de Compra de verdade (criarSolicitacao) em vez de uma
+// necessidade Wise — é exatamente o que "importar ordem de compra do Wise"
+// deveria fazer no lado de Compras.
+export function ImportarSolicitacaoXml({ obraId, loteId }: { obraId: string; loteId?: string }) {
   const router = useRouter();
   const [linhas, setLinhas] = useState<{ id: string; nome: string; tipo: string }[]>([]);
   const [tiposLinha, setTiposLinha] = useState<{ nome: string; slug: string }[]>([]);
   const [itens, setItens] = useState<LinhaRevisao[] | null>(null);
-  // Resolvidos automaticamente (codigo_mestre direto ou alias já
-  // existente) — não entram na tabela de revisão, mas precisam ser
-  // enviados junto no confirmar (senão a necessidade nunca é criada).
   const [resolvidosAuto, setResolvidosAuto] = useState<ItemXmlResolvido[]>([]);
   const [ignoradosAuto, setIgnoradosAuto] = useState(0);
+  // Filtro de origem — só controla o que aparece e o que é enviado na
+  // confirmação, não muda nada no que já foi lido/resolvido do XML. Trocar
+  // o filtro não precisa reimportar.
+  const [filtroOrigem, setFiltroOrigem] = useState<"todos" | "perfil" | "componente">("todos");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const itensFiltrados = (itens ?? []).filter((i) => filtroOrigem === "todos" || i.origem === filtroOrigem);
+  const resolvidosAutoFiltrados = resolvidosAuto.filter((r) => filtroOrigem === "todos" || r.origem === filtroOrigem);
 
   useEffect(() => {
     listarLinhasAction().then(setLinhas).catch(() => setLinhas([]));
     listarTiposLinhaAction().then(setTiposLinha).catch(() => setTiposLinha([]));
   }, []);
 
-  // Linha recém-criada por um cadastro inline fica disponível pros
-  // próximos itens da mesma revisão sem precisar recarregar a página.
   function adicionarLinha(l: { id: string; nome: string; tipo: string }) {
     setLinhas((prev) => (prev.some((x) => x.id === l.id) ? prev : [...prev, l]));
   }
@@ -94,6 +106,7 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
     setItens(null);
     setResolvidosAuto([]);
     setIgnoradosAuto(0);
+    setFiltroOrigem("todos");
     setErro(null);
   }
 
@@ -103,6 +116,18 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
 
   function toggleIncluir(key: number) {
     patch(key, (i) => ({ ...i, incluir: !i.incluir }));
+  }
+
+  // Diferente de "incluir" (só decide se entra nesta solicitação, não
+  // persiste nada): descartar marca o código como definitivamente
+  // irrelevante — não aparece mais em nenhuma importação futura de XML,
+  // pra qualquer obra/lote (mesma memória global já usada no Wise).
+  function descartar(item: LinhaRevisao) {
+    startTransition(async () => {
+      const res = await descartarCodigoXmlAction(item.codigo);
+      if (!res.ok) { setErro(res.erro); return; }
+      setItens((prev) => prev?.filter((i) => i._key !== item._key) ?? null);
+    });
   }
 
   function updateOrigem(key: number, origem: "componente" | "perfil") {
@@ -130,42 +155,89 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
   function confirmar() {
     if (!itens) return;
     setErro(null);
-    for (const i of itens) {
+    for (const i of itensFiltrados) {
       if (i.incluir && !i.produto_id) {
         setErro(`Item "${i.codigo}" precisa de um código mestre (ou desmarque "incluir").`);
         return;
       }
     }
-    const decisoesRevisao: DecisaoItemXml[] = itens.map((i) => ({
+    // Só o que está visível no filtro atual entra nesta solicitação (ex:
+    // filtro em "Perfis" ignora os componentes por enquanto). Como
+    // criarSolicitacao redireciona pra tela da solicitação criada, pra
+    // importar os componentes também é preciso reabrir e reimportar o
+    // mesmo XML depois, com o filtro em "Componentes" — nada se perde,
+    // já que só ficam de fora itens nunca marcados como incluídos.
+    const decisoesRevisao: DecisaoItemXml[] = itensFiltrados.filter((i) => i.incluir).map((i) => ({
       _key: i._key, origem: i.origem, codigo: i.codigo, descricao: i.descricao,
-      quantidade: i.quantidade, unidade: i.unidade, cortesMm: i.cortesMm, cor_id: null,
+      quantidade: i.quantidade, unidade: i.unidade, cortesMm: i.cortesMm, cor_id: i.cor_id,
       incluir: i.incluir, produto_id: i.produto_id, tamanho_mm: i.tamanho_mm,
       precisa_criar_alias: i.precisaCriarAlias,
     }));
-    const decisoesResolvidas: DecisaoItemXml[] = resolvidosAuto.map((r) => ({
+    const decisoesResolvidas: DecisaoItemXml[] = resolvidosAutoFiltrados.map((r) => ({
       _key: r._key, origem: r.origem, codigo: r.codigo, descricao: r.descricao,
       quantidade: r.quantidade, unidade: r.unidade, cortesMm: r.cortesMm, cor_id: r.cor_id,
       incluir: true, produto_id: r.produto_id, tamanho_mm: r.tamanho_mm,
       precisa_criar_alias: false,
     }));
     const decisoes = [...decisoesResolvidas, ...decisoesRevisao];
+    if (decisoes.length === 0) { setErro("Nenhum item incluído."); return; }
+
+    // Perfil vem do XML em metros de corte (cortesMm) — a solicitação
+    // precisa da quantidade em barras comerciais, não em metros (mesma
+    // conversão que confirmarImportacaoXml já faz pro Wise).
+    const fd = new FormData();
+    fd.set("obra_id", obraId);
+    fd.set("origem", "OBRA");
+    fd.set("prioridade", "NORMAL");
+    fd.set("observacoes", "Importado via XML");
+    fd.set("itens", JSON.stringify(decisoes.map((d) => {
+      const ehPerfil = d.origem === "perfil";
+      const quantidade = ehPerfil
+        ? calcularBarras(d.cortesMm, d.tamanho_mm ?? COMPRIMENTO_BARRA_PADRAO_MM, KERF_MM).barras
+        : d.quantidade;
+      const unidade = ehPerfil ? "barra" : d.unidade;
+      return {
+        produto_id: d.produto_id,
+        quantidade,
+        unidade,
+        observacoes: `${d.codigo} — ${d.descricao}`,
+        cor_id: d.cor_id,
+      };
+    })));
+    if (loteId) {
+      fd.set("lote_id", loteId);
+      fd.set("origem_contexto", "PRODUCAO_PACOTE");
+    }
+
+    // Código resolvido manualmente na revisão (produto escolhido na busca
+    // ou recém-cadastrado) precisa virar alias (código XML → produto,
+    // fornecedor "Preference") — sem isso, o mesmo código pede confirmação
+    // de novo em toda importação futura, mesmo já tendo sido resolvido aqui.
+    const paraCriarAlias = decisoes.filter((d) => d.precisa_criar_alias && d.produto_id);
+
     startTransition(async () => {
-      const res = await confirmarImportacaoXmlAction(pacoteId, decisoes);
-      if (!res.ok) { setErro(res.erro); return; }
-      cancelar();
-      router.refresh();
+      try {
+        await Promise.all(paraCriarAlias.map((d) => criarAliasParaCodigoXmlAction(d.codigo, d.produto_id!)));
+        await criarSolicitacao(fd);
+        cancelar();
+        router.refresh();
+      } catch (err: any) {
+        setErro(err.message ?? "Não foi possível criar a solicitação.");
+      }
     });
   }
 
   if (itens !== null) {
+    const totalPerfil = itens.filter((i) => i.origem === "perfil").length + resolvidosAuto.filter((r) => r.origem === "perfil").length;
+    const totalComponente = itens.filter((i) => i.origem === "componente").length + resolvidosAuto.filter((r) => r.origem === "componente").length;
     return (
       <div className="space-y-3 rounded-lg border border-primary/30 bg-primary-soft p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-text">
-              {itens.length > 0 ? `${itens.length} código(s) para revisar` : "Nada para revisar"}
+              {itensFiltrados.length > 0 ? `${itensFiltrados.length} código(s) para revisar` : "Nada para revisar"}
             </p>
-            <ItemResolvidoCount n={resolvidosAuto.length} />
+            <ItemResolvidoCount n={resolvidosAutoFiltrados.length} />
             {ignoradosAuto > 0 && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                 {ignoradosAuto} ignorado{ignoradosAuto > 1 ? "s" : ""} anteriormente
@@ -179,16 +251,38 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
               onClick={confirmar}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
             >
-              {isPending ? "Importando…" : "Confirmar importação"}
+              {isPending ? "Criando solicitação…" : "Confirmar e criar solicitação"}
             </button>
             <button type="button" onClick={cancelar} className="text-xs text-text-3 hover:text-text-2">
               Cancelar
             </button>
           </div>
         </div>
-        {itens.length > 0 && (
+
+        {/* Escopo desta solicitação — tudo, só perfis ou só componentes.
+            Trocar aqui não perde nada do que já foi lido/resolvido do XML. */}
+        <div className="flex items-center gap-1.5">
+          {([
+            ["todos", `Tudo (${itens.length + resolvidosAuto.length})`],
+            ["perfil", `Só perfis (${totalPerfil})`],
+            ["componente", `Só componentes (${totalComponente})`],
+          ] as const).map(([valor, label]) => (
+            <button
+              key={valor}
+              type="button"
+              onClick={() => setFiltroOrigem(valor)}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                filtroOrigem === valor ? "border-primary bg-primary text-white" : "border-border bg-surface text-text-2 hover:border-primary/40"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {itensFiltrados.length > 0 && (
           <div className="max-h-96 space-y-1.5 overflow-y-auto">
-            {itens.map((i) => (
+            {itensFiltrados.map((i) => (
               <LinhaRevisaoRow
                 key={i._key}
                 item={i}
@@ -201,11 +295,12 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
                 onAbrirCadastro={() => abrirCadastro(i._key)}
                 onFecharCadastro={() => patch(i._key, (x) => ({ ...x, cadastrando: false }))}
                 onConfirmarCadastro={(p) => confirmarCadastro(i._key, p)}
+                onDescartar={() => descartar(i)}
               />
             ))}
           </div>
         )}
-        {erro && <p className="text-xs text-red-500">{erro}</p>}
+        {erro && <p className="text-xs text-danger">{erro}</p>}
       </div>
     );
   }
@@ -218,16 +313,16 @@ export function ImportarNecessidadesXml({ pacoteId }: { pacoteId: string }) {
         onClick={() => fileRef.current?.click()}
         className="rounded-lg border border-primary/40 bg-primary-soft px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
       >
-        {carregando ? "Lendo XML…" : "Importar XML"}
+        {carregando ? "Lendo XML…" : "Importar solicitação"}
       </button>
       <input ref={fileRef} type="file" accept=".xml,text/xml" className="hidden" onChange={handleXmlChange} />
-      {erro && <span className="text-xs text-red-500">{erro}</span>}
+      {erro && <span className="text-xs text-danger">{erro}</span>}
     </div>
   );
 }
 
 function LinhaRevisaoRow({
-  item, linhas, tiposLinha, onLinhaCriada, onToggleIncluir, onOrigemChange, onSelecionarProduto, onAbrirCadastro, onFecharCadastro, onConfirmarCadastro,
+  item, linhas, tiposLinha, onLinhaCriada, onToggleIncluir, onOrigemChange, onSelecionarProduto, onAbrirCadastro, onFecharCadastro, onConfirmarCadastro, onDescartar,
 }: {
   item: LinhaRevisao;
   linhas: { id: string; nome: string; tipo: string }[];
@@ -239,13 +334,22 @@ function LinhaRevisaoRow({
   onAbrirCadastro: () => void;
   onFecharCadastro: () => void;
   onConfirmarCadastro: (p: { id: string; codigo_mestre: string; nome: string; tamanho_mm: number | null }) => void;
+  onDescartar: () => void;
 }) {
   return (
     <div className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm">
       <div className="flex items-center gap-2">
-        <input type="checkbox" checked={item.incluir} onChange={onToggleIncluir} className="shrink-0" title="Incluir?" />
+        <input type="checkbox" checked={item.incluir} onChange={onToggleIncluir} className="shrink-0" title="Incluir nesta solicitação?" />
         <span className="shrink-0 font-mono text-[11px] text-text-3 w-24 truncate" title={item.codigo}>{item.codigo}</span>
         <span className="flex-1 min-w-0 truncate" title={item.descricao}>{item.descricao}</span>
+        <button
+          type="button"
+          onClick={onDescartar}
+          title="Descartar este código pra sempre — não aparece mais em nenhuma importação futura"
+          className="shrink-0 rounded-md border border-transparent px-1.5 py-1 text-[11px] font-medium text-text-3 hover:border-danger/40 hover:text-danger"
+        >
+          Descartar
+        </button>
         <select
           value={item.origem}
           onChange={(e) => onOrigemChange(e.target.value as "componente" | "perfil")}
@@ -351,8 +455,6 @@ function CadastroInline({
   onCancelar: () => void;
   onCriado: (p: { id: string; codigo_mestre: string; nome: string; tamanho_mm: number | null }) => void;
 }) {
-  // Pré-ordena as linhas pelo tipo mais provável dado a origem do XML —
-  // não é 1:1 automático (usuário sempre pode trocar), só reduz scroll.
   const linhasOrdenadas = [...linhas].sort((a, b) => {
     const prioridade = (t: string) => (origem === "perfil" ? (t === "PERFIL" ? 0 : 1) : (t === "PERFIL" ? 1 : 0));
     return prioridade(a.tipo) - prioridade(b.tipo);
@@ -436,15 +538,15 @@ function CadastroInline({
       <button type="button" onClick={onCancelar} className="text-[11px] text-text-3 hover:text-text-2">
         cancelar
       </button>
-      {erro && <span className="w-full text-[11px] text-red-500">{erro}</span>}
+      {erro && <span className="w-full text-[11px] text-danger">{erro}</span>}
     </div>
   );
 }
 
-// Campo de linha digitável: filtra as linhas existentes por nome
-// enquanto o usuário digita; se não achar nenhuma, oferece criar uma
-// nova linha ali mesmo (nome pré-preenchido, tipo pré-selecionado pela
-// origem — perfil/componente — mas sempre editável).
+// Campo de linha digitável: filtra as linhas existentes por nome enquanto o
+// usuário digita; se não achar nenhuma, oferece criar uma nova linha ali
+// mesmo (nome pré-preenchido, tipo pré-selecionado pela origem — sempre
+// editável).
 function LinhaCombobox({
   linhas, tiposLinha, origem, valor, onSelecionar, onCriada,
 }: {
@@ -553,7 +655,7 @@ function LinhaCombobox({
                   </button>
                 </div>
               )}
-              {erro && <p className="mt-1 text-[11px] text-red-500">{erro}</p>}
+              {erro && <p className="mt-1 text-[11px] text-danger">{erro}</p>}
             </div>
           )}
         </div>

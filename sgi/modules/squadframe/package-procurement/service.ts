@@ -1,15 +1,12 @@
 import "server-only";
 
 import * as repo from "./repository";
-import { calcularBarras } from "./lib/otimizacao-corte";
+import { calcularBarras, KERF_MM, COMPRIMENTO_BARRA_PADRAO_MM } from "./lib/otimizacao-corte";
 import type {
   WisePacoteCompras, WiseNecessidade, StatusSuprimentosCalculado, ResultadoServico,
   CoberturaNecessidade, PedidoItemDisponivel, SolicitacaoItemDisponivel, RecebimentoItemDisponivel,
   ItemXmlParaResolver, ResolucaoImportacaoXml, DecisaoItemXml,
 } from "./types";
-
-const KERF_MM = 5;
-const COMPRIMENTO_BARRA_PADRAO_MM = 6000;
 
 export async function obterContexto(pacoteId: string): Promise<WisePacoteCompras | null> {
   return repo.buscarContexto(pacoteId);
@@ -147,13 +144,14 @@ export async function resolverCodigosImportados(itens: ItemXmlParaResolver[]): P
   let ignorados = 0;
 
   for (const item of itens) {
+    const corId = item.tratamento ? await repo.buscarCorPorTratamento(item.tratamento) : null;
     const porCodigoMestre = await repo.buscarProdutoPorCodigoMestre(item.codigo);
     const produto = porCodigoMestre ?? (await repo.buscarProdutoPorAlias(item.codigo));
     if (produto) {
       resolvidos.push({
         ...item, status: "resolvido",
         produto_id: produto.id, produto_codigo_mestre: produto.codigo_mestre,
-        produto_nome: produto.nome, tamanho_mm: produto.tamanho_mm,
+        produto_nome: produto.nome, tamanho_mm: produto.tamanho_mm, cor_id: corId,
       });
       continue;
     }
@@ -161,10 +159,40 @@ export async function resolverCodigosImportados(itens: ItemXmlParaResolver[]): P
       ignorados++;
       continue;
     }
-    pendentes.push({ ...item, status: "pendente" });
+    pendentes.push({ ...item, status: "pendente", cor_id: corId });
   }
 
   return { resolvidos, pendentes, ignorados };
+}
+
+// Grava o de-para código do XML → produto (alias, fornecedor "Preference")
+// pra essa resolução manual valer também nas próximas importações — sem
+// isso, o mesmo código pedia confirmação de novo toda vez.
+export async function criarAliasParaCodigoXml(codigo: string, produtoId: string): Promise<ResultadoServico> {
+  try {
+    const fornecedorId = await repo.buscarFornecedorPreferenceId();
+    await repo.criarAliasParaCodigo(produtoId, codigo, fornecedorId);
+    return { ok: true, dados: undefined };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Não foi possível salvar o código." };
+  }
+}
+
+// Descarte permanente de um código de XML — separado da decisão de
+// "incluir nesta solicitação/pedido": um código pode ser um material de
+// verdade que só não entra NESTA importação (isso é só desmarcar
+// "incluir", não persiste nada), enquanto "descartar" é pra código que
+// nunca deveria aparecer de novo em nenhuma importação futura (ex: um
+// apontamento de produção que passou batido pelos CODIGOS_OPERACAO
+// conhecidos). Mesma tabela/dedupe já usada pelo Wise.
+export async function descartarCodigoXml(codigo: string, usuarioId: string): Promise<ResultadoServico> {
+  try {
+    const fornecedorId = await repo.buscarFornecedorPreferenceId();
+    await repo.marcarCodigoIgnorado(fornecedorId, codigo, usuarioId);
+    return { ok: true, dados: undefined };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : "Não foi possível descartar o código." };
+  }
 }
 
 export async function confirmarImportacaoXml(

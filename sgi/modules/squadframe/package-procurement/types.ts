@@ -139,6 +139,10 @@ export type ItemXmlParaResolver = {
   quantidade: number;
   unidade: string;
   cortesMm: number[];
+  // Acabamento/cor do XML (ex: "PINTURA PRETO FOSCO - RAL9005F") — só
+  // perfil tem isso preenchido hoje. Casado contra cores_ral em
+  // resolverCodigosImportados pra virar cor_id.
+  tratamento: string | null;
 };
 
 // Item já resolvido automaticamente (código_mestre direto ou alias já
@@ -149,12 +153,14 @@ export type ItemXmlResolvido = ItemXmlParaResolver & {
   produto_codigo_mestre: string;
   produto_nome: string;
   tamanho_mm: number | null;
+  cor_id: string | null;
 };
 
 // Item sem match nenhum (nem código_mestre, nem alias, nem ignorado) —
 // vai pra tabela de revisão pro usuário decidir.
 export type ItemXmlPendente = ItemXmlParaResolver & {
   status: "pendente";
+  cor_id: string | null;
 };
 
 export type ResolucaoImportacaoXml = {
@@ -175,6 +181,7 @@ export type DecisaoItemXml = {
   quantidade: number;
   unidade: string;
   cortesMm: number[];
+  cor_id: string | null;
   incluir: boolean;
   // Quando já resolvido (produto existente ou recém-cadastrado nesta
   // sessão de revisão) — precisa criar alias se ainda não existir.

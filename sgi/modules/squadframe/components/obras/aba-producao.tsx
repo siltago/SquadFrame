@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { excluirLote, editarTipologia, criarPacoteTrabalho, editarLoteBasico } from "@/modules/squadframe/actions/obras/actions";
+import { excluirLote, editarTipologia, criarPacoteTrabalho, criarLoteComXml, editarLoteBasico } from "@/modules/squadframe/actions/obras/actions";
+import { lerArquivoXml, parseXml, type RascunhoTipologia } from "@/modules/squadframe/lib/xml-tipologias";
+import { ImportarSolicitacaoXml } from "@/modules/squadframe/components/obras/importar-solicitacao-xml";
 import { Button } from "@/ui/components/Button";
 import { Alert } from "@/ui/components/Alert";
 import { Modal } from "@/ui/components/Modal";
@@ -399,7 +401,8 @@ function PacoteCard({ lote, obraId, defaultOpen, onEditar }: { lote: Lote; obraI
             </TabPanel>
 
             <TabPanel id="solicitacoes" className="pt-3 space-y-2">
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <ImportarSolicitacaoXml obraId={obraId} loteId={lote.id} />
                 <Button
                   as="a"
                   href={`/squadframe/compras/solicitacoes/nova?obra_id=${obraId}&lote_id=${lote.id}&origem_contexto=PRODUCAO_PACOTE`}
@@ -512,12 +515,51 @@ export function AbaProducao({
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
+  // Import de XML dentro do próprio modal de "Novo lote" — mesmo formato
+  // usado no SquadWise (modules/squadframe/lib/xml-tipologias.ts), UI própria
+  // do SquadFrame. Sem arquivo escolhido, o modal cria um lote vazio normal.
+  const [rascunhos, setRascunhos] = useState<RascunhoTipologia[] | null>(null);
+  const [erroXml, setErroXml] = useState<string | null>(null);
+  const [nomeSugerido, setNomeSugerido] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Após criar o lote, oferece o atalho pra já gerar a ordem de compra dele
+  // — mesmo link usado no botão "Novo Pedido de Compra" de dentro do lote.
+  const [loteCriado, setLoteCriado] = useState<{ id: string; nome: string } | null>(null);
+
+  function handleXmlChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setErroXml(null);
+    lerArquivoXml(file)
+      .then((text) => {
+        const parsed = parseXml(text);
+        if (parsed.length === 0) { setErroXml("Nenhuma tipologia encontrada no XML."); return; }
+        setRascunhos(parsed);
+        setNomeSugerido(file.name.replace(/\.xml$/i, ""));
+      })
+      .catch(() => setErroXml("Erro ao ler o arquivo XML."));
+  }
+
+  function fecharModalPacote() {
+    setMostrarFormPacote(false);
+    setRascunhos(null);
+    setErroXml(null);
+    setNomeSugerido("");
+  }
+
   function handleSubmitPacote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const nome = String(fd.get("nome") || "").trim();
+    const descricao = String(fd.get("descricao") || "").trim() || null;
     startTransition(async () => {
-      await criarPacoteTrabalho(obraId, fd);
-      setMostrarFormPacote(false);
+      const resultado = rascunhos && rascunhos.length > 0
+        ? await criarLoteComXml(obraId, nome, descricao, rascunhos.map(({ _key, ...rest }) => rest))
+        : await criarPacoteTrabalho(obraId, fd);
+      fecharModalPacote();
+      setLoteCriado({ id: resultado.id, nome });
       router.refresh();
     });
   }
@@ -589,15 +631,53 @@ export function AbaProducao({
 
       <Modal
         open={mostrarFormPacote}
-        onClose={() => setMostrarFormPacote(false)}
+        onClose={fecharModalPacote}
         title="Novo lote"
         size="sm"
       >
         <form onSubmit={handleSubmitPacote} className="flex flex-col gap-4">
+          <div>
+            <label className="label">Importar XML de tipologias <span className="font-normal text-text-2">(opcional)</span></label>
+            {rascunhos ? (
+              <div className="mt-1 space-y-2 rounded-lg border border-primary/30 bg-primary-soft p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-text">
+                    {rascunhos.length} tipologia{rascunhos.length !== 1 ? "s" : ""} carregada{rascunhos.length !== 1 ? "s" : ""}
+                  </p>
+                  <button type="button" onClick={() => { setRascunhos(null); setNomeSugerido(""); }} className="text-xs text-text-3 hover:text-danger">
+                    Remover
+                  </button>
+                </div>
+                <div className="max-h-32 space-y-1 overflow-y-auto">
+                  {rascunhos.map((r) => (
+                    <div key={r._key} className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs">
+                      <span className="font-medium text-text">{r.tipo || r.nome}</span>
+                      {r.codigo_esquadria && <span className="font-mono text-text-3">{r.codigo_esquadria}</span>}
+                      <span className="ml-auto text-text-3">{r.quantidade}{r.quantidade === 1 ? " peça" : " peças"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium text-text-2 hover:border-primary hover:text-primary transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Selecionar arquivo XML
+              </button>
+            )}
+            <input ref={fileRef} type="file" accept=".xml,text/xml" className="hidden" onChange={handleXmlChange} />
+            {erroXml && <p className="mt-1 text-xs text-danger">{erroXml}</p>}
+          </div>
+
           <Input
+            key={nomeSugerido}
             label="Nome"
             name="nome"
             required
+            defaultValue={nomeSugerido}
             placeholder="Ex: Fachada Norte"
           />
           <Textarea
@@ -606,10 +686,33 @@ export function AbaProducao({
             placeholder="Escopo deste lote (opcional)"
           />
           <div className="flex justify-end gap-2">
-            <Button type="button" onClick={() => setMostrarFormPacote(false)} disabled={pending} variant="ghost">Cancelar</Button>
+            <Button type="button" onClick={fecharModalPacote} disabled={pending} variant="ghost">Cancelar</Button>
             <Button type="submit" disabled={pending}>{pending ? "Criando…" : "Criar lote"}</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={loteCriado !== null}
+        onClose={() => setLoteCriado(null)}
+        title="Lote criado"
+        size="sm"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-text-2">
+            <span className="font-semibold text-text">{loteCriado?.nome}</span> foi criado. Já dá pra gerar a
+            ordem de compra dele agora, ou fazer isso depois direto na aba do lote.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" onClick={() => setLoteCriado(null)} variant="ghost">Fechar</Button>
+            <Button
+              as="a"
+              href={`/squadframe/compras/pedidos/novo?obra_id=${obraId}&lote_id=${loteCriado?.id}&origem_contexto=PRODUCAO_PACOTE`}
+            >
+              Criar ordem de compra
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal

@@ -170,6 +170,49 @@ export async function criarPacoteTrabalho(obraId: string, formData: FormData) {
   return { id: data.id };
 }
 
+// Mesmo fluxo de criarPacoteTrabalho, mas já populado a partir de um XML de
+// tipologias (mesmo formato usado no import de lote do SquadWise — ver
+// modules/squadframe/lib/xml-tipologias.ts) — evita "criar lote vazio, abrir,
+// importar" em passos separados.
+export async function criarLoteComXml(
+  obraId: string,
+  nome: string,
+  descricao: string | null,
+  itens: Array<{
+    nome: string; quantidade: number; codigo_esquadria: string | null; tipo: string | null;
+    largura_mm: number | null; altura_mm: number | null; tratamento: string | null;
+    descricao: string | null; peso_unit: number | null; preco_unit: number | null;
+  }>,
+) {
+  await verificarPermissao("obras.criar", "obras.editar");
+  const supabase = createClient();
+
+  const nomeLimpo = nome.trim();
+  if (!nomeLimpo) throw new Error("Nome é obrigatório.");
+  if (!itens.length) throw new Error("Nenhuma tipologia para importar.");
+
+  const { data: lote, error } = await supabase
+    .from("lotes_obra")
+    .insert({ obra_id: obraId, nome: nomeLimpo, descricao })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: errItens } = await supabase.from("tipologias_obra").insert(
+    itens.map((item) => ({ ...item, obra_id: obraId, lote_id: lote.id }))
+  );
+  if (errItens) throw new Error(errItens.message);
+
+  await supabase.from("obra_historico").insert({
+    obra_id: obraId,
+    acao: "PACOTE_CRIADO",
+    valor_novo: { nome: nomeLimpo, lote_id: lote.id, origem: "xml", tipologias: itens.length },
+  });
+
+  revalidatePath(`/squadframe/obras/${obraId}`);
+  return { id: lote.id as string, criadas: itens.length };
+}
+
 // Edição "genérica" do lote no SquadFrame — só nome/descrição. Os demais
 // campos (responsável, prioridade, prazo, módulos) são geridos só pelo Wise;
 // o SquadFrame é visualização desses dados, não editor.

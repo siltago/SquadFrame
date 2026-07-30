@@ -29,6 +29,7 @@ export type NecessidadeParseada = {
   quantidade: number;
   unidade: string;
   cortesMm: number[];
+  tratamento: string | null;
 };
 
 function num(s: string): number {
@@ -38,46 +39,70 @@ function num(s: string): number {
 export function parseNecessidadesXml(text: string): NecessidadeParseada[] {
   const doc = new DOMParser().parseFromString(text, "text/xml");
   const t = (node: Element, tag: string) => node.querySelector(tag)?.textContent?.trim() ?? "";
+  // ":scope > tag" — o QTDE da própria TIPOLOGIA (quantas unidades dessa
+  // janela/porta) tem que ser o filho direto, não o primeiro QTDE
+  // encontrado na subárvore (que seria de um COMPONENTE/PERFIL aninhado).
+  const tDireto = (node: Element, tag: string) => node.querySelector(`:scope > ${tag}`)?.textContent?.trim() ?? "";
 
-  type Grupo = { codigo: string; descricao: string; unidade: string; quantidade: number; comprimentoMm: number; cortesMm: number[] };
+  type Grupo = { codigo: string; descricao: string; unidade: string; quantidade: number; comprimentoMm: number; cortesMm: number[]; tratamento: string | null };
   const materiais = new Map<string, Grupo>();
-
-  for (const c of Array.from(doc.querySelectorAll("COMPONENTE"))) {
-    const codigo = t(c, "CODIGO");
-    if (!codigo || CODIGOS_OPERACAO.has(codigo)) continue;
-
-    const codigoCor = t(c, "CODIGOCOR") || codigo;
-    const un = t(c, "UN");
-    const key = `componente:${codigo}|${codigoCor}`;
-    const g = materiais.get(key) ?? {
-      codigo, descricao: t(c, "DESCRICAO") || codigo,
-      unidade: un === "MM" ? "m" : "un",
-      quantidade: 0, comprimentoMm: 0, cortesMm: [],
-    };
-    if (un === "MM") {
-      const comprimento = num(t(c, "COMPRIMENTO"));
-      g.comprimentoMm += comprimento;
-      g.cortesMm.push(comprimento);
-    } else {
-      g.quantidade += num(t(c, "QUANTIDADE"));
-    }
-    materiais.set(key, g);
-  }
-
   const perfis = new Map<string, Grupo>();
-  for (const p of Array.from(doc.querySelectorAll("PERFIL"))) {
-    const codigo = t(p, "CODIGO");
-    if (!codigo) continue;
-    const tratamento = t(p, "TRATAMENTO") || "sem tratamento";
-    const key = `perfil:${codigo}|${tratamento}`;
-    const g = perfis.get(key) ?? {
-      codigo, descricao: `${t(p, "DESCRICAO") || codigo} (${tratamento})`,
-      unidade: "m", quantidade: 0, comprimentoMm: 0, cortesMm: [],
-    };
-    const comprimento = num(t(p, "COMPRIMENTO"));
-    g.comprimentoMm += comprimento;
-    g.cortesMm.push(comprimento);
-    perfis.set(key, g);
+
+  const tipologias = Array.from(doc.querySelectorAll("TIPOLOGIA"));
+  // Formato sem TIPOLOGIA (lista solta de componentes/perfis, sem
+  // agrupamento por unidade) — trata o documento inteiro como escopo
+  // único, multiplicador 1, preserva o comportamento de antes.
+  const escopos: Element[] = tipologias.length > 0 ? tipologias : [doc.documentElement as unknown as Element];
+
+  for (const tip of escopos) {
+    // Cada <COMPONENTE>/<PERFIL> dentro de uma TIPOLOGIA descreve a lista
+    // de UMA unidade daquele tipo — precisa multiplicar pela QTDE da
+    // própria tipologia (quantas unidades vão ser fabricadas), senão o
+    // total fica sistematicamente subestimado quando QTDE > 1.
+    const tipQtde = tipologias.length > 0 ? Math.max(1, Math.round(num(tDireto(tip, "QTDE"))) || 1) : 1;
+
+    for (const c of Array.from(tip.querySelectorAll("COMPONENTE"))) {
+      const codigo = t(c, "CODIGO");
+      if (!codigo || CODIGOS_OPERACAO.has(codigo)) continue;
+
+      const codigoCor = t(c, "CODIGOCOR") || codigo;
+      const un = t(c, "UN");
+      const key = `componente:${codigo}|${codigoCor}`;
+      const g = materiais.get(key) ?? {
+        codigo, descricao: t(c, "DESCRICAO") || codigo,
+        unidade: un === "MM" ? "m" : "un",
+        quantidade: 0, comprimentoMm: 0, cortesMm: [], tratamento: null,
+      };
+      if (un === "MM") {
+        const comprimento = num(t(c, "COMPRIMENTO"));
+        const qtdTotal = tipQtde;
+        g.comprimentoMm += comprimento * qtdTotal;
+        for (let i = 0; i < qtdTotal; i++) g.cortesMm.push(comprimento);
+      } else {
+        g.quantidade += num(t(c, "QUANTIDADE")) * tipQtde;
+      }
+      materiais.set(key, g);
+    }
+
+    for (const p of Array.from(tip.querySelectorAll("PERFIL"))) {
+      const codigo = t(p, "CODIGO");
+      if (!codigo) continue;
+      const tratamento = t(p, "TRATAMENTO") || "sem tratamento";
+      const key = `perfil:${codigo}|${tratamento}`;
+      const g = perfis.get(key) ?? {
+        codigo, descricao: `${t(p, "DESCRICAO") || codigo} (${tratamento})`,
+        unidade: "m", quantidade: 0, comprimentoMm: 0, cortesMm: [], tratamento,
+      };
+      const comprimento = num(t(p, "COMPRIMENTO"));
+      // <PERFIL> pode representar várias peças idênticas desse comprimento
+      // (QUANTIDADE > 1, ex: 10, 45, 240), multiplicado pela QTDE da
+      // tipologia — sem isso o total de barras fica muito subestimado.
+      const qtdItem = Math.max(1, Math.round(num(t(p, "QUANTIDADE"))) || 1);
+      const qtdTotal = qtdItem * tipQtde;
+      g.comprimentoMm += comprimento * qtdTotal;
+      for (let i = 0; i < qtdTotal; i++) g.cortesMm.push(comprimento);
+      perfis.set(key, g);
+    }
   }
 
   let key = 0;
@@ -88,6 +113,7 @@ export function parseNecessidadesXml(text: string): NecessidadeParseada[] {
       quantidade: g.unidade === "m" ? Number((g.comprimentoMm / 1000).toFixed(3)) : g.quantidade,
       unidade: g.unidade,
       cortesMm: g.cortesMm,
+      tratamento: g.tratamento,
     });
   }
   for (const g of perfis.values()) {
@@ -96,6 +122,7 @@ export function parseNecessidadesXml(text: string): NecessidadeParseada[] {
       quantidade: Number((g.comprimentoMm / 1000).toFixed(3)),
       unidade: "m",
       cortesMm: g.cortesMm,
+      tratamento: g.tratamento,
     });
   }
   return resultado;

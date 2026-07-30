@@ -408,6 +408,31 @@ export async function buscarFornecedorPreferenceId(): Promise<string> {
   return fornecedorPreferenceIdCache;
 }
 
+// Cores RAL cacheadas em memória do processo (tabela pequena, não muda
+// durante uma importação) — usado pra achar qual cor um TRATAMENTO de XML
+// (ex: "PINTURA PRETO FOSCO - RAL9005F") representa.
+let coresRalCache: { id: string; codigo_ral: string }[] | null = null;
+
+async function listarCoresRal(): Promise<{ id: string; codigo_ral: string }[]> {
+  if (coresRalCache) return coresRalCache;
+  const admin = createAdminClient();
+  const { data } = await admin.from("cores_ral").select("id, codigo_ral");
+  coresRalCache = data ?? [];
+  return coresRalCache;
+}
+
+// Acha a cores_ral cujo código aparece dentro do texto de tratamento —
+// prefere o código mais específico (mais longo) quando mais de um bate
+// (ex: tratamento contém tanto "PRETO" quanto "RAL9005F", "RAL9005F" vence).
+export async function buscarCorPorTratamento(tratamento: string): Promise<string | null> {
+  const cores = await listarCoresRal();
+  const alvo = tratamento.toUpperCase();
+  const candidatas = cores
+    .filter((c) => alvo.includes(c.codigo_ral.toUpperCase()))
+    .sort((a, b) => b.codigo_ral.length - a.codigo_ral.length);
+  return candidatas[0]?.id ?? null;
+}
+
 export async function buscarProdutoPorCodigoMestre(codigo: string): Promise<ProdutoResolvido | null> {
   const admin = createAdminClient();
   const { data } = await admin

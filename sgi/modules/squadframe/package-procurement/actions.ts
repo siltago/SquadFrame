@@ -51,6 +51,16 @@ export async function resolverCodigosImportadosAction(
   return service.resolverCodigosImportados(itens);
 }
 
+export async function criarAliasParaCodigoXmlAction(codigo: string, produtoId: string): Promise<ResultadoServico> {
+  return service.criarAliasParaCodigoXml(codigo, produtoId);
+}
+
+export async function descartarCodigoXmlAction(codigo: string): Promise<ResultadoServico> {
+  const usuarioId = await usuarioAtualId();
+  if (!usuarioId) return { ok: false, erro: "Não autenticado" };
+  return service.descartarCodigoXml(codigo, usuarioId);
+}
+
 export async function confirmarImportacaoXmlAction(
   pacoteId: string,
   decisoes: DecisaoItemXml[],

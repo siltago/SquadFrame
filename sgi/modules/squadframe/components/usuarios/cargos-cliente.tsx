@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -523,6 +523,13 @@ export function CargosCliente({
 }) {
   const [setores, setSetores] = useState(setoresInit);
   const [cargos, setCargos] = useState(cargosInit);
+  // useState(cargosInit) só usa o valor inicial no primeiro mount — sem isso,
+  // router.refresh() (manual ou via RealtimeRefresher) busca dados novos no
+  // servidor, mas esse componente cliente nunca via essa atualização: a
+  // lista de cargos/setores ficava congelada pra sempre no que existia no
+  // carregamento da página. Mesmo padrão já usado em UsuariosCliente.
+  useEffect(() => { setSetores(setoresInit); }, [setoresInit]);
+  useEffect(() => { setCargos(cargosInit); }, [cargosInit]);
   const [setorAtivo, setSetorAtivo] = useState<string | null>(setoresInit[0]?.id ?? null);
   const [adicionandoSetor, setAdicionandoSetor] = useState(false);
   const [nomeSetor, setNomeSetor] = useState("");

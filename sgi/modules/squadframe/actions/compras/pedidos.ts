@@ -434,7 +434,8 @@ export async function extrairValorFinalDaDevolutiva(
   let resultado: ResultadoExtracaoValorFinal;
   try {
     resultado = await extrairValorFinalPdf(buffer);
-  } catch {
+  } catch (err) {
+    console.error("Falha ao extrair valor final da devolutiva:", err);
     throw new Error("Não foi possível ler este PDF — verifique se o arquivo não está corrompido ou protegido por senha.");
   }
   if (!resultado.melhorCandidato) {

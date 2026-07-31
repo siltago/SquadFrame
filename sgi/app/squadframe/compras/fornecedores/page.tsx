@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function FornecedoresPage() {
   const admin = createAdminClient();
   const [{ data: fornecedores }, { data: tiposLinha }] = await Promise.all([
-    admin.from("fornecedores").select("id, nome, razao_social, cnpj, email, telefone, contato, ativo, tipos, endereco, numero, bairro, cidade, estado, cep").order("nome"),
+    admin.from("fornecedores").select("id, nome, razao_social, cnpj, email, telefone, contato, ativo, tipos, faz_beneficiamento, endereco, numero, bairro, cidade, estado, cep").order("nome"),
     admin.from("tipos_linha").select("nome, slug").order("ordem"),
   ]);
 

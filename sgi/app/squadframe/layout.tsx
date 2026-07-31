@@ -15,12 +15,13 @@ const ThemeToggle = dynamic(
 );
 
 const NAV_ITEMS = [
-  { href: "/squadframe/obras",      label: "Obras" },
-  { href: "/squadframe/compras",    label: "Compras" },
-  { href: "/squadframe/financeiro", label: "Financeiro" },
-  { href: "/squadframe/tarefas",    label: "Tarefas" },
-  { href: "/squadframe/documentos", label: "Documentos" },
-  { href: "/squadframe/usuarios",   label: "Usuários" },
+  { href: "/squadframe/obras",           label: "Obras" },
+  { href: "/squadframe/compras",         label: "Compras" },
+  { href: "/squadframe/financeiro",      label: "Financeiro" },
+  { href: "/squadframe/beneficiamento",  label: "Beneficiamento" },
+  { href: "/squadframe/tarefas",         label: "Tarefas" },
+  { href: "/squadframe/documentos",      label: "Documentos" },
+  { href: "/squadframe/usuarios",        label: "Usuários" },
 ];
 
 // Shell operacional do módulo SquadFrame (header, nav, notificações).

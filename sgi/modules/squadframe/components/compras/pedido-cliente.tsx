@@ -49,6 +49,7 @@ export function PedidoCliente({
   const podeCancelar = usePode("compras.pedido.cancelar");
   const podeRetornar = usePode("compras.pedido.retornar");
   const podeDevolver = usePode("compras.pedido.devolver");
+  const podeBeneficiar = usePode("compras.beneficiamento.criar");
   const [obs, setObs] = useState("");
   const [showObs, setShowObs] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<string | null>(null);
@@ -96,6 +97,13 @@ export function PedidoCliente({
   const STATUS_RETORNAVEL  = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO"];
   const podeAbrirRetorno   = podeRetornar && STATUS_RETORNAVEL.includes(pedido.status) && !hasRecebimentos && !temRetornoPendente;
   const podeAbrirDevolucao = podeDevolver && hasRecebimentos;
+
+  // Beneficiamento (perfil natural mandado pintar) — só depois do pedido
+  // emitido (não faz sentido mandar beneficiar algo que ainda pode ser
+  // rejeitado/alterado na aprovação). A tela de criação filtra sozinha se
+  // o pedido não tem nenhum item de perfil cor natural.
+  const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO"];
+  const podeGerarBeneficiamento = podeBeneficiar && STATUS_BENEFICIAVEL.includes(pedido.status);
 
   // Débito de faturamento direto: três estados possíveis enquanto usa_carteira.
   // Nunca é automático — sempre exige aprovar ou rejeitar explicitamente
@@ -279,7 +287,7 @@ export function PedidoCliente({
     });
   }
 
-  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao) return null;
+  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
 
   return (
     <>
@@ -396,6 +404,11 @@ export function PedidoCliente({
           {podeAbrirDevolucao && (
             <Button as="a" variant="ghost" href={`/squadframe/compras/pedidos/${pedido.id}/devolver`}>
               Criar devolução
+            </Button>
+          )}
+          {podeGerarBeneficiamento && (
+            <Button as="a" variant="ghost" href={`/squadframe/beneficiamento/novo?pedido_id=${pedido.id}`}>
+              Gerar beneficiamento
             </Button>
           )}
           {podeRegistrarValorFinal && (

@@ -105,6 +105,11 @@ export function GerenciarFornecedores({
                 </div>
               )}
 
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" name="faz_beneficiamento" value="true" className="rounded" />
+                Faz beneficiamento (pintura, etc)
+              </label>
+
               {erro && <p className="text-xs text-danger">{erro}</p>}
 
               <div className="flex gap-2 pt-1">

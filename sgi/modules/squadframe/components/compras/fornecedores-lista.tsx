@@ -10,7 +10,7 @@ type TipoLinha = { nome: string; slug: string };
 type Fornecedor = {
   id: string; nome: string; razao_social: string | null; cnpj: string | null;
   email: string | null; telefone: string | null; contato: string | null;
-  ativo: boolean; tipos: string[] | null;
+  ativo: boolean; tipos: string[] | null; faz_beneficiamento?: boolean;
   endereco: string | null; numero: string | null; complemento: string | null;
   bairro: string | null; cidade: string | null; estado: string | null; cep: string | null;
 };
@@ -107,6 +107,11 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
               </div>
             </div>
           )}
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input type="checkbox" name="faz_beneficiamento" value="true"
+              defaultChecked={!!f.faz_beneficiamento} className="rounded" />
+            Faz beneficiamento (pintura, etc)
+          </label>
           {erro && <p className="text-xs text-danger">{erro}</p>}
           <div className="flex gap-2">
             <Button type="submit" disabled={pending} className="text-xs px-3 py-1.5">
@@ -130,13 +135,18 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
           {f.telefone && <span>{f.telefone}</span>}
           {f.contato && <span>Contato: {f.contato}</span>}
         </div>
-        {tiposNomes.length > 0 && (
+        {(tiposNomes.length > 0 || f.faz_beneficiamento) && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {tiposNomes.map((nome) => (
               <span key={nome} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                 {nome}
               </span>
             ))}
+            {f.faz_beneficiamento && (
+              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+                Beneficiamento
+              </span>
+            )}
           </div>
         )}
       </div>

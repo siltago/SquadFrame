@@ -45,11 +45,12 @@ export async function criarFornecedor(formData: FormData) {
   const g = (k: string) => (formData.get(k) as string | null)?.trim() || null;
   const nome  = (formData.get("nome") as string).trim();
   const tipos = formData.getAll("tipos").map(String).filter(Boolean);
+  const faz_beneficiamento = formData.get("faz_beneficiamento") === "true";
   if (!nome) throw new Error("Nome é obrigatório.");
   const { data, error } = await admin
     .from("fornecedores")
     .insert({
-      nome, tipos,
+      nome, tipos, faz_beneficiamento,
       razao_social: g("razao_social"), cnpj: g("cnpj"),
       email: g("email"), telefone: g("telefone"), contato: g("contato"),
       endereco: g("endereco"), numero: g("numero"), complemento: g("complemento"),
@@ -67,11 +68,12 @@ export async function editarFornecedor(id: string, formData: FormData) {
   const g = (k: string) => (formData.get(k) as string | null)?.trim() || null;
   const nome  = (formData.get("nome") as string).trim();
   const tipos = formData.getAll("tipos").map(String).filter(Boolean);
+  const faz_beneficiamento = formData.get("faz_beneficiamento") === "true";
   if (!nome) throw new Error("Nome é obrigatório.");
   const { error } = await admin
     .from("fornecedores")
     .update({
-      nome, tipos,
+      nome, tipos, faz_beneficiamento,
       razao_social: g("razao_social"), cnpj: g("cnpj"),
       email: g("email"), telefone: g("telefone"), contato: g("contato"),
       endereco: g("endereco"), numero: g("numero"), complemento: g("complemento"),

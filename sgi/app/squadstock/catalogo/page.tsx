@@ -287,7 +287,7 @@ export default async function CatalogoPage({
   if (gerenciar === "fornecedores") {
     const [{ data: fLista }, { data: tiposLista }] = await Promise.all([
       supabase.from("fornecedores").select(
-        "id, nome, razao_social, cnpj, email, telefone, contato, ativo, tipos, endereco, numero, complemento, bairro, cidade, estado, cep"
+        "id, nome, razao_social, cnpj, email, telefone, contato, ativo, tipos, faz_beneficiamento, endereco, numero, complemento, bairro, cidade, estado, cep"
       )
         .contains("tipos", [tipoSlug])
         .order("nome"),

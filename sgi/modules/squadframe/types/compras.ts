@@ -104,3 +104,24 @@ export type RetornoPendente = {
   criado_em: string;
   criado_por: { nome: string } | null;
 };
+
+export type RotaBeneficiamento = 'VIA_FABRICA' | 'DIRETO_FORNECEDOR';
+export type StatusBeneficiamento = 'AGUARDANDO_ENVIO' | 'ENVIADO' | 'CONCLUIDO' | 'CANCELADO';
+
+export const ROTA_BENEFICIAMENTO_LABEL: Record<RotaBeneficiamento, string> = {
+  VIA_FABRICA: 'Via fábrica',
+  DIRETO_FORNECEDOR: 'Direto do fornecedor',
+};
+
+export const STATUS_BENEFICIAMENTO_LABEL: Record<StatusBeneficiamento, string> = {
+  AGUARDANDO_ENVIO: 'Aguard. Envio',
+  ENVIADO: 'Enviado',
+  CONCLUIDO: 'Concluído',
+  CANCELADO: 'Cancelado',
+};
+export const STATUS_BENEFICIAMENTO_COR: Record<StatusBeneficiamento, string> = {
+  AGUARDANDO_ENVIO: '#f59e0b',
+  ENVIADO: '#3b82f6',
+  CONCLUIDO: '#10b981',
+  CANCELADO: '#6b7280',
+};

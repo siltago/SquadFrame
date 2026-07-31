@@ -15,6 +15,13 @@ export const PERMISSIONS = {
   // Recebimentos
   COMPRAS_RECEBIMENTO_REGISTRAR: "compras.recebimento.registrar",
 
+  // Beneficiamento
+  COMPRAS_BENEFICIAMENTO_CRIAR:     "compras.beneficiamento.criar",
+  COMPRAS_BENEFICIAMENTO_GERENCIAR: "compras.beneficiamento.gerenciar",
+
+  // Romaneio de entrega
+  COMPRAS_ROMANEIO_CRIAR: "compras.romaneio.criar",
+
   // Documentos de pedido
   COMPRAS_DOCUMENTO_UPLOAD:  "compras.documento.upload",
   COMPRAS_DOCUMENTO_EXCLUIR: "compras.documento.excluir",

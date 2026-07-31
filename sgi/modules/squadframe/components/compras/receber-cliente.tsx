@@ -12,7 +12,18 @@ type Item = {
   produto?: { codigo_mestre: string; nome: string };
 };
 
-export function ReceberCliente({ pedidoId, itens }: { pedidoId: string; itens: Item[] }) {
+export function ReceberCliente({
+  pedidoId,
+  itens,
+  redirectHref,
+  romaneioId,
+}: {
+  pedidoId: string;
+  itens: Item[];
+  redirectHref?: string;
+  romaneioId?: string | null;
+}) {
+  const destino = redirectHref ?? `/squadframe/compras/pedidos/${pedidoId}`;
   const [qtds, setQtds] = useState<Record<string, number>>(
     Object.fromEntries(itens.map((i) => [i.id, Number(i.saldo_pendente)]))
   );
@@ -35,8 +46,8 @@ export function ReceberCliente({ pedidoId, itens }: { pedidoId: string; itens: I
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await registrarRecebimento(pedidoId, data, obs, payload);
-          router.push(`/squadframe/compras/pedidos/${pedidoId}`);
+          await registrarRecebimento(pedidoId, data, obs, payload, romaneioId);
+          router.push(destino);
           router.refresh();
         } catch (e: any) { setErro(e.message); }
       });
@@ -119,7 +130,7 @@ export function ReceberCliente({ pedidoId, itens }: { pedidoId: string; itens: I
           <Button type="submit" disabled={pending}>
             {pending ? "Aguarde…" : "Confirmar recebimento"}
           </Button>
-          <Button as="a" variant="ghost" href={`/squadframe/compras/pedidos/${pedidoId}`}>Cancelar</Button>
+          <Button as="a" variant="ghost" href={destino}>Cancelar</Button>
         </div>
       </form>
     </>

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { TruckIcon, ClockIcon, AlertTriangleIcon } from "@/ui/icons";
 import { StatCard } from "@/modules/squadframe/components/stat-card";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
+import { RecebimentoAcaoBotao } from "@/modules/squadstock/components/recebimento-acao-botao";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ interface PedidoPrazoRow {
   numero: string;
   status: string;
   prazo_entrega: string | null;
+  recebimento_iniciado_em: string | null;
   obra: { nome: string } | { nome: string }[] | null;
   fornecedor: { nome: string } | { nome: string }[] | null;
 }
@@ -47,7 +49,7 @@ function PrazoBadge({ prazo }: { prazo: string | null }) {
   return <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold text-text-2">Em {dias}d</span>;
 }
 
-export default async function ChegadasPage() {
+export default async function RecebimentoPage() {
   const usuario = await getUsuarioAtual();
   if (!usuario) redirect("/login");
 
@@ -55,7 +57,7 @@ export default async function ChegadasPage() {
 
   const { data: pedidosRaw } = await admin
     .from("pedidos_compra")
-    .select("id, numero, status, prazo_entrega, obra:obras(nome), fornecedor:fornecedores(nome)")
+    .select("id, numero, status, prazo_entrega, recebimento_iniciado_em, obra:obras(nome), fornecedor:fornecedores(nome)")
     .in("status", STATUS_EM_TRANSITO)
     .order("prazo_entrega", { ascending: true, nullsFirst: false });
 
@@ -75,14 +77,14 @@ export default async function ChegadasPage() {
   });
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-6xl">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">
           <TruckIcon size={20} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Chegadas</h1>
-          <p className="text-sm text-text-3">Prazos de chegada de material em trânsito, direto dos pedidos do SquadFrame.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Recebimento</h1>
+          <p className="text-sm text-text-3">Pedidos em trânsito e conferência de material recebido.</p>
         </div>
       </div>
 
@@ -105,12 +107,13 @@ export default async function ChegadasPage() {
               <th className="px-5 py-2 font-medium">Obra</th>
               <th className="px-5 py-2 font-medium">Situação</th>
               <th className="px-5 py-2 font-medium text-right">Prazo</th>
+              <th className="px-5 py-2 font-medium text-right">Ação</th>
             </tr>
           </thead>
           <tbody>
             {pedidos.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-sm text-text-3">
+                <td colSpan={6} className="px-5 py-10 text-center text-sm text-text-3">
                   Nenhum pedido em trânsito no momento.
                 </td>
               </tr>
@@ -128,6 +131,9 @@ export default async function ChegadasPage() {
                   <td className="px-5 py-2.5 text-text-2">{obra?.nome ?? "—"}</td>
                   <td className="px-5 py-2.5 text-text-3 text-xs">{STATUS_PED_LABEL[p.status as keyof typeof STATUS_PED_LABEL] ?? p.status}</td>
                   <td className="px-5 py-2.5 text-right"><PrazoBadge prazo={p.prazo_entrega} /></td>
+                  <td className="px-5 py-2.5 text-right">
+                    <RecebimentoAcaoBotao pedidoId={p.id} iniciadoEm={p.recebimento_iniciado_em} />
+                  </td>
                 </tr>
               );
             })}

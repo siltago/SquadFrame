@@ -12,6 +12,7 @@ export async function registrarRecebimento(
   dataRecebimento: string,
   observacoes: string,
   itens: { pedido_item_id: string; quantidade_recebida: number; observacoes?: string }[],
+  romaneioId?: string | null,
 ) {
   await verificarPermissao(PERMISSIONS.COMPRAS_RECEBIMENTO_REGISTRAR);
 
@@ -29,6 +30,7 @@ export async function registrarRecebimento(
     p_data_recebimento: dataRecebimento,
     p_observacoes:      observacoes,
     p_itens:            itemsValidos,
+    p_romaneio_id:      romaneioId ?? null,
   });
   if (error) throw new Error(error.message);
 

@@ -5,7 +5,7 @@ import { AppHeader } from "@/ui/layout/AppHeader";
 
 const NAV_ITEMS = [
   { href: "/squadstock", label: "Estoque", exact: true },
-  { href: "/squadstock/chegadas", label: "Chegadas" },
+  { href: "/squadstock/recebimento", label: "Recebimento" },
   { href: "/squadstock/movimentacoes", label: "Movimentações" },
   { href: "/squadstock/catalogo", label: "Catálogo" },
 ];

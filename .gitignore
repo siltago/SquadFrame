@@ -1,1 +1,7 @@
 node_modules
+
+.next
+**/bin/
+**/obj/
+.vs/
+integrations/autocad/SquadEngineer.AutoCAD/dist/

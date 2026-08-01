@@ -146,6 +146,7 @@ export function PedidoCliente({
     });
   }
   const transicoes = temRetornoPendente ? [] : (TRANSICOES[pedido.status] ?? []).filter((t) => {
+    if (t.status === "FINALIZADO" && pedido.valor_final == null) return false;
     if (t.status === "APROVADO")  return podeAprovar;
     // A partir de REJEITADO, aprovador e comprador podem devolver ou cancelar
     if (pedido.status === "REJEITADO") return podeAprovar || podeCriar || (t.status === "CANCELADO" && podeCancelar);
@@ -437,6 +438,11 @@ export function PedidoCliente({
             <Button as="a" href={`/squadframe/compras/pedidos/${pedido.id}/receber`}>
               Registrar recebimento
             </Button>
+          )}
+          {pedido.status === "RECEBIDO" && pedido.valor_final == null && (
+            <p className="text-xs text-text-3 self-center">
+              Registre o valor final para poder finalizar o pedido.
+            </p>
           )}
           {transicoes.map((t) => (
             <button key={t.status} disabled={pending} onClick={() => handleAcao(t.status)}

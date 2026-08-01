@@ -8,6 +8,8 @@ import { NotificacoesBadge } from "@/modules/squadframe/components/notificacoes/
 import { HeaderUser } from "@/modules/squadframe/components/header-user";
 import { AppHeader } from "@/ui/layout/AppHeader";
 import { TIPOS_NOTIFICACAO_POR_ESCOPO } from "@/modules/squadframe/types/kanban";
+import { PendenciasGate } from "@/modules/squadframe/components/pendencias/pendencias-gate";
+import { detectarPendenciasComprador } from "@/modules/squadframe/services/pendencias/detectar-pendencias";
 
 const ThemeToggle = dynamic(
   () => import("@/modules/squadframe/components/theme-toggle").then((m) => m.ThemeToggle),
@@ -38,9 +40,11 @@ export default async function SquadFrameLayout({ children }: { children: React.R
     .eq("lida", false)
     .in("tipo", TIPOS_NOTIFICACAO_POR_ESCOPO.squadframe);
   const naoLidasCount = count ?? 0;
+  const pendencias = await detectarPendenciasComprador(usuario.id);
 
   return (
     <>
+      <PendenciasGate pendenciasIniciais={pendencias} />
       <AppHeader
         logoAlt="SquadFrame"
         appName="SquadFrame"

@@ -149,7 +149,7 @@ export async function alterarStatusPedido(
 
   const { data: ped, error: erroPed } = await admin
     .from("pedidos_compra")
-    .select("status, obra_id, usa_carteira, debito_registrado, debito_status, comprador_id, numero, prazo_entrega")
+    .select("status, obra_id, usa_carteira, debito_registrado, debito_status, comprador_id, numero, prazo_entrega, valor_final")
     .eq("id", id)
     .single();
   // "Pedido não encontrado" só descrevia certo o caso de 0 linhas — .single()
@@ -176,6 +176,12 @@ export async function alterarStatusPedido(
     if (!prazoFinal) {
       throw new Error("Informe o prazo de entrega antes de mover o pedido para Aguardando Recebimento.");
     }
+  }
+
+  // Valor final é obrigatório para finalizar — sem isso o financeiro nunca
+  // sabe quanto o pedido realmente custou (motivo original desta trava).
+  if (status === "FINALIZADO" && ped.valor_final == null) {
+    throw new Error("Registre o valor final do pedido antes de finalizá-lo.");
   }
 
   const patch: Record<string, unknown> = { status };

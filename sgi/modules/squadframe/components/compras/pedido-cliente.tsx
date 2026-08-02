@@ -12,6 +12,8 @@ import { Button } from "@/ui/components/Button";
 import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
 import { parseValorBr } from "@/modules/squadframe/lib/valor";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
 
@@ -92,6 +94,7 @@ export function PedidoCliente({
   const [showRejeitarDebito, setShowRejeitarDebito] = useState(false);
   const [motivoRejeicaoDebito, setMotivoRejeicaoDebito] = useState("");
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const podeEditarAgora = podeCriar && ["RASCUNHO", "AGUARDANDO_APROVACAO", "REJEITADO"].includes(pedido.status);
 
@@ -170,7 +173,7 @@ export function PedidoCliente({
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await alterarStatusPedido(pedido.id, status, observacoes || undefined, prazoEntrega || undefined);
+          await runComOverlay(() => alterarStatusPedido(pedido.id, status, observacoes || undefined, prazoEntrega || undefined));
           router.refresh();
           setShowObs(false); setObs(""); setAcaoPendente(null);
           setShowPrazo(false);
@@ -287,6 +290,10 @@ export function PedidoCliente({
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

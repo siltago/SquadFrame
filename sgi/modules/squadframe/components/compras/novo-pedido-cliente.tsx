@@ -11,6 +11,8 @@ import { Alert } from "@/ui/components/Alert";
 import { BuscaProduto, type Produto } from "@/modules/squadframe/components/compras/busca-produto";
 import { isChapa, itemAreaChapa } from "@/modules/squadframe/lib/chapa";
 import { SegmentedToggle } from "@/ui/components/SegmentedToggle";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 import { Textarea } from "@/ui/components/Input";
 
 type Obra = { id: string; nome: string; codigo: string; numero?: number | null };
@@ -114,6 +116,7 @@ export function NovoPedidoCliente({
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const [pendingAdd, setPendingAdd] = useState<{ produto: Produto; nomeFornecedor: string } | null>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   useEffect(() => {
     if (fromSolicitacao) importarSolicitacao(fromSolicitacao);
@@ -334,7 +337,7 @@ export function NovoPedidoCliente({
     })));
     pendingFn.current = async () => {
       start(async () => {
-        try { await criarPedido(fd); }
+        try { await runComOverlay(() => criarPedido(fd)); }
         catch (err: any) { setErro(err.message); }
       });
     };
@@ -344,6 +347,13 @@ export function NovoPedidoCliente({
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay
+          status={overlayStatus}
+          label={overlayStatus === "loading" ? "Criando pedido…" : "Pedido criado!"}
+        />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

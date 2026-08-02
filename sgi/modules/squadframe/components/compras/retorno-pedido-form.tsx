@@ -10,6 +10,8 @@ import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
 import { BuscaProduto } from "@/modules/squadframe/components/compras/busca-produto";
 import { isChapa, itemAreaChapa } from "@/modules/squadframe/lib/chapa";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type Produto    = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm?: number | null; peso_metro?: number | null; preco_metro?: number | null };
 type Fornecedor = { id: string; nome: string; ativo?: boolean };
@@ -69,6 +71,7 @@ export function RetornoPedidoForm({
   const router = useRouter();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
   const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">(() =>
     itensIniciais.some((i) => i.cor_id) ? "por-item" : "unica"
   );
@@ -131,7 +134,7 @@ export function RetornoPedidoForm({
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await criarRetornoPedido(pedido.id, motivo, alteracoes);
+          await runComOverlay(() => criarRetornoPedido(pedido.id, motivo, alteracoes));
           router.refresh();
         } catch (err: any) {
           setErro(err.message);
@@ -148,6 +151,10 @@ export function RetornoPedidoForm({
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

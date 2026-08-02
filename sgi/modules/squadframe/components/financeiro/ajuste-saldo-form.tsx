@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ajustarSaldoFornecedor } from "@/modules/squadframe/actions/compras/carteira-ajustes";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 export interface FornecedorSaldoOpcao {
   fornecedorId: string;
@@ -22,6 +24,7 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const selecionado = fornecedores.find((f) => f.fornecedorId === fornecedorId) ?? null;
 
@@ -32,7 +35,7 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
     setPending(true);
     try {
       const fd = new FormData(e.currentTarget);
-      const result = await ajustarSaldoFornecedor(fd);
+      const result = await runComOverlay(() => ajustarSaldoFornecedor(fd));
       setOk(`Saldo ajustado: ${fmt(result.valor_anterior)} → ${fmt(result.valor_novo)}.`);
       setValorNovo("");
       setMotivo("");
@@ -45,6 +48,10 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
     <form onSubmit={handleSubmit} className="card p-5">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-text-3">Ajustar saldo (correção)</h2>
       <p className="mt-1 text-xs text-text-3 max-w-xl">
@@ -107,5 +114,6 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
         {ok && <p className="text-sm text-success">{ok}</p>}
       </div>
     </form>
+    </>
   );
 }

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { Button } from "@/ui/components/Button";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 export type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
 export type ExtraExecucao = { observacoes?: string; prazoEntrega?: string };
@@ -46,12 +48,13 @@ export const StatusTransitionActions = forwardRef<StatusTransitionHandle, {
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function dispararAssinatura(status: string, extra?: ExtraExecucao) {
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await onExecutar(status, extra);
+          await runComOverlay(() => onExecutar(status, extra));
           router.refresh();
           setShowObs(false); setObs(""); setAcaoPendente(null);
         } catch (e: any) { setErro(e.message); }
@@ -76,6 +79,10 @@ export const StatusTransitionActions = forwardRef<StatusTransitionHandle, {
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

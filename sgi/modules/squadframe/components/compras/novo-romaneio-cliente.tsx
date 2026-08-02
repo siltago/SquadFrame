@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 import {
   processarRomaneioAction,
   confirmarRomaneioAction,
@@ -20,6 +22,7 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
   const [erro, setErro] = useState<string | null>(null);
   const [processando, startProcessar] = useTransition();
   const [confirmando, startConfirmar] = useTransition();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function processar() {
     if (!arquivo) { setErro("Selecione um arquivo PDF."); return; }
@@ -47,14 +50,14 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
     setErro(null);
     startConfirmar(async () => {
       try {
-        await confirmarRomaneioAction({
+        await runComOverlay(() => confirmarRomaneioAction({
           numero: numero || null,
           data_entrega: dataEntrega || null,
           fornecedor_id: fornecedorId || null,
           pedidoIds,
           arquivoNome: resultado.arquivoNome,
           arquivoCaminho: resultado.arquivoCaminho,
-        });
+        }));
       } catch (e: any) {
         setErro(e.message ?? "Falha ao confirmar o romaneio.");
       }
@@ -63,6 +66,9 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
 
   return (
     <div className="space-y-6">
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
       <div className="card p-5">
         <label className="label">Arquivo do romaneio (PDF)</label>
         <input

@@ -5,6 +5,8 @@ import { criarDevolucaoPedido } from "@/modules/squadframe/actions/compras/devol
 import { Button } from "@/ui/components/Button";
 import { parseValorBr } from "@/modules/squadframe/lib/valor";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type ItemRecebido = {
   id: string;
@@ -52,6 +54,7 @@ export function DevolucaoPedidoForm({
   );
   const [erro, setErro] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const algumSelecionado = selecionados.some((s) => s.selecionado);
 
@@ -87,7 +90,7 @@ export function DevolucaoPedidoForm({
 
     start(async () => {
       try {
-        await criarDevolucaoPedido(pedidoId, motivo, itensSelecionados, vt && vt > 0 ? vt : null);
+        await runComOverlay(() => criarDevolucaoPedido(pedidoId, motivo, itensSelecionados, vt && vt > 0 ? vt : null));
       } catch (err: any) {
         setErro(err.message);
       }
@@ -103,6 +106,10 @@ export function DevolucaoPedidoForm({
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Banner */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-300">
@@ -224,5 +231,6 @@ export function DevolucaoPedidoForm({
         </Button>
       </div>
     </form>
+    </>
   );
 }

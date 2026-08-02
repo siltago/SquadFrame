@@ -11,6 +11,8 @@ import { BuscaProduto } from "@/modules/squadframe/components/compras/busca-prod
 import { isChapa, itemAreaChapa } from "@/modules/squadframe/lib/chapa";
 import { SegmentedToggle } from "@/ui/components/SegmentedToggle";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm?: number | null; peso_metro?: number | null; preco_metro?: number | null };
 type Fornecedor = { id: string; nome: string; ativo?: boolean };
@@ -67,6 +69,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
   const router = useRouter();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
   const [formaPagId, setFormaPagId] = useState(pedido.forma_pagamento_id ?? "");
   const [modoCorPedido, setModoCorPedido] = useState<"unica" | "por-item">(() =>
     itensIniciais.some((i) => i.cor_id) ? "por-item" : "unica"
@@ -128,7 +131,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
     pendingFn.current = async () => {
       start(async () => {
         try {
-          await editarPedido(pedido.id, fd);
+          await runComOverlay(() => editarPedido(pedido.id, fd));
           router.refresh();
           router.push(`/squadframe/compras/pedidos/${pedido.id}`);
         } catch (err: any) {
@@ -149,6 +152,10 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Salvando…" : "Feito!"} />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

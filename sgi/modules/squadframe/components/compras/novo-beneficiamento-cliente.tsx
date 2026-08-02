@@ -6,6 +6,8 @@ import { criarBeneficiamento } from "@/modules/squadframe/actions/compras/benefi
 import { criarProdutoRapidoAction } from "@/modules/squadframe/package-procurement/actions";
 import { Button } from "@/ui/components/Button";
 import { Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type ProdutoOrigem = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm: number | null; linha_id: string | null };
 type ItemPedido = { id: string; quantidade_pedida: number; unidade: string; descricao_snapshot: string; produto: ProdutoOrigem | null };
@@ -36,6 +38,7 @@ export function NovoBeneficiamentoCliente({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const formaFaturamentoDireto = formasPagamento.find((f) => f.is_faturamento_direto);
 
@@ -114,7 +117,7 @@ export function NovoBeneficiamentoCliente({
 
     startTransition(async () => {
       try {
-        await criarBeneficiamento(fd);
+        await runComOverlay(() => criarBeneficiamento(fd));
       } catch (err: any) {
         setErro(err.message ?? "Não foi possível criar o beneficiamento.");
       }
@@ -122,6 +125,10 @@ export function NovoBeneficiamentoCliente({
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
     <form onSubmit={confirmar} className="space-y-5">
       <div className="card p-4">
         <p className="text-sm text-text-2">
@@ -196,6 +203,7 @@ export function NovoBeneficiamentoCliente({
         </Button>
       </div>
     </form>
+    </>
   );
 }
 

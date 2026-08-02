@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { criarTarefa } from "@/modules/squadframe/actions/tarefas/actions";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 interface Props {
   colunaId: string;
@@ -16,6 +18,7 @@ export function NovaTarefaModal({ colunaId, setorId, usuarioId, onClose }: Props
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,16 +27,23 @@ export function NovaTarefaModal({ colunaId, setorId, usuarioId, onClose }: Props
     if (setorId) fd.set("setor_id", setorId);
     setErro(null);
     startTransition(async () => {
-      const res = await criarTarefa(fd);
-      if (!res.ok) {
-        setErro((res as any).erro ?? "Erro ao criar tarefa");
-        return;
+      try {
+        await runComOverlay(async () => {
+          const res = await criarTarefa(fd);
+          if (!res.ok) throw new Error((res as any).erro ?? "Erro ao criar tarefa");
+        });
+        onClose();
+      } catch (e: any) {
+        setErro(e.message);
       }
-      onClose();
     });
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Criando…" : "Feito!"} />
+      )}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl border border-border">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -83,5 +93,6 @@ export function NovaTarefaModal({ colunaId, setorId, usuarioId, onClose }: Props
         </form>
       </div>
     </div>
+    </>
   );
 }

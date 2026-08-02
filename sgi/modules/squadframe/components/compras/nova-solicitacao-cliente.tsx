@@ -7,6 +7,8 @@ import { Button } from "@/ui/components/Button";
 import { BuscaProduto } from "@/modules/squadframe/components/compras/busca-produto";
 import { SegmentedToggle } from "@/ui/components/SegmentedToggle";
 import { Input, Textarea } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 const UNIDADES = [
   "un", "m", "m²", "m³", "kg", "g", "L", "ml",
@@ -80,6 +82,7 @@ export function NovaSolicitacaoCliente({
   const [pending, start] = useTransition();
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function addCatalogo(p: Produto, forcar = false) {
     if (!forcar && itens.find((i) => i.tipo === "catalogo" && (i as ItemCatalogo).produto.id === p.id)) return;
@@ -111,7 +114,7 @@ export function NovaSolicitacaoCliente({
     })));
     pendingFn.current = async () => {
       start(async () => {
-        try { await criarSolicitacao(fd); }
+        try { await runComOverlay(() => criarSolicitacao(fd)); }
         catch (err: any) { setErro(err.message); }
       });
     };
@@ -120,6 +123,10 @@ export function NovaSolicitacaoCliente({
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modalAcao && (
         <AssinarModal
           acao={modalAcao}

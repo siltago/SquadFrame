@@ -30,6 +30,8 @@ import { Badge } from "@/ui/components/Badge";
 import { Button } from "@/ui/components/Button";
 import { Chip } from "@/ui/components/Chip";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 // Campos do form "novo setor" — usado tanto na barra mobile quanto na
 // sidebar desktop (mesmo Input + seletor de cor + botões, só o wrapper
@@ -573,6 +575,7 @@ export function CargosCliente({
   const [pending, start] = useTransition();
   const router = useRouter();
   const podeGerenciar = usePode("cargos.criar");
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -601,7 +604,7 @@ export function CargosCliente({
     fd.set("nome", nomeSetor.trim());
     fd.set("cor", corSetor);
     start(async () => {
-      await criarSetor(fd);
+      await runComOverlay(() => criarSetor(fd));
       setNomeSetor(""); setAdicionandoSetor(false);
       onRefresh();
     });
@@ -614,7 +617,7 @@ export function CargosCliente({
     fd.set("cor", corCargo);
     fd.set("setor_id", setorAtivo);
     start(async () => {
-      await criarCargo(fd);
+      await runComOverlay(() => criarCargo(fd));
       setNomeCargo(""); setAdicionandoCargo(false);
       onRefresh();
     });
@@ -644,6 +647,10 @@ export function CargosCliente({
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Salvando…" : "Feito!"} />
+      )}
     <div className="flex flex-col sm:flex-row sm:h-[calc(100dvh-56px-env(safe-area-inset-top))]">
       {/* ── Cabeçalho mobile (back + título) ──────────── */}
       <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 sm:hidden">
@@ -795,5 +802,6 @@ export function CargosCliente({
         )}
       </div>
     </div>
+    </>
   );
 }

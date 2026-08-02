@@ -6,6 +6,8 @@ import { aprovarRetornoPedido, rejeitarRetornoPedido } from "@/modules/squadfram
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import type { RetornoPendente } from "@/modules/squadframe/types/compras";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 export function RetornoAprovacao({
   retorno,
@@ -22,12 +24,13 @@ export function RetornoAprovacao({
   const [erro, setErro] = useState<string | null>(null);
   const [modal, setModal] = useState<"aprovar" | null>(null);
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function confirmarAprovacao() {
     setErro(null);
     startAprovar(async () => {
       try {
-        await aprovarRetornoPedido(retorno.id, pedidoId);
+        await runComOverlay(() => aprovarRetornoPedido(retorno.id, pedidoId));
         setModal(null);
         router.refresh();
       } catch (e: any) {
@@ -40,7 +43,7 @@ export function RetornoAprovacao({
     setErro(null);
     startRejeitar(async () => {
       try {
-        await rejeitarRetornoPedido(retorno.id, pedidoId, motivoRejeicao || undefined);
+        await runComOverlay(() => rejeitarRetornoPedido(retorno.id, pedidoId, motivoRejeicao || undefined));
         setShowRejeitar(false);
         router.refresh();
       } catch (e: any) {
@@ -51,6 +54,10 @@ export function RetornoAprovacao({
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modal === "aprovar" && (
         <AssinarModal
           acao="Aprovar Retorno de Pedido"

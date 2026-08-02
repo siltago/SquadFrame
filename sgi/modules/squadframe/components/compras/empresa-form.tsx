@@ -4,6 +4,8 @@ import { useRef, useState, useTransition, useEffect } from "react";
 import { salvarEmpresa } from "@/modules/squadframe/actions/compras/empresa";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type Empresa = {
   nome: string | null;
@@ -38,6 +40,7 @@ export function EmpresaForm({ empresa }: { empresa: Empresa }) {
   const [logoPreview, setLogoPreview] = useState<string | null>(empresa.logo_url);
   const [status, setStatus] = useState<{ type: "ok" | "erro"; msg: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   // Sincroniza quando o servidor atualiza os props (após revalidatePath)
   useEffect(() => {
@@ -55,18 +58,26 @@ export function EmpresaForm({ empresa }: { empresa: Empresa }) {
     const fd = new FormData(e.currentTarget);
     setStatus(null);
     startTransition(async () => {
-      const result = await salvarEmpresa(fd);
-      if (result.ok) {
+      try {
+        const result = await runComOverlay(async () => {
+          const r = await salvarEmpresa(fd);
+          if (!r.ok) throw new Error(r.erro);
+          return r;
+        });
         if (result.logo_url) setLogoPreview(result.logo_url);
         setStatus({ type: "ok", msg: "Salvo com sucesso" });
         setTimeout(() => setStatus(null), 3000);
-      } else {
-        setStatus({ type: "erro", msg: result.erro });
+      } catch (e: any) {
+        setStatus({ type: "erro", msg: e.message });
       }
     });
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Salvando…" : "Feito!"} />
+      )}
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Logo */}
       <div className="card p-6">
@@ -151,5 +162,6 @@ export function EmpresaForm({ empresa }: { empresa: Empresa }) {
         )}
       </div>
     </form>
+    </>
   );
 }

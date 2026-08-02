@@ -7,6 +7,8 @@ import { excluirFornecedores, editarFornecedor } from "@/app/squadframe/compras/
 import { Button } from "@/ui/components/Button";
 import { useBulkSelect } from "@/modules/squadframe/lib/use-bulk-select";
 import { BulkDeleteToggle, BulkDeleteBar } from "@/modules/squadframe/components/bulk-delete-bar";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type TipoLinha = { nome: string; slug: string };
 type Fornecedor = {
@@ -23,6 +25,7 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
   const podeEditar = usePode("catalogo.fornecedor.editar", "compras.fornecedor.editar");
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,7 +33,7 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
     setErro(null);
     start(async () => {
       try {
-        await editarFornecedor(f.id, fd);
+        await runComOverlay(() => editarFornecedor(f.id, fd));
         setEditando(false);
         router.refresh();
       } catch (err: any) { setErro(err.message); }
@@ -43,6 +46,10 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
 
   if (editando) {
     return (
+      <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Salvando…" : "Feito!"} />
+      )}
       <div className="px-4 py-4 bg-bg border-b border-border last:border-0">
         <form onSubmit={handleEdit} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -124,6 +131,7 @@ function FornecedorRow({ f, tiposLinha }: { f: Fornecedor; tiposLinha: TipoLinha
           </div>
         </form>
       </div>
+      </>
     );
   }
 

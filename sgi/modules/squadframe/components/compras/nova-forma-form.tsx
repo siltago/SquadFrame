@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { criarFormaPagamento } from "@/app/squadframe/compras/actions";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 export function NovaFormaForm() {
   const [isFaturamentoDireto, setIsFaturamentoDireto] = useState(false);
   const [pending, setPending] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,7 +22,7 @@ export function NovaFormaForm() {
     try {
       const fd = new FormData(e.currentTarget);
       fd.set("is_faturamento_direto", String(isFaturamentoDireto));
-      await criarFormaPagamento(fd);
+      await runComOverlay(() => criarFormaPagamento(fd));
       (e.target as HTMLFormElement).reset();
       setIsFaturamentoDireto(false);
       router.refresh();
@@ -31,6 +34,10 @@ export function NovaFormaForm() {
   }
 
   return (
+    <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
     <form onSubmit={handleSubmit} className="card p-5 space-y-4">
       <div>
         <label className="label">Nome <span className="text-danger">*</span></label>
@@ -64,5 +71,6 @@ export function NovaFormaForm() {
         {pending ? "Adicionando…" : "Adicionar"}
       </Button>
     </form>
+    </>
   );
 }

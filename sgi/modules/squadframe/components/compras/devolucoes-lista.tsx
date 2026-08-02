@@ -8,6 +8,8 @@ import { usePode } from "@/modules/squadframe/components/user-provider";
 import { STATUS_DEV_COR, STATUS_DEV_LABEL } from "@/modules/squadframe/types/compras";
 import type { DevolucaoCompra, StatusDevolucao } from "@/modules/squadframe/types/compras";
 import { StatusPill } from "@/ui/components/StatusPill";
+import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
+import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
 type Transicao = { label: string; status: StatusDevolucao; variant: "primary" | "ghost" | "danger" };
 
@@ -33,6 +35,7 @@ function DevolucaoCard({ dev, pedidoId }: { dev: DevolucaoCompra; pedidoId: stri
   const [modal, setModal] = useState<string | null>(null);
   const [acaoPendente, setAcaoPendente] = useState<StatusDevolucao | null>(null);
   const router = useRouter();
+  const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const transicoes = (TRANSICOES[dev.status] ?? []).filter((t) => {
     if (t.status === "APROVADO" || (dev.status === "AGUARDANDO_APROVACAO" && t.status === "CANCELADO")) {
@@ -51,7 +54,7 @@ function DevolucaoCard({ dev, pedidoId }: { dev: DevolucaoCompra; pedidoId: stri
     setErro(null);
     start(async () => {
       try {
-        await alterarStatusDevolucao(dev.id, pedidoId, acaoPendente);
+        await runComOverlay(() => alterarStatusDevolucao(dev.id, pedidoId, acaoPendente));
         setModal(null);
         setAcaoPendente(null);
         router.refresh();
@@ -64,6 +67,10 @@ function DevolucaoCard({ dev, pedidoId }: { dev: DevolucaoCompra; pedidoId: stri
 
   return (
     <>
+      {overlayStatus && (
+        <LoadingOverlay status={overlayStatus} label={overlayStatus === "loading" ? "Enviando…" : "Feito!"} />
+      )}
+
       {modal && (
         <AssinarModal
           acao={modal}

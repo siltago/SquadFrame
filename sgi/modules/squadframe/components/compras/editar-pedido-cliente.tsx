@@ -7,6 +7,10 @@ import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { calcPrecoUnit } from "@/modules/squadframe/lib/tipo-unidade";
 import { Button } from "@/ui/components/Button";
 import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
+import { BuscaProduto } from "@/modules/squadframe/components/compras/busca-produto";
+import { isChapa, itemAreaChapa } from "@/modules/squadframe/lib/chapa";
+import { SegmentedToggle } from "@/ui/components/SegmentedToggle";
+import { Textarea } from "@/ui/components/Input";
 
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm?: number | null; peso_metro?: number | null; preco_metro?: number | null };
 type Fornecedor = { id: string; nome: string; ativo?: boolean };
@@ -31,53 +35,6 @@ type Item = {
   cor_id: string | null;
 };
 
-function isChapa(it: Item) {
-  return ["CHAPA","M²","M2"].includes((it.unidade ?? "").toUpperCase());
-}
-
-function itemAreaChapa(it: Item): number | null {
-  if (!isChapa(it)) return null;
-  if (it.largura_m && it.altura_m && it.qtd_pecas) return it.largura_m * it.altura_m * it.qtd_pecas;
-  return null;
-}
-
-function BuscaProduto({ onAdd }: { onAdd: (p: Produto) => void }) {
-  const [q, setQ] = useState("");
-  const [resultados, setResultados] = useState<Produto[]>([]);
-  const [aberto, setAberto] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-
-  function buscar(v: string) {
-    setQ(v);
-    clearTimeout(timer.current);
-    if (v.length < 2) { setResultados([]); setAberto(false); return; }
-    timer.current = setTimeout(async () => {
-      const res = await fetch(`/api/produtos/search?q=${encodeURIComponent(v)}`);
-      setResultados(await res.json());
-      setAberto(true);
-    }, 280);
-  }
-
-  return (
-    <div className="relative">
-      <input value={q} onChange={(e) => buscar(e.target.value)}
-        placeholder="Buscar produto para adicionar…" className="field h-9 w-full text-sm" />
-      {aberto && resultados.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface shadow-lg">
-          {resultados.map((p) => (
-            <button key={p.id} type="button"
-              onClick={() => { onAdd(p); setQ(""); setResultados([]); setAberto(false); }}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-bg">
-              <span className="font-mono text-xs text-text-3 w-24 shrink-0">{p.codigo_mestre}</span>
-              <span className="flex-1 text-text">{p.nome}</span>
-              <span className="text-xs text-text-3">{p.unidade}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras, formasPagamento, coresRal }: {
   pedido: any;
@@ -248,18 +205,11 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
               <div className="sm:col-span-2">
                 <label className="label">Cor <span className="text-text-3 font-normal">(opcional)</span></label>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-                    <button type="button"
-                      onClick={() => setModoCorPedido("unica")}
-                      className={`px-3 py-1.5 transition-colors ${modoCorPedido === "unica" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                      Cor única
-                    </button>
-                    <button type="button"
-                      onClick={() => setModoCorPedido("por-item")}
-                      className={`px-3 py-1.5 border-l border-border transition-colors ${modoCorPedido === "por-item" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                      Por item
-                    </button>
-                  </div>
+                  <SegmentedToggle
+                    value={modoCorPedido}
+                    onChange={setModoCorPedido}
+                    options={[{ value: "unica", label: "Cor única" }, { value: "por-item", label: "Por item" }]}
+                  />
                   {modoCorPedido === "por-item" && (
                     <span className="text-xs text-text-3">Selecione a cor em cada item da tabela abaixo</span>
                   )}
@@ -282,8 +232,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
               <DataInputBr name="prazo_entrega" value={pedido.prazo_entrega ?? ""} className="field" />
             </div>
             <div className="sm:col-span-2">
-              <label className="label">Observações</label>
-              <textarea name="observacoes" rows={2} defaultValue={pedido.observacoes ?? ""} className="field" />
+              <Textarea label="Observações" name="observacoes" rows={2} defaultValue={pedido.observacoes ?? ""} />
             </div>
           </div>
         </div>
@@ -439,7 +388,7 @@ export function EditarPedidoCliente({ pedido, itensIniciais, fornecedores, obras
 
           <div className="rounded-lg border border-dashed border-border p-3">
             <p className="mb-2 text-xs font-medium text-text-3 uppercase tracking-widest">Adicionar produto do catálogo</p>
-            <BuscaProduto onAdd={addProduto} />
+            <BuscaProduto placeholder="Buscar produto para adicionar…" onAdd={addProduto} />
           </div>
         </div>
 

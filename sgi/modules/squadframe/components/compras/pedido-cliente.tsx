@@ -10,6 +10,8 @@ import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
 import { DataInputBr } from "@/modules/squadframe/components/ui/data-input-br";
+import { parseValorBr } from "@/modules/squadframe/lib/valor";
+import { Textarea } from "@/ui/components/Input";
 
 type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
 
@@ -211,19 +213,12 @@ export function PedidoCliente({
 
   const ehPedidoDePerfil = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL");
 
-  // Aceita formato brasileiro (1.234,56): remove separador de milhar antes
-  // de trocar a vírgula decimal por ponto.
-  function parseValorBr(valor: string): number {
-    return parseFloat(
-      valor.replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")
-    );
-  }
-
   function aposSalvarValorFinal() {
     setShowValorFinal(false);
     router.refresh();
-    // Só pedidos de perfil têm peso por item — o preço/kg médio do mês só
-    // faz sentido pra eles (mesma regra da distribuição por peso).
+    // Só pedidos de perfil têm peso por item — o preço/kg médio (janela
+    // rolante de 60 dias) só faz sentido pra eles (mesma regra da
+    // distribuição por peso).
     if (ehPedidoDePerfil) { setResultadoPrecoKg(null); setShowConfirmarPrecoKg(true); }
   }
 
@@ -279,8 +274,8 @@ export function PedidoCliente({
         const resultado = await recalcularPrecoKgPerfisAction();
         setResultadoPrecoKg(
           resultado
-            ? `Preço/kg médio atualizado para ${resultado.mediaKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — ${resultado.produtosAtualizados} produto(s) e ${resultado.aliasesAtualizados} alias(es) de perfil atualizado(s), com base em ${resultado.pedidosConsiderados} pedido(s) do mês.`
-            : "Nenhum pedido de perfil com valor final e peso conhecido neste mês — nada foi atualizado."
+            ? `Preço/kg médio atualizado para ${resultado.mediaKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — ${resultado.produtosAtualizados} produto(s) e ${resultado.aliasesAtualizados} alias(es) de perfil atualizado(s), com base em ${resultado.pedidosConsiderados} pedido(s) dos últimos 60 dias.`
+            : "Nenhum pedido de perfil com valor final e peso conhecido nos últimos 60 dias — nada foi atualizado."
         );
       } catch (e: any) {
         setResultadoPrecoKg(`Erro ao recalcular: ${e.message}`);
@@ -604,7 +599,7 @@ export function PedidoCliente({
                 <p className="text-sm font-semibold text-text mb-1">Atualizar preço/kg dos perfis?</p>
                 <p className="text-xs text-text-2 mb-3">
                   Recalcula a média de R$/kg com base nos pedidos de perfil com valor final confirmado
-                  neste mês e atualiza o preço de todos os produtos de perfil no catálogo.
+                  nos últimos 60 dias e atualiza o preço de todos os produtos de perfil no catálogo.
                 </p>
                 <div className="flex gap-2">
                   <Button onClick={() => handleRecalcularPrecoKg(true)} disabled={pendingPrecoKg} className="h-9 flex-1 text-sm">
@@ -655,7 +650,7 @@ export function PedidoCliente({
         {showObs && (
           <div className="w-72 rounded-lg border border-border bg-surface p-3 shadow-sm">
             <label className="label">Motivo <span className="text-text-3 font-normal">(opcional)</span></label>
-            <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="field text-sm" />
+            <Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="text-sm" />
             <div className="mt-2 flex gap-2">
               <Button onClick={() => { setShowObs(false); pedirAssinatura(acaoPendente!, obs); }}
                 className="flex-1 text-xs">

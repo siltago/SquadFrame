@@ -21,16 +21,30 @@ export async function GET(req: NextRequest) {
   }
 
   const pattern = buildSearchPattern(q);
+  // Palavras da busca, normalizadas mas SEM o padrão "caractere-a-caractere"
+  // — código (codigo_mestre/alias) tolera separador variável (PR-32.516 ≈
+  // PR32516), mas nome de produto em texto livre não pode casar letras
+  // espalhadas em qualquer lugar (senão "parafuso" acha produto sem nada a
+  // ver). Cada palavra vira uma condição .ilike própria — o query builder
+  // do Supabase encadeia filtros como AND, então todas as palavras
+  // precisam aparecer como substring (em qualquer ordem) no nome.
+  const palavras = q.toLowerCase().split(/\s+/).filter(Boolean);
 
   // Busca em paralelo: código/nome, aliases e (legado) produto_fornecedores
-  const [byMestre, byAlias, byFornCod] = await Promise.all([
+  const [byMestre, byNome, byAlias, byFornCod] = await Promise.all([
     (() => {
       let q1 = admin.from("produtos")
         .select("id")
-        .or(`codigo_mestre.ilike.${pattern},nome.ilike.${pattern}`)
+        .ilike("codigo_mestre", pattern)
         .eq("status", true);
       if (linhaIds.length) q1 = q1.in("linha_id", linhaIds);
       return q1.limit(20);
+    })(),
+    (() => {
+      let q2 = admin.from("produtos").select("id").eq("status", true);
+      for (const palavra of palavras) q2 = q2.ilike("nome", `%${palavra}%`);
+      if (linhaIds.length) q2 = q2.in("linha_id", linhaIds);
+      return q2.limit(20);
     })(),
     admin.from("produto_aliases").select("produto_id").ilike("alias", pattern).limit(20),
     admin.from("produto_fornecedores").select("produto_id").ilike("codigo_fornecedor", pattern).limit(20),
@@ -38,6 +52,7 @@ export async function GET(req: NextRequest) {
 
   const ids = Array.from(new Set([
     ...(byMestre.data ?? []).map((p: any) => p.id),
+    ...(byNome.data   ?? []).map((p: any) => p.id),
     ...(byAlias.data  ?? []).map((a: any) => a.produto_id),
     ...(byFornCod.data ?? []).map((f: any) => f.produto_id),
   ]));

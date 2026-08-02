@@ -4,7 +4,8 @@ import { recalcularPrecoKgPerfis } from "@/modules/squadstock/lib/preco-kg-perfi
 
 // Job agendado (ver vercel.json) — roda no dia 1 e no dia 16 de cada mês,
 // recalculando o preço/kg médio dos perfis a partir dos pedidos com valor
-// final confirmado no mês corrente. Protegido por CRON_SECRET.
+// final confirmado nos últimos 60 dias (janela rolante — nunca fica sem
+// base de cálculo só por causa da virada do mês). Protegido por CRON_SECRET.
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {

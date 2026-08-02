@@ -9,19 +9,23 @@ export type ResultadoRecalculoPrecoKg = {
   aliasesAtualizados: number;
 };
 
-// Início fixo do mês corrente — a janela considerada é sempre "desde o dia 01
-// do mês até agora", independente de quando o recálculo roda (manual ou
-// cron), e não uma janela móvel de 30 dias a partir de um pedido específico.
-function inicioMesCorrente(): Date {
+// Janela rolante de 60 dias (não mais "desde o dia 1 do mês corrente") — com
+// o corte fixo no início do mês, o cron do dia 1 sempre rodava sem nenhum
+// pedido novo ainda naquele mês, zerando a base de cálculo bem quando ela
+// tinha acabado de se formar no mês anterior. Uma janela rolante garante que
+// sempre haja histórico recente pra calcular a média, renovando aos poucos
+// em vez de "sumir" a cada virada de mês.
+const DIAS_JANELA_PRECO_KG = 60;
+function inicioJanelaRecente(): Date {
   const d = new Date();
-  d.setDate(1);
+  d.setDate(d.getDate() - DIAS_JANELA_PRECO_KG);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
 // Calcula a média de R$/kg a partir dos pedidos de perfil com valor final
-// confirmado (>0) no mês corrente, e aplica essa média a todos os produtos
-// do catálogo cuja linha é do tipo "perfil": preco_kg = média,
+// confirmado (>0) nos últimos 60 dias, e aplica essa média a todos os
+// produtos do catálogo cuja linha é do tipo "perfil": preco_kg = média,
 // preco_metro = peso_metro × média (quando o produto tem peso cadastrado).
 export async function recalcularPrecoKgPerfis(
   admin: ReturnType<typeof createAdminClient>
@@ -29,7 +33,7 @@ export async function recalcularPrecoKgPerfis(
   const { data: pedidos } = await admin
     .from("pedidos_compra")
     .select("id, valor_final, tipo_linha")
-    .gte("criado_em", inicioMesCorrente().toISOString())
+    .gte("criado_em", inicioJanelaRecente().toISOString())
     .not("valor_final", "is", null)
     .gt("valor_final", 0);
 
@@ -65,12 +69,25 @@ export async function recalcularPrecoKgPerfis(
   // pros itens de pedidos novos) com muitas casas decimais.
   const mediaKg = Math.round((precosKg.reduce((a, b) => a + b, 0) / precosKg.length) * 100) / 100;
 
-  const { data: produtos } = await admin
-    .from("produtos")
-    .select("id, peso_metro, linha:linhas(tipo)")
-    .eq("status", true);
+  // Busca paginada — sem isso, o Supabase corta silenciosamente em 1000
+  // linhas por página e o catálogo (1659+ produtos ativos) ficava com boa
+  // parte dos perfis de fora do recálculo, sem erro nenhum pra avisar.
+  const produtos: any[] = [];
+  {
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data: pagina } = await admin
+        .from("produtos")
+        .select("id, peso_metro, linha:linhas(tipo)")
+        .eq("status", true)
+        .range(from, from + PAGE - 1);
+      if (!pagina?.length) break;
+      produtos.push(...pagina);
+      if (pagina.length < PAGE) break;
+    }
+  }
 
-  const produtosPerfil = (produtos ?? []).filter((p: any) =>
+  const produtosPerfil = produtos.filter((p: any) =>
     (p.linha?.tipo ?? "").toUpperCase().includes("PERFIL")
   );
   if (!produtosPerfil.length) {
@@ -98,13 +115,22 @@ export async function recalcularPrecoKgPerfis(
   // produto_aliases.preco_kg), mas têm peso_metro próprio — pode divergir do
   // produto mestre. Sem isso, o catálogo de aliases ficava com preço parado
   // mesmo depois do recálculo do produto principal.
-  const { data: aliases } = await admin
-    .from("produto_aliases")
-    .select("id, peso_metro")
-    .in("produto_id", produtosPerfil.map((p: any) => p.id));
+  // Em lotes — um .in() só com todos os IDs de perfil (pode passar de 1000
+  // agora que a busca de produtos não trunca mais) arrisca estourar o
+  // limite de tamanho da URL da requisição.
+  const aliases: any[] = [];
+  const idsPerfil = produtosPerfil.map((p: any) => p.id);
+  const LOTE = 200;
+  for (let i = 0; i < idsPerfil.length; i += LOTE) {
+    const { data: pagina } = await admin
+      .from("produto_aliases")
+      .select("id, peso_metro")
+      .in("produto_id", idsPerfil.slice(i, i + LOTE));
+    if (pagina?.length) aliases.push(...pagina);
+  }
 
   let aliasesAtualizados = 0;
-  for (const a of (aliases ?? []) as any[]) {
+  for (const a of aliases as any[]) {
     const patch: Record<string, unknown> = { preco_kg: mediaKg };
     if (a.peso_metro != null) patch.preco_metro = Math.round(Number(a.peso_metro) * mediaKg * 100) / 100;
     const { error } = await admin.from("produto_aliases").update(patch).eq("id", a.id);

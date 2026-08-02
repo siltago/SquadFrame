@@ -4,6 +4,9 @@ import { useState, useTransition, useRef, useEffect } from "react";
 import { criarSolicitacao } from "@/app/squadframe/compras/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { Button } from "@/ui/components/Button";
+import { BuscaProduto } from "@/modules/squadframe/components/compras/busca-produto";
+import { SegmentedToggle } from "@/ui/components/SegmentedToggle";
+import { Input, Textarea } from "@/ui/components/Input";
 
 const UNIDADES = [
   "un", "m", "m²", "m³", "kg", "g", "L", "ml",
@@ -18,104 +21,6 @@ type Produto = { id: string; codigo_mestre: string; nome: string; unidade: strin
 type ItemCatalogo = { tipo: "catalogo"; produto: Produto; quantidade: number; unidade: string; observacoes: string; cor_id?: string };
 type ItemExterno  = { tipo: "externo"; descricao: string; quantidade: number; unidade: string; observacoes: string; cor_id?: string };
 type Item = ItemCatalogo | ItemExterno;
-
-function BuscaProduto({ onAdd, onAddForcar, onIncrement, existingQtds }: {
-  onAdd: (p: Produto) => void;
-  onAddForcar: (p: Produto) => void;
-  onIncrement: (produtoId: string, delta: number) => void;
-  existingQtds: Map<string, number>;
-}) {
-  const [q, setQ] = useState("");
-  const [resultados, setResultados] = useState<Produto[]>([]);
-  const [aberto, setAberto] = useState(false);
-  const [qtdExtra, setQtdExtra] = useState<Record<string, number>>({});
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    clearTimeout(timer.current);
-    if (q.length < 2) { setResultados([]); setAberto(false); return; }
-    timer.current = setTimeout(async () => {
-      const res = await fetch(`/api/produtos/search?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setResultados(data);
-      setAberto(true);
-    }, 280);
-  }, [q]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Buscar produto por código ou nome…"
-        className="field h-9 w-full text-sm"
-      />
-      {aberto && resultados.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface shadow-lg">
-          {resultados.map((p) => {
-            const atual = existingQtds.get(p.id);
-            const jaExiste = atual !== undefined;
-            const qtd = qtdExtra[p.id] ?? 1;
-            if (jaExiste) {
-              return (
-                <div key={p.id} className="px-3 py-2 border-b border-border last:border-0 bg-warning-soft/60">
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className="w-24 shrink-0 font-mono text-xs text-text-3">{p.codigo_mestre}</span>
-                    <span className="flex-1 text-sm text-text">{p.nome}</span>
-                    <span className="text-xs text-warning font-medium">Já na lista</span>
-                  </div>
-                  <div className="flex items-center gap-2 pl-[6.5rem]">
-                    <input type="number" min="1" step="any" value={qtd}
-                      onChange={(e) => setQtdExtra((prev) => ({ ...prev, [p.id]: parseFloat(e.target.value) || 1 }))}
-                      onClick={(e) => e.stopPropagation()}
-                      className="field h-7 w-20 text-xs font-mono" />
-                    <span className="text-xs text-text-3">{p.unidade}</span>
-                    <span className="text-xs text-text-3 font-mono">
-                      {atual} + {qtd} = <strong className="text-text">{atual + qtd}</strong>
-                    </span>
-                    <button type="button"
-                      onClick={() => { onIncrement(p.id, qtd); setQtdExtra((prev) => ({ ...prev, [p.id]: 1 })); setQ(""); setAberto(false); }}
-                      className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary/90 h-7">
-                      Confirmar
-                    </button>
-                    <button type="button"
-                      onClick={() => { onAddForcar(p); setQ(""); setAberto(false); }}
-                      className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1 text-xs font-medium text-text-2 hover:bg-bg h-7">
-                      Adicionar novamente
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <button key={p.id} type="button"
-                onClick={() => { onAdd(p); setQ(""); setAberto(false); }}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-bg border-b border-border last:border-0">
-                <span className="w-24 shrink-0 font-mono text-xs text-text-3">{p.codigo_mestre}</span>
-                <span className="flex-1 text-text">{p.nome}</span>
-                <span className="text-xs text-text-3">{p.unidade}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {aberto && q.length >= 2 && resultados.length === 0 && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface px-3 py-3 shadow-lg text-sm text-text-3">
-          Nenhum produto encontrado.
-        </div>
-      )}
-    </div>
-  );
-}
 
 function FormItemExterno({ onAdd }: { onAdd: (item: ItemExterno) => void }) {
   const [descricao, setDescricao] = useState("");
@@ -264,47 +169,45 @@ export function NovaSolicitacaoCliente({
             </div>
             <div>
               <label className="label">Justificativa <span className="text-text-3 font-normal">(opcional)</span></label>
-              <input name="justificativa" className="field" placeholder="Motivo da solicitação" />
+              <Input name="justificativa" placeholder="Motivo da solicitação" />
             </div>
             <div className="sm:col-span-2">
               <label className="label">Observações <span className="text-text-3 font-normal">(opcional)</span></label>
-              <textarea name="observacoes" rows={2} className="field" />
+              <Textarea name="observacoes" rows={2} />
             </div>
           </div>
         </div>
 
         {/* Itens */}
-        <div>
+        <div className="card p-6">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-text">Itens da solicitação</h2>
-            <div className="flex rounded-lg border border-border overflow-hidden text-sm">
-              <button type="button"
-                onClick={() => setModoAdd("catalogo")}
-                className={`px-3 py-1.5 ${modoAdd === "catalogo" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                Do catálogo
-              </button>
-              <button type="button"
-                onClick={() => setModoAdd("externo")}
-                className={`px-3 py-1.5 border-l border-border ${modoAdd === "externo" ? "bg-primary text-white" : "bg-surface text-text-2 hover:bg-bg"}`}>
-                Item externo
-              </button>
-            </div>
+            <SegmentedToggle
+              value={modoAdd}
+              onChange={setModoAdd}
+              className="flex rounded-lg border border-border overflow-hidden text-sm"
+              options={[{ value: "catalogo", label: "Do catálogo" }, { value: "externo", label: "Item externo" }]}
+            />
           </div>
 
-          {modoAdd === "catalogo" ? (
-            <BuscaProduto
-              onAdd={addCatalogo}
-              onAddForcar={(p) => addCatalogo(p, true)}
-              onIncrement={(id, delta) => setItens((prev) => prev.map((it) =>
-                it.tipo === "catalogo" && (it as ItemCatalogo).produto.id === id
-                  ? { ...it, quantidade: (it.quantidade ?? 0) + delta }
-                  : it
-              ))}
-              existingQtds={new Map(itens.filter((i): i is ItemCatalogo => i.tipo === "catalogo").map((i) => [i.produto.id, i.quantidade ?? 0]))}
-            />
-          ) : (
-            <FormItemExterno onAdd={addExterno} />
-          )}
+          <div className="mb-4 rounded-lg bg-bg p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-3">Adicionar item</p>
+            {modoAdd === "catalogo" ? (
+              <BuscaProduto
+                placeholder="Buscar produto por código ou nome…"
+                onAdd={addCatalogo}
+                onAddForcar={(p) => addCatalogo(p, true)}
+                onIncrement={(id, delta) => setItens((prev) => prev.map((it) =>
+                  it.tipo === "catalogo" && (it as ItemCatalogo).produto.id === id
+                    ? { ...it, quantidade: (it.quantidade ?? 0) + delta }
+                    : it
+                ))}
+                existingQtds={new Map(itens.filter((i): i is ItemCatalogo => i.tipo === "catalogo").map((i) => [i.produto.id, i.quantidade ?? 0]))}
+              />
+            ) : (
+              <FormItemExterno onAdd={addExterno} />
+            )}
+          </div>
 
           {itens.length > 0 && (
             <div className="mt-3 card overflow-x-auto">

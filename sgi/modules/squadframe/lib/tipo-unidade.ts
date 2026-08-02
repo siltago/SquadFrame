@@ -68,7 +68,10 @@ export function calcPrecoUnit(unidade: string, tamanhoMm?: number | null, precoM
   if (un === "M" || un === "ML")   return precoMetro;
   // CHAPA e M2: preço por m², quantidade já é m², então preço unitário = preço/m²
   if (un === "CHAPA" || un === "M2" || un === "M²") return precoMetro;
-  return 0;
+  // UN/KG/CX (e qualquer outra): sem conversão de unidade — o campo
+  // (chamado "preco_metro" por reaproveitamento, mas aqui já é o preço
+  // unitário) passa direto, igual já acontece pra M/ML/CHAPA/M2 acima.
+  return precoMetro;
 }
 
 const FATOR_MASSA_CHAPA = 0.0000025;

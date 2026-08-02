@@ -27,6 +27,7 @@ import {
 } from "@/modules/squadframe/actions/tarefas/actions";
 import { createClient } from "@/shared/database/supabase-client";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 const PAPEL_LABEL: Record<string, string> = {
   responsavel: "Responsável",
@@ -346,13 +347,13 @@ export function CardPanel({ tarefaId, onClose, standalone = false }: Props) {
               </select>
             </div>
             <div>
-              <label className="label">Data Limite</label>
-              <input
+              <Input
+                label="Data Limite"
                 type="date"
                 key={tarefa.data_limite ?? ""}
                 defaultValue={tarefa.data_limite ?? ""}
                 onChange={handleDataLimite}
-                className="field text-sm"
+                className="text-sm"
               />
             </div>
           </div>

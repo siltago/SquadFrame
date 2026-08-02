@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registrarRecebimento } from "@/app/squadframe/compras/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 type Item = {
   id: string; descricao_snapshot: string; unidade: string;
@@ -69,12 +70,11 @@ export function ReceberCliente({
         <div className="card p-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Data de recebimento</label>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} className="field" required />
+              <Input label="Data de recebimento" type="date" value={data} onChange={(e) => setData(e.target.value)} required />
             </div>
             <div>
               <label className="label">Observações <span className="text-text-3 font-normal">(opcional)</span></label>
-              <input value={obs} onChange={(e) => setObs(e.target.value)} className="field" placeholder="NF, observações gerais…" />
+              <Input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="NF, observações gerais…" />
             </div>
           </div>
         </div>

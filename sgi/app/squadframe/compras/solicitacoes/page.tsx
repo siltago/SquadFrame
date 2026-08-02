@@ -3,7 +3,7 @@ import { Button } from "@/ui/components/Button";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { STATUS_SOL_LABEL, PRIORIDADE_LABEL } from "@/modules/squadframe/types/compras";
 import { SolicitacoesLista } from "@/modules/squadframe/components/compras/solicitacoes-lista";
-import { Paginacao } from "@/modules/squadframe/components/paginacao";
+import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
@@ -74,10 +74,10 @@ export default async function SolicitacoesPage({
 
       <div className="mt-6 card overflow-x-auto">
         <SolicitacoesLista solicitacoes={(solicitacoes ?? []) as any} />
-        <Paginacao
-          paginaAtual={pagina}
+        <Pagination
+          currentPage={pagina}
           total={count ?? 0}
-          porPagina={POR_PAGINA}
+          perPage={POR_PAGINA}
           buildUrl={(p) => {
             const params = new URLSearchParams();
             params.set("page", String(p));

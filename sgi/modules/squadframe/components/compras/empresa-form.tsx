@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, useEffect } from "react";
 import { salvarEmpresa } from "@/modules/squadframe/actions/compras/empresa";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 type Empresa = {
   nome: string | null;
@@ -27,8 +28,7 @@ function Field({ label, name, defaultValue, placeholder, type = "text", classNam
 }) {
   return (
     <div className={className}>
-      <label className="label">{label}</label>
-      <input name={name} type={type} defaultValue={defaultValue ?? ""} placeholder={placeholder} className="field" />
+      <Input label={label} name={name} type={type} defaultValue={defaultValue ?? ""} placeholder={placeholder} />
     </div>
   );
 }

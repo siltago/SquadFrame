@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { criarFormaPagamento } from "@/app/squadframe/compras/actions";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 export function NovaFormaForm() {
   const [isFaturamentoDireto, setIsFaturamentoDireto] = useState(false);
@@ -33,14 +34,14 @@ export function NovaFormaForm() {
     <form onSubmit={handleSubmit} className="card p-5 space-y-4">
       <div>
         <label className="label">Nome <span className="text-danger">*</span></label>
-        <input
-          name="nome" required className="field"
+        <Input
+          name="nome" required
           placeholder="Ex: Faturamento 30 dias, PIX, Boleto…"
         />
       </div>
       <div>
         <label className="label">Descrição <span className="text-text-3 font-normal">(opcional)</span></label>
-        <input name="descricao" className="field" placeholder="Detalhes adicionais" />
+        <Input name="descricao" placeholder="Detalhes adicionais" />
       </div>
 
       <label className="flex cursor-pointer items-start gap-3">

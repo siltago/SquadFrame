@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { criarDevolucaoPedido } from "@/modules/squadframe/actions/compras/devolucao";
 import { Button } from "@/ui/components/Button";
+import { parseValorBr } from "@/modules/squadframe/lib/valor";
+import { Textarea } from "@/ui/components/Input";
 
 type ItemRecebido = {
   id: string;
@@ -81,7 +83,7 @@ export function DevolucaoPedidoForm({
         preco_unitario:    s.preco_unitario,
       }));
 
-    const vt = valorTotal ? parseFloat(valorTotal.replace(/[^0-9,.-]/g, "").replace(",", ".")) : null;
+    const vt = valorTotal ? parseValorBr(valorTotal) : null;
 
     start(async () => {
       try {
@@ -114,12 +116,12 @@ export function DevolucaoPedidoForm({
       {/* Motivo */}
       <div className="card p-5">
         <label className="label">Motivo da devolução <span className="text-danger">*</span></label>
-        <textarea
+        <Textarea
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
           rows={3}
           placeholder="Descreva o motivo da devolução (produto com defeito, quantidade incorreta, etc.)…"
-          className="field text-sm"
+          className="text-sm"
           required
         />
       </div>

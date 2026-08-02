@@ -5,7 +5,7 @@ import { buildSearchPattern } from "@/ui/lib/search";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { PedidosLista } from "@/modules/squadframe/components/compras/pedidos-lista";
-import { Paginacao } from "@/modules/squadframe/components/paginacao";
+import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
@@ -116,10 +116,10 @@ export default async function PedidosPage({
 
       <div className="mt-4 card overflow-x-auto">
         <PedidosLista pedidos={(pedidos ?? []) as any} />
-        <Paginacao
-          paginaAtual={pagina}
+        <Pagination
+          currentPage={pagina}
           total={count ?? 0}
-          porPagina={POR_PAGINA}
+          perPage={POR_PAGINA}
           buildUrl={(p) => {
             const params = new URLSearchParams();
             params.set("page", String(p));

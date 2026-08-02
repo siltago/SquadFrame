@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ensureContextoAction } from "@/modules/squadframe/package-procurement/actions";
 import { vincularPedidoLote } from "@/app/squadframe/compras/actions";
 import { STATUS_PED_LABEL, STATUS_PED_COR } from "@/modules/squadframe/types/compras";
+import { StatusPill } from "@/ui/components/StatusPill";
 import type {
   WiseNecessidade, CoberturaNecessidade, StatusSuprimentosCalculado,
 } from "@/modules/squadframe/package-procurement/types";
@@ -35,14 +36,12 @@ type PedidoResumo = {
 };
 
 function PedidoBadge({ status }: { status: string }) {
-  const cor = STATUS_PED_COR[status as keyof typeof STATUS_PED_COR];
   return (
-    <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-      style={{ backgroundColor: cor + "20", color: cor }}
-    >
-      {STATUS_PED_LABEL[status as keyof typeof STATUS_PED_LABEL] ?? status}
-    </span>
+    <StatusPill
+      size="xs"
+      cor={STATUS_PED_COR[status as keyof typeof STATUS_PED_COR]}
+      label={STATUS_PED_LABEL[status as keyof typeof STATUS_PED_LABEL] ?? status}
+    />
   );
 }
 

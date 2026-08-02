@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 import {
   processarRomaneioAction,
   confirmarRomaneioAction,
@@ -83,12 +84,10 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Número do romaneio</label>
-              <input value={numero} onChange={(e) => setNumero(e.target.value)} className="field" placeholder="Não identificado" />
+              <Input label="Número do romaneio" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Não identificado" />
             </div>
             <div>
-              <label className="label">Data de entrega</label>
-              <input type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} className="field" />
+              <Input label="Data de entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
             </div>
           </div>
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { StatusBadge } from "@/modules/squadframe/components/status-badge";
-import { Paginacao } from "@/modules/squadframe/components/paginacao";
+import { Pagination } from "@/ui/components/Pagination";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { BtnAcaoProtegida } from "@/modules/squadframe/components/btn-acao-protegida";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
@@ -105,10 +105,10 @@ export default async function ObrasPage({ searchParams }: { searchParams: { page
               ))}
             </tbody>
           </table>
-          <Paginacao
-            paginaAtual={pagina}
+          <Pagination
+            currentPage={pagina}
             total={count ?? 0}
-            porPagina={POR_PAGINA}
+            perPage={POR_PAGINA}
             buildUrl={(p) => `/squadframe/obras?page=${p}`}
           />
         </div>

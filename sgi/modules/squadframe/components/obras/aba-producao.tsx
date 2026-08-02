@@ -170,40 +170,31 @@ function TipologiaCard({ t, obraId }: { t: Tipologia; obraId: string }) {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="col-span-2 sm:col-span-1">
-            <label className="label">Tipo / Nome *</label>
-            <input autoFocus value={draft.tipo ?? ""} onChange={(e) => f("tipo", e.target.value)} className="field text-sm" />
+            <Input label="Tipo / Nome *" autoFocus value={draft.tipo ?? ""} onChange={(e) => f("tipo", e.target.value)} className="text-sm" />
           </div>
           <div>
-            <label className="label">Código (CODESQD)</label>
-            <input value={draft.codigo_esquadria ?? ""} onChange={(e) => f("codigo_esquadria", e.target.value)} className="field text-sm font-mono" />
+            <Input label="Código (CODESQD)" value={draft.codigo_esquadria ?? ""} onChange={(e) => f("codigo_esquadria", e.target.value)} className="text-sm font-mono" />
           </div>
           <div>
-            <label className="label">Qtde</label>
-            <input type="number" min="1" value={draft.quantidade} onChange={(e) => f("quantidade", parseInt(e.target.value) || 1)} className="field text-sm" />
+            <Input label="Qtde" type="number" min="1" value={draft.quantidade} onChange={(e) => f("quantidade", parseInt(e.target.value) || 1)} className="text-sm" />
           </div>
           <div>
-            <label className="label">Largura (mm)</label>
-            <input type="number" value={draft.largura_mm ?? ""} onChange={(e) => f("largura_mm", parseInt(e.target.value))} className="field text-sm" />
+            <Input label="Largura (mm)" type="number" value={draft.largura_mm ?? ""} onChange={(e) => f("largura_mm", parseInt(e.target.value))} className="text-sm" />
           </div>
           <div>
-            <label className="label">Altura (mm)</label>
-            <input type="number" value={draft.altura_mm ?? ""} onChange={(e) => f("altura_mm", parseInt(e.target.value))} className="field text-sm" />
+            <Input label="Altura (mm)" type="number" value={draft.altura_mm ?? ""} onChange={(e) => f("altura_mm", parseInt(e.target.value))} className="text-sm" />
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className="label">Tratamento</label>
-            <input value={draft.tratamento ?? ""} onChange={(e) => f("tratamento", e.target.value)} className="field text-sm" />
+            <Input label="Tratamento" value={draft.tratamento ?? ""} onChange={(e) => f("tratamento", e.target.value)} className="text-sm" />
           </div>
           <div className="col-span-2">
-            <label className="label">Descrição</label>
-            <input value={draft.descricao ?? ""} onChange={(e) => f("descricao", e.target.value)} className="field text-sm" />
+            <Input label="Descrição" value={draft.descricao ?? ""} onChange={(e) => f("descricao", e.target.value)} className="text-sm" />
           </div>
           <div>
-            <label className="label">Peso unit (kg)</label>
-            <input type="number" step="0.01" value={draft.peso_unit ?? ""} onChange={(e) => f("peso_unit", parseFloat(e.target.value))} className="field text-sm" />
+            <Input label="Peso unit (kg)" type="number" step="0.01" value={draft.peso_unit ?? ""} onChange={(e) => f("peso_unit", parseFloat(e.target.value))} className="text-sm" />
           </div>
           <div>
-            <label className="label">Preço unit (R$)</label>
-            <input type="number" step="0.01" value={draft.preco_unit ?? ""} onChange={(e) => f("preco_unit", parseFloat(e.target.value))} className="field text-sm" />
+            <Input label="Preço unit (R$)" type="number" step="0.01" value={draft.preco_unit ?? ""} onChange={(e) => f("preco_unit", parseFloat(e.target.value))} className="text-sm" />
           </div>
         </div>
 

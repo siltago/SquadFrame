@@ -29,6 +29,40 @@ import { BackButton } from "@/modules/squadframe/components/back-button";
 import { Badge } from "@/ui/components/Badge";
 import { Button } from "@/ui/components/Button";
 import { Chip } from "@/ui/components/Chip";
+import { Input } from "@/ui/components/Input";
+
+// Campos do form "novo setor" — usado tanto na barra mobile quanto na
+// sidebar desktop (mesmo Input + seletor de cor + botões, só o wrapper
+// externo muda de estilo entre as duas).
+function NovoSetorFields({
+  nomeSetor, setNomeSetor, corSetor, setCorSetor, onCriar, pending, onCancelar,
+}: {
+  nomeSetor: string;
+  setNomeSetor: (v: string) => void;
+  corSetor: string;
+  setCorSetor: (v: string) => void;
+  onCriar: () => void;
+  pending: boolean;
+  onCancelar: () => void;
+}) {
+  return (
+    <>
+      <Input
+        autoFocus value={nomeSetor}
+        onChange={(e) => setNomeSetor(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onCriar()}
+        placeholder="Nome do setor…"
+        className="text-sm"
+      />
+      <div className="flex items-center gap-2">
+        <input type="color" value={corSetor} onChange={(e) => setCorSetor(e.target.value)}
+          className="h-8 w-10 cursor-pointer rounded border border-border p-1" />
+        <Button size="sm" onClick={onCriar} disabled={pending} className="flex-1">Criar</Button>
+        <button onClick={onCancelar} className="text-xs text-text-3 hover:text-text">✕</button>
+      </div>
+    </>
+  );
+}
 
 // ─── Tipos ───────────────────────────────────────────────────
 
@@ -233,8 +267,7 @@ function CargoCard({
         <div className="rounded-lg border border-primary bg-surface p-4 shadow-md">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="label">Nome do cargo</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} className="field" />
+              <Input label="Nome do cargo" value={nome} onChange={(e) => setNome(e.target.value)} />
             </div>
             <div>
               <label className="label">Cor</label>
@@ -633,19 +666,12 @@ export function CargosCliente({
       </div>
       {adicionandoSetor && (
         <div className="border-b border-border bg-surface px-3 py-2 space-y-2 sm:hidden">
-          <input
-            autoFocus value={nomeSetor}
-            onChange={(e) => setNomeSetor(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCriarSetor()}
-            placeholder="Nome do setor…"
-            className="field text-sm"
+          <NovoSetorFields
+            nomeSetor={nomeSetor} setNomeSetor={setNomeSetor}
+            corSetor={corSetor} setCorSetor={setCorSetor}
+            onCriar={handleCriarSetor} pending={pending}
+            onCancelar={() => setAdicionandoSetor(false)}
           />
-          <div className="flex items-center gap-2">
-            <input type="color" value={corSetor} onChange={(e) => setCorSetor(e.target.value)}
-              className="h-8 w-10 cursor-pointer rounded border border-border p-1" />
-            <Button size="sm" onClick={handleCriarSetor} disabled={pending} className="flex-1">Criar</Button>
-            <button onClick={() => setAdicionandoSetor(false)} className="text-xs text-text-3 hover:text-text">✕</button>
-          </div>
         </div>
       )}
 
@@ -664,19 +690,12 @@ export function CargosCliente({
           <div className="border-t border-border p-3">
             {adicionandoSetor ? (
               <div className="space-y-2">
-                <input
-                  autoFocus value={nomeSetor}
-                  onChange={(e) => setNomeSetor(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCriarSetor()}
-                  placeholder="Nome do setor…"
-                  className="field text-sm"
+                <NovoSetorFields
+                  nomeSetor={nomeSetor} setNomeSetor={setNomeSetor}
+                  corSetor={corSetor} setCorSetor={setCorSetor}
+                  onCriar={handleCriarSetor} pending={pending}
+                  onCancelar={() => setAdicionandoSetor(false)}
                 />
-                <div className="flex items-center gap-2">
-                  <input type="color" value={corSetor} onChange={(e) => setCorSetor(e.target.value)}
-                    className="h-8 w-10 cursor-pointer rounded border border-border p-1" />
-                  <Button size="sm" onClick={handleCriarSetor} disabled={pending} className="flex-1">Criar</Button>
-                  <button onClick={() => setAdicionandoSetor(false)} className="text-xs text-text-3 hover:text-text">✕</button>
-                </div>
               </div>
             ) : (
               <button
@@ -721,13 +740,12 @@ export function CargosCliente({
                 <p className="mb-3 text-sm font-semibold text-text">Novo cargo em {setor.nome}</p>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
-                    <label className="label">Nome</label>
-                    <input
+                    <Input
+                      label="Nome"
                       autoFocus value={nomeCargo}
                       onChange={(e) => setNomeCargo(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleCriarCargo()}
                       placeholder="Ex: Gerente de Produção"
-                      className="field"
                     />
                   </div>
                   <div>

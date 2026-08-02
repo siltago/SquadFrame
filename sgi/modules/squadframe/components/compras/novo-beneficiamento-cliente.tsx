@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { criarBeneficiamento } from "@/modules/squadframe/actions/compras/beneficiamentos";
 import { criarProdutoRapidoAction } from "@/modules/squadframe/package-procurement/actions";
 import { Button } from "@/ui/components/Button";
+import { Textarea } from "@/ui/components/Input";
 
 type ProdutoOrigem = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm: number | null; linha_id: string | null };
 type ItemPedido = { id: string; quantidade_pedida: number; unidade: string; descricao_snapshot: string; produto: ProdutoOrigem | null };
@@ -185,8 +186,7 @@ export function NovoBeneficiamentoCliente({
         </div>
 
         <div>
-          <label className="label">Observações</label>
-          <textarea name="observacoes" rows={2} className="field w-full text-sm" />
+          <Textarea label="Observações" name="observacoes" rows={2} className="text-sm" />
         </div>
 
         {erro && <p className="text-sm text-danger">{erro}</p>}

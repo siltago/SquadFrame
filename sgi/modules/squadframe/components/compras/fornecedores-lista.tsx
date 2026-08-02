@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { excluirFornecedores, editarFornecedor } from "@/app/squadframe/compras/actions";
 import { Button } from "@/ui/components/Button";
+import { useBulkSelect } from "@/modules/squadframe/lib/use-bulk-select";
+import { BulkDeleteToggle, BulkDeleteBar } from "@/modules/squadframe/components/bulk-delete-bar";
 
 type TipoLinha = { nome: string; slug: string };
 type Fornecedor = {
@@ -169,27 +171,8 @@ export function FornecedoresLista({
   fornecedores: Fornecedor[]; tiposLinha: TipoLinha[];
 }) {
   const podeExcluir = usePode("catalogo.fornecedor.excluir", "compras.fornecedor.excluir");
-  const [modoExcluir, setModoExcluir] = useState(false);
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [erro, setErro] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  function toggleItem(id: string, checked: boolean) {
-    setSelecionados((prev) => { const n = new Set(prev); checked ? n.add(id) : n.delete(id); return n; });
-  }
-  function toggleTodos(checked: boolean) {
-    setSelecionados(checked ? new Set(fornecedores.map((f) => f.id)) : new Set());
-  }
-  function cancelar() { setModoExcluir(false); setSelecionados(new Set()); setErro(null); }
-  function confirmarExclusao() {
-    setErro(null);
-    start(async () => {
-      try { await excluirFornecedores(Array.from(selecionados)); cancelar(); }
-      catch (e: any) { setErro(e.message); }
-    });
-  }
-
-  const n = selecionados.size;
+  const { modoExcluir, ativar, cancelar, selecionados, toggleItem, toggleTodos, confirmarExclusao, pending, erro, n } =
+    useBulkSelect(excluirFornecedores);
 
   return (
     <>
@@ -198,17 +181,7 @@ export function FornecedoresLista({
           Cadastrados ({fornecedores.length})
         </h2>
         {podeExcluir && (
-          !modoExcluir ? (
-            <button onClick={() => setModoExcluir(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-surface px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger-soft dark:border-red-800/50 dark:text-danger dark:hover:bg-red-900/20">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
-              Excluir
-            </button>
-          ) : (
-            <button onClick={cancelar} className="text-xs text-text-3 hover:text-text underline">Cancelar</button>
-          )
+          <BulkDeleteToggle ativo={modoExcluir} onAtivar={ativar} onCancelar={cancelar} cancelarLabel="Cancelar" />
         )}
       </div>
 
@@ -219,7 +192,7 @@ export function FornecedoresLista({
           {modoExcluir && (
             <div className="flex items-center gap-2 px-4 py-2 bg-danger-soft dark:bg-red-900/10 border-b border-border">
               <input type="checkbox" checked={n === fornecedores.length && n > 0}
-                onChange={(e) => toggleTodos(e.target.checked)} className="rounded" />
+                onChange={(e) => toggleTodos(fornecedores.map((f) => f.id), e.target.checked)} className="rounded" />
               <span className="text-xs text-danger">Selecionar todos</span>
             </div>
           )}
@@ -239,19 +212,7 @@ export function FornecedoresLista({
         </div>
       )}
 
-      {modoExcluir && n > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between border-t border-red-200 bg-danger-soft px-8 py-3 shadow-lg dark:bg-red-900/20">
-          <p className="text-sm font-medium text-danger dark:text-danger">{n} fornecedor(es) selecionado(s)</p>
-          <div className="flex items-center gap-3">
-            {erro && <p className="text-xs text-danger">{erro}</p>}
-            <Button variant="ghost" onClick={cancelar} className="text-sm">Cancelar</Button>
-            <button onClick={confirmarExclusao} disabled={pending}
-              className="rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
-              {pending ? "Excluindo…" : `Excluir ${n}`}
-            </button>
-          </div>
-        </div>
-      )}
+      <BulkDeleteBar count={n} onConfirm={confirmarExclusao} onCancel={cancelar} pending={pending} erro={erro} label="fornecedor(es) selecionado(s)" />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { editarObra } from "@/modules/squadframe/actions/obras/actions";
 import { Button } from "@/ui/components/Button";
+import { Input, Textarea } from "@/ui/components/Input";
 
 export function EditarObraCliente({ obra }: { obra: any }) {
   const [erro, setErro] = useState<string | null>(null);
@@ -30,48 +31,46 @@ export function EditarObraCliente({ obra }: { obra: any }) {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label">Nome da obra <span className="text-danger">*</span></label>
-          <input name="nome" required defaultValue={obra.nome} className="field" />
+          <Input name="nome" required defaultValue={obra.nome} />
         </div>
 
         <div className="sm:col-span-2">
           <label className="label">Cliente <span className="text-danger">*</span></label>
-          <input name="cliente_nome" required defaultValue={obra.cliente?.nome ?? ""} className="field" placeholder="Nome do cliente" />
+          <Input name="cliente_nome" required defaultValue={obra.cliente?.nome ?? ""} placeholder="Nome do cliente" />
         </div>
 
         <div className="sm:col-span-2">
           <label className="label">Endereço <span className="text-text-2 font-normal">(opcional)</span></label>
-          <input name="endereco" defaultValue={obra.endereco ?? ""} className="field" placeholder="Rua, número" />
+          <Input name="endereco" defaultValue={obra.endereco ?? ""} placeholder="Rua, número" />
         </div>
 
         <div>
           <label className="label">Cidade <span className="text-text-2 font-normal">(opcional)</span></label>
-          <input name="cidade" defaultValue={obra.cidade ?? ""} className="field" />
+          <Input name="cidade" defaultValue={obra.cidade ?? ""} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">UF <span className="text-text-2 font-normal">(opcional)</span></label>
-            <input name="estado" maxLength={2} defaultValue={obra.estado ?? ""} className="field uppercase" placeholder="SP" />
+            <Input name="estado" maxLength={2} defaultValue={obra.estado ?? ""} className="uppercase" placeholder="SP" />
           </div>
           <div>
             <label className="label">CEP <span className="text-text-2 font-normal">(opcional)</span></label>
-            <input name="cep" defaultValue={obra.cep ?? ""} className="field" placeholder="00000-000" />
+            <Input name="cep" defaultValue={obra.cep ?? ""} placeholder="00000-000" />
           </div>
         </div>
 
         <div>
           <label className="label">Data prevista <span className="text-text-2 font-normal">(opcional)</span></label>
-          <input
+          <Input
             type="date"
             name="data_prevista"
             defaultValue={obra.data_prevista ? obra.data_prevista.slice(0, 10) : ""}
-            className="field"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="label">Observações</label>
-          <textarea name="observacoes" rows={3} defaultValue={obra.observacoes ?? ""} className="field" />
+          <Textarea label="Observações" name="observacoes" rows={3} defaultValue={obra.observacoes ?? ""} />
         </div>
       </div>
 

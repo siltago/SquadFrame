@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { tabLinkClass } from "@/modules/squadframe/lib/tab-link-class";
 
 const ABAS = [
   { slug: "dashboard", label: "Dashboard" },
@@ -33,11 +34,7 @@ export function FinanceiroTabNav({
           <Link
             key={slug}
             href={`/squadframe/financeiro?aba=${slug}`}
-            className={
-              active
-                ? "border-b-2 border-primary px-4 py-2.5 text-sm font-semibold text-text shrink-0"
-                : "px-4 py-2.5 text-sm font-medium text-text-3 hover:text-text-2 shrink-0"
-            }
+            className={tabLinkClass(active)}
           >
             {label}
           </Link>
@@ -46,11 +43,7 @@ export function FinanceiroTabNav({
       {podeContratos && (
         <Link
           href="/squadframe/financeiro/contratos"
-          className={
-            emContratos
-              ? "border-b-2 border-primary px-4 py-2.5 text-sm font-semibold text-text shrink-0"
-              : "px-4 py-2.5 text-sm font-medium text-text-3 hover:text-text-2 shrink-0"
-          }
+          className={tabLinkClass(!!emContratos)}
         >
           Contratos
         </Link>

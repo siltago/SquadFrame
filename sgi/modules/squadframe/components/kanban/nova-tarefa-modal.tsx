@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { criarTarefa } from "@/modules/squadframe/actions/tarefas/actions";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 interface Props {
   colunaId: string;
@@ -47,8 +48,7 @@ export function NovaTarefaModal({ colunaId, setorId, usuarioId, onClose }: Props
 
         <form ref={formRef} onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="label">Título *</label>
-            <input name="titulo" required className="field" placeholder="Descreva a tarefa..." autoFocus />
+            <Input label="Título *" name="titulo" required placeholder="Descreva a tarefa..." autoFocus />
           </div>
 
           <div>

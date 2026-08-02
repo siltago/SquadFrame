@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ajustarSaldoFornecedor } from "@/modules/squadframe/actions/compras/carteira-ajustes";
 import { Button } from "@/ui/components/Button";
+import { Input } from "@/ui/components/Input";
 
 export interface FornecedorSaldoOpcao {
   fornecedorId: string;
@@ -70,8 +71,8 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
         </div>
 
         <div>
-          <label className="label">Novo saldo (R$)</label>
-          <input
+          <Input
+            label="Novo saldo (R$)"
             name="valor_novo"
             type="number"
             step="0.01"
@@ -80,20 +81,20 @@ export function AjusteSaldoForm({ fornecedores }: { fornecedores: FornecedorSald
             value={valorNovo}
             onChange={(e) => setValorNovo(e.target.value)}
             placeholder={selecionado ? String(selecionado.saldoAtual) : "0,00"}
-            className="field h-9 text-sm"
+            className="h-9 text-sm"
           />
         </div>
 
         <div className="sm:col-span-3">
           <label className="label">Motivo <span className="text-danger">*</span></label>
-          <input
+          <Input
             name="motivo"
             type="text"
             required
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Ex: conferência com o fornecedor apontou divergência na NF 1234"
-            className="field h-9 text-sm"
+            className="h-9 text-sm"
           />
         </div>
       </div>

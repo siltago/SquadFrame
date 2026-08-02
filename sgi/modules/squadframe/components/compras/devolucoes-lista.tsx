@@ -7,6 +7,7 @@ import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { STATUS_DEV_COR, STATUS_DEV_LABEL } from "@/modules/squadframe/types/compras";
 import type { DevolucaoCompra, StatusDevolucao } from "@/modules/squadframe/types/compras";
+import { StatusPill } from "@/ui/components/StatusPill";
 
 type Transicao = { label: string; status: StatusDevolucao; variant: "primary" | "ghost" | "danger" };
 
@@ -20,13 +21,7 @@ const TRANSICOES: Record<StatusDevolucao, Transicao[]> = {
 };
 
 function StatusBadge({ status }: { status: StatusDevolucao }) {
-  const cor = STATUS_DEV_COR[status] ?? "#6b7280";
-  return (
-    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-      style={{ backgroundColor: cor + "20", color: cor }}>
-      {STATUS_DEV_LABEL[status] ?? status}
-    </span>
-  );
+  return <StatusPill cor={STATUS_DEV_COR[status]} label={STATUS_DEV_LABEL[status] ?? status} />;
 }
 
 function DevolucaoCard({ dev, pedidoId }: { dev: DevolucaoCompra; pedidoId: string }) {

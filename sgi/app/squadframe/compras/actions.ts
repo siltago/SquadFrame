@@ -25,7 +25,7 @@ export {
 
 export { registrarRecebimento } from "@/modules/squadframe/actions/compras/recebimentos";
 
-export { registrarJustificativaPendencia } from "@/modules/squadframe/actions/compras/pendencias";
+export { registrarJustificativaPendencia, adiarPendenciasParaAmanha } from "@/modules/squadframe/actions/compras/pendencias";
 
 export {
   obterUrlUploadDocumento,

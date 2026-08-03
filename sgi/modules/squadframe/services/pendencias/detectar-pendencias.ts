@@ -21,6 +21,14 @@ function diasDesde(d: Date): number {
 export async function detectarPendenciasComprador(usuarioId: string): Promise<Pendencia[]> {
   const admin = createAdminClient();
 
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const { data: snooze } = await admin
+    .from("usuario_pendencia_snooze")
+    .select("snoozed_em")
+    .eq("usuario_id", usuarioId)
+    .maybeSingle();
+  if (snooze?.snoozed_em === hojeIso) return [];
+
   const { data: pedidos } = await admin
     .from("pedidos_compra")
     .select("id, numero, status, criado_em, prazo_entrega, valor_final, fornecedor:fornecedores(nome)")

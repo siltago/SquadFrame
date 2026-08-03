@@ -72,7 +72,8 @@ export default function GuiaCarteirasFinanceiroPage() {
           <>Use a visão por <strong className="text-text">Obra</strong> para localizar a origem do saldo ou por <strong className="text-text">Fornecedor</strong> para conferir o total compartilhado.</>,
           <>Abra uma carteira para consultar saldo, depósitos, débitos e o histórico de movimentações.</>,
         ]} />
-        <Shot src={`${IMG}/04-carteiras.png`} alt="Visão real das carteiras no Financeiro" />
+        <Shot src={`${IMG}/04-carteiras.png`} alt="Visão real das carteiras agrupadas por obra" caption="Visão por obra: mostra a origem dos recursos e o total de cada obra." />
+        <Shot src={`${IMG}/04b-carteiras-por-fornecedor.png`} alt="Visão real das carteiras agrupadas por fornecedor" caption="Visão por fornecedor: mostra o saldo compartilhado e as obras que compõem o total de cada fornecedor." />
       </section>
 
       <section id="corrigir" className="mb-16 scroll-mt-24">

@@ -4,6 +4,7 @@ const baseUrl = process.env.TRAINING_BASE_URL;
 const email = process.env.TRAINING_EMAIL;
 const password = process.env.TRAINING_PASSWORD;
 const outputDir = new URL("../public/treinamento/carteiras/", import.meta.url);
+const captureOnly = process.env.CAPTURE_ONLY || "";
 
 if (!baseUrl || !email || !password) throw new Error("Variaveis de captura ausentes.");
 
@@ -54,6 +55,7 @@ async function navigate(path) {
 }
 
 async function shot(name) {
+  if (captureOnly && captureOnly !== name) return;
   await evaluate("window.scrollTo(0, 0)");
   const metrics = await cdp("Page.getLayoutMetrics");
   const width = Math.ceil(metrics.cssContentSize.width);
@@ -72,8 +74,9 @@ await cdp("Runtime.enable");
 await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 
 await navigate("/login");
-await waitFor("document.querySelector('input[type=email]') && document.querySelector('input[type=password]')");
-await evaluate(`(() => {
+const loginVisible = await evaluate("Boolean(document.querySelector('input[type=email]') && document.querySelector('input[type=password]'))");
+if (loginVisible) {
+  await evaluate(`(() => {
   const set = (el, value) => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(el, value);
@@ -84,11 +87,12 @@ await evaluate(`(() => {
   set(document.querySelector('input[type=password]'), ${JSON.stringify(password)});
   document.querySelector('form').requestSubmit();
 })()`);
-await new Promise((resolve) => setTimeout(resolve, 2500));
-const loginError = await evaluate("document.body.innerText.includes('E-mail ou senha incorretos.')");
-if (loginError) throw new Error("Falha no login: credenciais recusadas pelo sistema.");
-await navigate("/");
-if (await evaluate("location.pathname.includes('login')")) throw new Error("Falha no login: sessão não foi criada.");
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  const loginError = await evaluate("document.body.innerText.includes('E-mail ou senha incorretos.')");
+  if (loginError) throw new Error("Falha no login: credenciais recusadas pelo sistema.");
+  await navigate("/");
+  if (await evaluate("location.pathname.includes('login')")) throw new Error("Falha no login: sessão não foi criada.");
+}
 
 await navigate("/squadframe/financeiro/contratos");
 await shot("01-contratos.png");
@@ -104,6 +108,14 @@ if (detalheHref) {
 
 await navigate("/squadframe/financeiro?aba=carteiras");
 await shot("04-carteiras.png");
+await evaluate(`(() => {
+  const controle = [...document.querySelectorAll('a, button')].find((el) => el.textContent?.trim() === 'Por fornecedor');
+  if (!controle) throw new Error('Controle Por fornecedor não encontrado.');
+  controle.click();
+})()`);
+await waitFor("new URLSearchParams(location.search).get('visao') === 'fornecedor'");
+await new Promise((resolve) => setTimeout(resolve, 1200));
+await shot("04b-carteiras-por-fornecedor.png");
 await navigate("/squadframe/financeiro?aba=faturamento-direto");
 await shot("05-correcao-saldo.png");
 

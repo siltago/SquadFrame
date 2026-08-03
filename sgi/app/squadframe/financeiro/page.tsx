@@ -29,6 +29,7 @@ export default async function FinanceiroPage({
     de?: string;
     ate?: string;
     faturamento?: string;
+    visao?: string;
   };
 }) {
   const usuario = await getUsuarioAtual();
@@ -60,7 +61,7 @@ export default async function FinanceiroPage({
         <RealtimeRefresher channelName="financeiro-carteiras" subs={[{ table: "carteiras" }]} />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
         <FinanceiroTabNav {...tabNavProps} />
-        <CarteirasContent />
+        <CarteirasContent visao={searchParams.visao === "fornecedor" ? "fornecedor" : "obra"} />
       </div>
     );
   }

@@ -7,6 +7,7 @@ import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { PedidosLista } from "@/modules/squadframe/components/compras/pedidos-lista";
 import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
+import { hojeSaoPaulo } from "@/modules/squadframe/services/cobranca/executar-cobranca";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ const POR_PAGINA = 30;
 
 export default async function PedidosPage({
   searchParams,
-}: { searchParams: { status?: string; fornecedor?: string; page?: string; q?: string } }) {
+}: { searchParams: { status?: string; fornecedor?: string; page?: string; q?: string; atraso?: string } }) {
   const usuario = await getUsuarioAtual();
   const podeCriar =
     usuario?.permissoes?.includes("*") ||
@@ -24,6 +25,7 @@ export default async function PedidosPage({
   const pagina = Math.max(1, parseInt(searchParams.page ?? "1"));
   const from = (pagina - 1) * POR_PAGINA;
   const filtroQ = searchParams.q?.trim() ?? "";
+  const hojeISO = hojeSaoPaulo();
 
   // Quando há busca por item: resolve pedido_ids a partir de pedido_itens
   let pedidoIdsFromItem: string[] | null = null;
@@ -44,6 +46,8 @@ export default async function PedidosPage({
 
   if (searchParams.status) q = q.eq("status", searchParams.status);
   if (searchParams.fornecedor) q = q.eq("fornecedor_id", searchParams.fornecedor);
+  const somenteAtrasados = searchParams.atraso === "1";
+  if (somenteAtrasados) q = q.lt("prazo_entrega", hojeISO);
   if (pedidoIdsFromItem !== null) {
     if (pedidoIdsFromItem.length === 0) {
       // Nenhum item encontrado — retorna vazio
@@ -66,7 +70,17 @@ export default async function PedidosPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Pedidos de Compra</h1>
-          <p className="mt-1 text-sm text-text-2">{count ?? 0} registro(s)</p>
+          <p className="mt-1 text-sm text-text-2">
+            {count ?? 0} registro(s)
+            {somenteAtrasados && (
+              <>
+                {" "}· filtrando só atrasados —{" "}
+                <Link href={`/squadframe/compras/pedidos${searchParams.status ? `?status=${searchParams.status}` : ""}`} className="underline">
+                  limpar
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         {podeCriar && (
           <Button as="a" href="/squadframe/compras/pedidos/novo">Novo pedido</Button>
@@ -77,6 +91,7 @@ export default async function PedidosPage({
       <form method="GET" action="/squadframe/compras/pedidos" className="mt-6">
         {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
         {searchParams.fornecedor && <input type="hidden" name="fornecedor" value={searchParams.fornecedor} />}
+        {somenteAtrasados && <input type="hidden" name="atraso" value="1" />}
         <div className="relative max-w-sm">
           <input
             name="q"
@@ -105,6 +120,7 @@ export default async function PedidosPage({
         {statuses.map((s) => {
           const params = new URLSearchParams({ status: s });
           if (filtroQ) params.set("q", filtroQ);
+          if (somenteAtrasados) params.set("atraso", "1");
           return (
             <Link key={s} href={`/squadframe/compras/pedidos?${params}`}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${searchParams.status === s ? "border-primary bg-primary text-white" : "border-border text-text-2 hover:bg-bg"}`}>
@@ -115,7 +131,7 @@ export default async function PedidosPage({
       </div>
 
       <div className="mt-4 card overflow-x-auto">
-        <PedidosLista pedidos={(pedidos ?? []) as any} />
+        <PedidosLista pedidos={(pedidos ?? []) as any} hojeISO={hojeISO} />
         <Pagination
           currentPage={pagina}
           total={count ?? 0}
@@ -126,6 +142,7 @@ export default async function PedidosPage({
             if (searchParams.status) params.set("status", searchParams.status);
             if (searchParams.fornecedor) params.set("fornecedor", searchParams.fornecedor);
             if (filtroQ) params.set("q", filtroQ);
+            if (somenteAtrasados) params.set("atraso", "1");
             return `/squadframe/compras/pedidos?${params}`;
           }}
         />

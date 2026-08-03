@@ -13,7 +13,14 @@ type Pedido = {
   criado_em: string; obra: any; fornecedor: any; comprador: any;
 };
 
-export function PedidosLista({ pedidos }: { pedidos: Pedido[] }) {
+// Mesma condição usada pro contador de "Destaques" na home (ver
+// app/squadframe/page.tsx) — só pedido esperando material com prazo já
+// vencido conta como atrasado.
+function estaAtrasado(p: Pedido, hojeISO: string): boolean {
+  return p.status === "AGUARDANDO_RECEBIMENTO" && !!p.prazo_entrega && p.prazo_entrega < hojeISO;
+}
+
+export function PedidosLista({ pedidos, hojeISO }: { pedidos: Pedido[]; hojeISO: string }) {
   const podeExcluir = usePode("compras.pedido.excluir");
   const { modoExcluir, ativar, cancelar, selecionados, toggleItem, toggleTodos, confirmarExclusao, pending, erro, n } =
     useBulkSelect(excluirPedidos);
@@ -53,7 +60,10 @@ export function PedidosLista({ pedidos }: { pedidos: Pedido[] }) {
                   <td className="px-5 py-3 text-text-2">{p.fornecedor?.nome ?? "—"}</td>
                   <td className="px-5 py-3 text-text-2">{p.obra?.nome ?? "—"}</td>
                   <td className="px-5 py-3">
-                    <StatusPill size="xs" cor={STATUS_PED_COR[p.status as keyof typeof STATUS_PED_COR]} label={STATUS_PED_LABEL[p.status as keyof typeof STATUS_PED_LABEL]} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusPill size="xs" cor={STATUS_PED_COR[p.status as keyof typeof STATUS_PED_COR]} label={STATUS_PED_LABEL[p.status as keyof typeof STATUS_PED_LABEL]} />
+                      {estaAtrasado(p, hojeISO) && <StatusPill size="xs" cor="#ef4444" label="Atraso" />}
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-xs text-text-3">{new Date(p.criado_em).toLocaleDateString("pt-BR")}</td>
                 </tr>

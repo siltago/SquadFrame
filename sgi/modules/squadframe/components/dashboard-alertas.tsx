@@ -33,7 +33,7 @@ export function DashboardAlertas({ qtdAtrasados, qtdSemPrazo, qtdParadosAprovaca
         {qtdAtrasados > 0 && (
           <Alert variant="danger" title={`${qtdAtrasados} pedido${qtdAtrasados !== 1 ? "s" : ""} com entrega atrasada`}>
             O prazo combinado já passou — vale cobrar o fornecedor.{" "}
-            <Link href="/squadframe/compras/pedidos?status=AGUARDANDO_RECEBIMENTO" className="font-semibold underline">
+            <Link href="/squadframe/compras/pedidos?status=AGUARDANDO_RECEBIMENTO&atraso=1" className="font-semibold underline">
               Ver pedidos
             </Link>
           </Alert>

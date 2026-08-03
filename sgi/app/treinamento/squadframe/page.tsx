@@ -13,6 +13,11 @@ const GUIAS = [
     titulo: "Catálogo",
     descricao: "Abas, linhas, categorias, produtos, cores RAL, aliases e arquivos técnicos.",
   },
+  {
+    slug: "carteiras-financeiro",
+    titulo: "Carteiras no Financeiro",
+    descricao: "Como criar carteiras por contrato e corrigir o saldo de um fornecedor com rastreabilidade.",
+  },
 ];
 
 export default function TreinamentoSquadFramePage() {

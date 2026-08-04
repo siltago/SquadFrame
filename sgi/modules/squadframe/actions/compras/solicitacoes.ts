@@ -34,6 +34,9 @@ export async function criarSolicitacao(formData: FormData) {
     unidade: string;
     observacoes?: string;
     cor_id?: string | null;
+    largura_m?: number | null;
+    altura_m?: number | null;
+    qtd_pecas?: number | null;
   }[] = JSON.parse(itensJson);
   if (!itens.length) throw new Error("Adicione ao menos um item.");
 

@@ -6,6 +6,7 @@ import { BackButton } from "@/modules/squadframe/components/back-button";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 import { SolicitacaoCliente } from "@/modules/squadframe/components/compras/solicitacao-cliente";
 import { pluralUnit } from "@/modules/squadframe/lib/unidade";
+import { isChapa } from "@/modules/squadframe/lib/chapa";
 import { STATUS_SOL_COR, STATUS_SOL_LABEL, PRIORIDADE_COR, PRIORIDADE_LABEL, ORIGEM_LABEL } from "@/modules/squadframe/types/compras";
 
 export const dynamic = "force-dynamic";
@@ -123,7 +124,14 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
                       </div>
                     </td>
                     <td className="px-5 py-3 text-right text-text">
-                      {qty.toLocaleString("pt-BR")} {pluralUnit(qty, it.unidade)}
+                      {isChapa(it) && it.largura_m && it.altura_m ? (
+                        <>
+                          {Math.round(it.largura_m * 1000)}×{Math.round(it.altura_m * 1000)}mm
+                          <span className="block text-xs text-text-3">{qty.toLocaleString("pt-BR")} peça{qty !== 1 ? "s" : ""}</span>
+                        </>
+                      ) : (
+                        <>{qty.toLocaleString("pt-BR")} {pluralUnit(qty, it.unidade)}</>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-text-2">{it.observacoes || "—"}</td>
                   </tr>

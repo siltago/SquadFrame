@@ -20,7 +20,7 @@ type Fornecedor = { id: string; nome: string; tipos?: string[] | null };
 type FormaPagamento = { id: string; nome: string; is_faturamento_direto?: boolean };
 type TipoLinha = { id: string; nome: string; slug: string; unidade?: string | null }
 type CorRal = { id: string; codigo_ral: string; nome: string | null; hex: string | null; tipos: string[] };
-type SolItem = { id: string; quantidade: number; unidade: string; observacoes?: string; descricao_manual?: string | null; cor_id?: string | null; produto?: Produto | null };
+type SolItem = { id: string; quantidade: number; unidade: string; observacoes?: string; descricao_manual?: string | null; cor_id?: string | null; produto?: Produto | null; largura_m?: number | null; altura_m?: number | null; qtd_pecas?: number | null };
 type Solicitacao = { id: string; numero: string; obra: any; itens: SolItem[] };
 type Item = {
   produto?: Produto | null; quantidade_pedida: number; unidade: string; preco_unitario: number;
@@ -233,6 +233,15 @@ export function NovoPedidoCliente({
           descricao_snapshot: si.produto?.nome ?? si.descricao_manual ?? "Item externo",
           obra_id: obraSolId, solicitacao_item_id: si.id,
           cor_id: si.cor_id ?? null,
+          // Dimensões de CHAPA já medidas na solicitação — não faz o comprador
+          // medir de novo. Espessura/peso/preço por m vêm do produto, igual
+          // addProdutoFinal.
+          largura_m: si.largura_m ?? null,
+          altura_m: si.altura_m ?? null,
+          qtd_pecas: si.qtd_pecas ?? null,
+          tamanho_mm: si.produto?.tamanho_mm ?? null,
+          peso_metro: si.produto?.peso_metro ?? null,
+          preco_metro: si.produto?.preco_metro ?? null,
         }));
       return [...prev, ...novos];
     });

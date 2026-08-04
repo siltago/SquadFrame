@@ -25,7 +25,7 @@ export default async function NovoPedidoPage({
     await Promise.all([
       admin.from("obras").select("id, nome, codigo, numero").is("deleted_at", null).order("nome"),
       admin.from("solicitacoes_compra")
-        .select("id, numero, obra:obras(id, nome), itens:solicitacao_itens(id, quantidade, unidade, observacoes, descricao_manual, cor_id, produto:produtos(id, codigo_mestre, nome, unidade))")
+        .select("id, numero, obra:obras(id, nome), itens:solicitacao_itens(id, quantidade, unidade, observacoes, descricao_manual, cor_id, largura_m, altura_m, qtd_pecas, produto:produtos(id, codigo_mestre, nome, unidade))")
         .eq("status", "APROVADA"),
       admin.from("lotes_obra").select("id, nome, obra_id").eq("status", "ATIVO").order("nome"),
       getTiposLinha(),

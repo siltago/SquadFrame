@@ -25,6 +25,8 @@ export async function criarSolicitacao(formData: FormData) {
   // da aba Produção. Ausente = comportamento idêntico ao fluxo normal de Compras.
   const lote_id          = (formData.get("lote_id") as string | null) || null;
   const origem_contexto  = (formData.get("origem_contexto") as string | null) || null;
+  const fornecedor_id    = (formData.get("fornecedor_id") as string | null) || null;
+  const tipo_linha       = (formData.get("tipo_linha") as string | null) || null;
 
   if (!itensJson) throw new Error("Adicione ao menos um item.");
   const itens: {
@@ -64,6 +66,8 @@ export async function criarSolicitacao(formData: FormData) {
     p_itens:            itens,
     p_lote_id:          lote_id,
     p_origem_contexto:  origem_contexto,
+    p_fornecedor_id:    fornecedor_id,
+    p_tipo_linha:       tipo_linha,
   });
   if (error) throw new Error(error.message);
 

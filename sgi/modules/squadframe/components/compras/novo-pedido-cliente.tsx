@@ -21,7 +21,7 @@ type FormaPagamento = { id: string; nome: string; is_faturamento_direto?: boolea
 type TipoLinha = { id: string; nome: string; slug: string; unidade?: string | null }
 type CorRal = { id: string; codigo_ral: string; nome: string | null; hex: string | null; tipos: string[] };
 type SolItem = { id: string; quantidade: number; unidade: string; observacoes?: string; descricao_manual?: string | null; cor_id?: string | null; produto?: Produto | null; largura_m?: number | null; altura_m?: number | null; qtd_pecas?: number | null };
-type Solicitacao = { id: string; numero: string; obra: any; itens: SolItem[] };
+type Solicitacao = { id: string; numero: string; obra: any; itens: SolItem[]; fornecedor_id?: string | null; tipo_linha?: string | null };
 type Item = {
   produto?: Produto | null; quantidade_pedida: number; unidade: string; preco_unitario: number;
   codigo_fornecedor: string; descricao_snapshot: string;
@@ -223,6 +223,13 @@ export function NovoPedidoCliente({
     const obraSolId = (sol.obra as any)?.id;
     if (obraSolId) setObraId(obraSolId);
     if (sol.itens.some((si) => si.cor_id)) setModoCorPedido("por-item");
+    // Tipo/fornecedor já indicados na solicitação — evita reescolher o que
+    // quem pediu já sabia.
+    if (sol.tipo_linha) {
+      const tipo = tiposLinha.find((t) => t.slug === sol.tipo_linha);
+      if (tipo) setTipoSelecionado(tipo);
+    }
+    if (sol.fornecedor_id) setFornecedorId(sol.fornecedor_id);
     setItens((prev) => {
       const novos = sol.itens
         .filter((si) => !prev.find((i) => i.solicitacao_item_id === si.id))

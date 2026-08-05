@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { NovaSolicitacaoCliente } from "@/modules/squadframe/components/compras/nova-solicitacao-cliente";
 import { BackButton } from "@/modules/squadframe/components/back-button";
+import { getTiposLinha, getFornecedores } from "@/modules/squadframe/lib/cached-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,14 @@ export default async function NovaSolicitacaoPage({
   searchParams: { obra_id?: string; lote_id?: string; origem_contexto?: string };
 }) {
   const admin = createAdminClient();
-  const [{ data: obras }, { data: coresRal }, loteRes] = await Promise.all([
+  const [{ data: obras }, { data: coresRal }, loteRes, tiposLinha, fornecedores] = await Promise.all([
     admin.from("obras").select("id, nome, codigo").is("deleted_at", null).order("nome"),
     admin.from("cores_ral").select("id, codigo_ral, nome, tipos").order("codigo_ral"),
     searchParams.lote_id
       ? admin.from("lotes_obra").select("id, nome").eq("id", searchParams.lote_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    getTiposLinha(),
+    getFornecedores(),
   ]);
 
   const backHref = searchParams.obra_id
@@ -35,6 +38,8 @@ export default async function NovaSolicitacaoPage({
           loteId={searchParams.lote_id}
           loteNome={loteRes.data?.nome}
           origemContexto={searchParams.origem_contexto}
+          tiposLinha={tiposLinha as any[]}
+          fornecedores={fornecedores as any[]}
         />
       </div>
     </div>

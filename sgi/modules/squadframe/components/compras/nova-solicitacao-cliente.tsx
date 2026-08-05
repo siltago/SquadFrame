@@ -20,6 +20,8 @@ const UNIDADES = [
 type Obra = { id: string; nome: string; codigo: string };
 type CorRal = { id: string; codigo_ral: string; nome: string | null; tipos?: string[] | null };
 type Produto = { id: string; codigo_mestre: string; nome: string; unidade: string };
+type TipoLinha = { id: string; nome: string; slug: string };
+type Fornecedor = { id: string; nome: string; tipos?: string[] | null };
 
 // Dimensões só fazem sentido pra item de CHAPA/M²/M2 (ver isChapa em
 // lib/chapa.ts) — quantidade guarda a contagem de peças nesse caso, a área
@@ -72,6 +74,8 @@ export function NovaSolicitacaoCliente({
   loteId,
   loteNome,
   origemContexto,
+  tiposLinha,
+  fornecedores,
 }: {
   obras: Obra[];
   coresRal: CorRal[];
@@ -79,6 +83,8 @@ export function NovaSolicitacaoCliente({
   loteId?: string | null;
   loteNome?: string | null;
   origemContexto?: string | null;
+  tiposLinha: TipoLinha[];
+  fornecedores: Fornecedor[];
 }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [modoAdd, setModoAdd] = useState<"catalogo" | "externo">("catalogo");
@@ -87,6 +93,19 @@ export function NovaSolicitacaoCliente({
   const pendingFn = useRef<(() => Promise<void>) | null>(null);
   const [modalAcao, setModalAcao] = useState<string | null>(null);
   const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
+  const [tipoSelecionado, setTipoSelecionado] = useState<TipoLinha | null>(null);
+  const [fornecedorId, setFornecedorId] = useState("");
+
+  // Sem tipo escolhido, mostra todos; com tipo, só os fornecedores
+  // cadastrados pra ele — mesmo filtro do Novo Pedido.
+  const fornecedoresVisiveis = tipoSelecionado
+    ? fornecedores.filter((f) => (f.tipos ?? []).includes(tipoSelecionado.slug))
+    : fornecedores;
+  // Mesmo filtro de cor por tipo do Novo Pedido — sem isso, cor de Vidro
+  // aparecia como opção num pedido de Perfil e vice-versa.
+  const coresFiltradas = tipoSelecionado
+    ? coresRal.filter((c) => (c.tipos ?? []).includes(tipoSelecionado.slug))
+    : coresRal;
 
   function addCatalogo(p: Produto, forcar = false) {
     if (!forcar && itens.find((i) => i.tipo === "catalogo" && (i as ItemCatalogo).produto.id === p.id)) return;
@@ -129,6 +148,7 @@ export function NovaSolicitacaoCliente({
     if (!itens.length) { setErro("Adicione ao menos um item."); return; }
     setErro(null);
     const fd = new FormData(e.currentTarget);
+    if (tipoSelecionado) fd.set("tipo_linha", tipoSelecionado.slug);
     fd.set("itens", JSON.stringify(itens.map((i) => {
       const cor_id = i.cor_id || undefined;
       const chapaFields = isChapa(i)
@@ -172,6 +192,37 @@ export function NovaSolicitacaoCliente({
             Vinculada ao lote <strong>{loteNome}</strong>
           </div>
         )}
+
+        {/* Tipo de material */}
+        {tiposLinha.length > 0 && (
+          <div className="card p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-text-3">
+              Tipo de material{tipoSelecionado && (
+                <span className="ml-2 font-normal normal-case text-primary">{tipoSelecionado.nome}</span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {tiposLinha.map((t) => (
+                <button key={t.slug} type="button"
+                  onClick={() => setTipoSelecionado(tipoSelecionado?.slug === t.slug ? null : t)}
+                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                    tipoSelecionado?.slug === t.slug
+                      ? "border-primary bg-primary text-white"
+                      : "border-border text-text-2 hover:bg-bg"
+                  }`}>
+                  {t.nome}
+                </button>
+              ))}
+              {tipoSelecionado && (
+                <button type="button" onClick={() => setTipoSelecionado(null)}
+                  className="text-xs text-text-3 hover:text-text underline ml-1">
+                  Limpar tipo
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="card p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
@@ -182,6 +233,18 @@ export function NovaSolicitacaoCliente({
                   <option key={o.id} value={o.id}>{o.codigo} — {o.nome}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="label">Fornecedor <span className="text-text-3 font-normal">(opcional, se já souber)</span></label>
+              <select name="fornecedor_id" value={fornecedorId} onChange={(e) => setFornecedorId(e.target.value)} className="field">
+                <option value="">Ainda não sei</option>
+                {fornecedoresVisiveis.map((f) => (
+                  <option key={f.id} value={f.id}>{f.nome}</option>
+                ))}
+              </select>
+              {tipoSelecionado && fornecedoresVisiveis.length === 0 && (
+                <p className="mt-1 text-xs text-text-3">Nenhum fornecedor de {tipoSelecionado.nome} cadastrado ainda.</p>
+              )}
             </div>
             <div>
               <label className="label">Origem</label>
@@ -225,9 +288,17 @@ export function NovaSolicitacaoCliente({
 
           <div className="mb-4 rounded-lg bg-bg p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-3">Adicionar item</p>
+            {modoAdd === "catalogo" && !tipoSelecionado && tiposLinha.length > 0 && (
+              <p className="mb-2 text-xs text-warning">
+                Selecione o tipo de material acima para filtrar os produtos por categoria.
+              </p>
+            )}
             {modoAdd === "catalogo" ? (
               <BuscaProduto
                 placeholder="Buscar produto por código ou nome…"
+                tipoSlug={tipoSelecionado?.slug ?? ""}
+                fornecedorId={fornecedorId}
+                nomeFornecedor={fornecedores.find((f) => f.id === fornecedorId)?.nome ?? ""}
                 onAdd={addCatalogo}
                 onAddForcar={(p) => addCatalogo(p, true)}
                 onIncrement={(id, delta) => setItens((prev) => prev.map((it) =>
@@ -325,12 +396,15 @@ export function NovaSolicitacaoCliente({
                             className="field h-8 w-40 text-xs"
                           >
                             <option value="">— Sem cor —</option>
-                            {coresRal.map((c) => (
+                            {coresFiltradas.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}
                               </option>
                             ))}
                           </select>
+                          {tipoSelecionado && coresFiltradas.length === 0 && (
+                            <p className="mt-1 text-[10px] text-text-3">Nenhuma cor de {tipoSelecionado.nome}.</p>
+                          )}
                         </td>
                       )}
                       <td className="px-4 py-2">

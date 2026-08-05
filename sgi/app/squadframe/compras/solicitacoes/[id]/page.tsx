@@ -7,6 +7,7 @@ import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refr
 import { SolicitacaoCliente } from "@/modules/squadframe/components/compras/solicitacao-cliente";
 import { pluralUnit } from "@/modules/squadframe/lib/unidade";
 import { isChapa } from "@/modules/squadframe/lib/chapa";
+import { getTiposLinha } from "@/modules/squadframe/lib/cached-queries";
 import { STATUS_SOL_COR, STATUS_SOL_LABEL, PRIORIDADE_COR, PRIORIDADE_LABEL, ORIGEM_LABEL } from "@/modules/squadframe/types/compras";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,9 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
     usuario?.permissoes?.includes("*") ||
     usuario?.permissoes?.includes("compras.pedido.criar");
 
-  const [{ data: sol }, { data: itens }, { data: hist }] = await Promise.all([
+  const [{ data: sol }, { data: itens }, { data: hist }, tiposLinha] = await Promise.all([
     admin.from("solicitacoes_compra")
-      .select("*, obra:obras(id,nome,codigo), solicitante:usuarios(nome)")
+      .select("*, obra:obras(id,nome,codigo), solicitante:usuarios(nome), fornecedor:fornecedores(id,nome)")
       .eq("id", params.id).single(),
     admin.from("solicitacao_itens")
       .select("*, produto:produtos(id, codigo_mestre, nome, unidade)")
@@ -29,9 +30,12 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
       .select("*, usuario:usuarios(nome)")
       .eq("entidade", "solicitacao").eq("entidade_id", params.id)
       .order("criado_em", { ascending: false }),
+    getTiposLinha(),
   ]);
 
   if (!sol) notFound();
+
+  const tipoNome = (tiposLinha as any[]).find((t) => t.slug === sol.tipo_linha)?.nome ?? sol.tipo_linha;
 
   const statusCor = STATUS_SOL_COR[sol.status as keyof typeof STATUS_SOL_COR];
   const isAprovada = sol.status === "APROVADA";
@@ -64,6 +68,8 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Solicitação de Compra</h1>
           <p className="text-sm text-text-2">
             {ORIGEM_LABEL[sol.origem as keyof typeof ORIGEM_LABEL]} · {(sol.obra as any)?.nome ?? "Sem obra"} · {(sol.solicitante as any)?.nome ?? "—"}
+            {sol.tipo_linha && <> · {tipoNome}</>}
+            {(sol.fornecedor as any)?.nome && <> · {(sol.fornecedor as any).nome}</>}
           </p>
         </div>
 

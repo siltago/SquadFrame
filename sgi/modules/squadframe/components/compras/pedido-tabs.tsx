@@ -354,18 +354,25 @@ function TabRecebimentos({ recebimentos }: { recebimentos: any[] }) {
 }
 
 // ── Documentos ────────────────────────────────────────────────────
-function TabDocumentos({ pedidoId, documentos }: { pedidoId: string; documentos: any[] }) {
-  const [uploading, setUploading] = useState(false);
+function TabDocumentos({ pedidoId, documentos, itens }: { pedidoId: string; documentos: any[]; itens: any[] }) {
+  const [uploading, setUploading] = useState<"geral" | "origem" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [docs] = useState(documentos);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputOrigemRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Item sem solicitacao_item_id foi digitado manual, sem vir de uma
+  // solicitação do sistema — precisa de comprovante de origem anexado
+  // antes de aprovar/emitir (ver alterarStatusPedido).
+  const temItemManual = itens.some((i) => !i.solicitacao_item_id);
+  const temOrigem = documentos.some((d) => d.eh_origem_pedido);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>, ehOrigem: boolean) {
     const file = e.target.files?.[0];
     if (!file) return;
     setErro(null);
-    setUploading(true);
+    setUploading(ehOrigem ? "origem" : "geral");
     try {
       const { token, caminho } = await obterUrlUploadDocumento(pedidoId, file.name);
       const supabase = createClient();
@@ -373,13 +380,14 @@ function TabDocumentos({ pedidoId, documentos }: { pedidoId: string; documentos:
         .from("pedido-docs")
         .uploadToSignedUrl(caminho, token, file);
       if (upErr) throw new Error(upErr.message);
-      await registrarDocumento(pedidoId, file.name, caminho, file.size);
+      await registrarDocumento(pedidoId, file.name, caminho, file.size, ehOrigem);
       router.refresh();
     } catch (e: any) {
       setErro(e.message);
     } finally {
-      setUploading(false);
+      setUploading(null);
       if (inputRef.current) inputRef.current.value = "";
+      if (inputOrigemRef.current) inputOrigemRef.current.value = "";
     }
   }
 
@@ -404,10 +412,21 @@ function TabDocumentos({ pedidoId, documentos }: { pedidoId: string; documentos:
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
-        <input ref={inputRef} type="file" className="hidden" onChange={handleUpload} />
-        <Button type="button" disabled={uploading} onClick={() => inputRef.current?.click()}>
-          {uploading ? "Enviando…" : "Anexar documento"}
+      {temItemManual && !temOrigem && (
+        <Alert variant="warning" className="mb-4">
+          Este pedido tem item(ns) digitado(s) manualmente (sem vir de uma solicitação do sistema) —
+          anexe o comprovante de origem do pedido (PDF, foto, e-mail etc.) antes de aprovar ou emitir.
+        </Alert>
+      )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input ref={inputRef} type="file" className="hidden" onChange={(e) => handleUpload(e, false)} />
+        <Button type="button" disabled={!!uploading} onClick={() => inputRef.current?.click()}>
+          {uploading === "geral" ? "Enviando…" : "Anexar documento"}
+        </Button>
+        <input ref={inputOrigemRef} type="file" className="hidden" onChange={(e) => handleUpload(e, true)} />
+        <Button type="button" variant={temItemManual && !temOrigem ? "primary" : "ghost"} disabled={!!uploading} onClick={() => inputOrigemRef.current?.click()}>
+          {uploading === "origem" ? "Enviando…" : "Anexar comprovante de origem"}
         </Button>
         <span className="text-xs text-text-3">PDF, imagens, planilhas, etc.</span>
       </div>
@@ -427,7 +446,14 @@ function TabDocumentos({ pedidoId, documentos }: { pedidoId: string; documentos:
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-text">{d.nome_arquivo}</p>
+                <p className="truncate text-sm font-medium text-text">
+                  {d.nome_arquivo}
+                  {d.eh_origem_pedido && (
+                    <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary align-middle">
+                      ORIGEM
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-text-3">
                   {d.usuario?.nome} · {new Date(d.criado_em).toLocaleDateString("pt-BR")}
                   {d.tamanho_bytes ? ` · ${formatBytes(d.tamanho_bytes)}` : ""}
@@ -582,7 +608,7 @@ export function PedidoTabs({
         {aba === "Resumo"       && <TabResumo pedido={pedido} itens={itens} coresRal={coresRal} />}
         {aba === "Itens"        && <TabItens pedido={pedido} itens={itens} coresRal={coresRal} />}
         {aba === "Recebimentos" && <TabRecebimentos recebimentos={recebimentos} />}
-        {aba === "Documentos"   && <TabDocumentos pedidoId={pedido.id} documentos={documentos} />}
+        {aba === "Documentos"   && <TabDocumentos pedidoId={pedido.id} documentos={documentos} itens={itens} />}
         {aba === "Anotações"    && <TabAnotacoes pedidoId={pedido.id} anotacoes={anotacoes} />}
         {aba === "Histórico"    && <TabHistorico historico={historico} />}
       </div>

@@ -184,6 +184,33 @@ export async function alterarStatusPedido(
     throw new Error("Registre o valor final do pedido antes de finalizá-lo.");
   }
 
+  // Pedido de origem: item sem solicitacao_item_id foi digitado manual, sem
+  // vir de uma solicitação do sistema — nesse caso precisa de comprovante
+  // anexado (PDF, foto, e-mail etc.) antes de seguir pro fluxo de aprovação
+  // (a UI já esconde os botões "Enviar aprovação"/"Aprovar"/"Emitir pedido"
+  // nesse caso — isso aqui é o gate real, pra não depender só da UI).
+  // Pedido 100% originado de solicitação já tem rastreio, não duplica prova.
+  if (status === "AGUARDANDO_APROVACAO" || status === "APROVADO" || status === "EMITIDO") {
+    const { data: itensPedido } = await admin
+      .from("pedido_itens")
+      .select("solicitacao_item_id")
+      .eq("pedido_id", id);
+    const temItemManual = (itensPedido ?? []).some((i) => !i.solicitacao_item_id);
+    if (temItemManual) {
+      const { count } = await admin
+        .from("pedido_documentos")
+        .select("id", { count: "exact", head: true })
+        .eq("pedido_id", id)
+        .eq("eh_origem_pedido", true);
+      if (!count) {
+        throw new Error(
+          "Este pedido tem item(ns) digitado(s) manualmente (sem vir de uma solicitação do sistema) — " +
+          "anexe o comprovante de origem do pedido (PDF, foto, e-mail etc.) na aba Documentos antes de aprovar ou emitir.",
+        );
+      }
+    }
+  }
+
   const patch: Record<string, unknown> = { status };
   if (status === "AGUARDANDO_RECEBIMENTO" && prazoEntrega) patch.prazo_entrega = prazoEntrega;
 

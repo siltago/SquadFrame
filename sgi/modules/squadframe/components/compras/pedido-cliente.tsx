@@ -3,7 +3,8 @@
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alterarStatusPedido, registrarValorFinal, extrairValorFinalDaDevolutiva, confirmarValorFinalComDevolutiva, aprovarDebitoPedido, rejeitarDebitoPedido, atualizarPrazoEntrega } from "@/app/squadframe/compras/actions";
+import { alterarStatusPedido, registrarValorFinal, extrairValorFinalDaDevolutiva, confirmarValorFinalComDevolutiva, aprovarDebitoPedido, rejeitarDebitoPedido, atualizarPrazoEntrega, obterUrlUploadDocumento, registrarDocumento } from "@/app/squadframe/compras/actions";
+import { createClient } from "@/shared/database/supabase-client";
 import type { ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
 import { recalcularPrecoKgPerfisAction } from "@/modules/squadstock/actions/catalogo/actions";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
@@ -44,9 +45,13 @@ const ACAO_LABEL: Record<string, string> = {
 export function PedidoCliente({
   pedido,
   hasRecebimentos = false,
+  itens = [],
+  documentos = [],
 }: {
   pedido: any;
   hasRecebimentos?: boolean;
+  itens?: any[];
+  documentos?: any[];
 }) {
   const podeCriar    = usePode("compras.pedido.criar");
   const podeAprovar  = usePode("compras.pedido.aprovar");
@@ -122,6 +127,40 @@ export function PedidoCliente({
   const debitoRejeitado = pedido.usa_carteira && pedido.debito_status === "REJEITADO";
   const debitoAprovado  = pedido.usa_carteira && pedido.debito_status === "APROVADO";
 
+  // Pedido de origem: item sem solicitacao_item_id foi digitado manual, sem
+  // vir de uma solicitação do sistema — precisa de comprovante anexado
+  // (PDF, foto, e-mail etc.) antes de avançar pra aprovação (ver gate real
+  // em alterarStatusPedido). Enquanto faltar, os botões de avançar somem e
+  // só o de anexar aparece — evita o usuário clicar em algo que vai falhar.
+  const temItemManual = itens.some((i: any) => !i.solicitacao_item_id);
+  const temOrigem = documentos.some((d: any) => d.eh_origem_pedido);
+  const faltaOrigem = temItemManual && !temOrigem;
+  const [uploadingOrigem, setUploadingOrigem] = useState(false);
+  const [erroOrigem, setErroOrigem] = useState<string | null>(null);
+  const inputOrigemRef = useRef<HTMLInputElement>(null);
+
+  async function handleUploadOrigem(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErroOrigem(null);
+    setUploadingOrigem(true);
+    try {
+      const { token, caminho } = await obterUrlUploadDocumento(pedido.id, file.name);
+      const supabase = createClient();
+      const { error: upErr } = await supabase.storage
+        .from("pedido-docs")
+        .uploadToSignedUrl(caminho, token, file);
+      if (upErr) throw new Error(upErr.message);
+      await registrarDocumento(pedido.id, file.name, caminho, file.size, true);
+      router.refresh();
+    } catch (e: any) {
+      setErroOrigem(e.message);
+    } finally {
+      setUploadingOrigem(false);
+      if (inputOrigemRef.current) inputOrigemRef.current.value = "";
+    }
+  }
+
   function handleAprovarDebito() {
     setErroDebito(null);
     setOkDebito(false);
@@ -152,6 +191,9 @@ export function PedidoCliente({
   }
   const transicoes = temRetornoPendente ? [] : (TRANSICOES[pedido.status] ?? []).filter((t) => {
     if (t.status === "FINALIZADO" && pedido.valor_final == null) return false;
+    // Falta comprovante de origem — some com "Enviar aprovação"/"Aprovar",
+    // só o botão de anexar aparece (ver bloco faltaOrigem acima).
+    if (faltaOrigem && (t.status === "AGUARDANDO_APROVACAO" || t.status === "APROVADO")) return false;
     if (t.status === "APROVADO")  return podeAprovar;
     // A partir de REJEITADO, aprovador e comprador podem devolver ou cancelar
     if (pedido.status === "REJEITADO") return podeAprovar || podeCriar || (t.status === "CANCELADO" && podeCancelar);
@@ -286,7 +328,9 @@ export function PedidoCliente({
     });
   }
 
-  if (!transicoes.length && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
+  const mostrarAnexarOrigem = faltaOrigem && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status) && podeCriar;
+
+  if (!transicoes.length && !mostrarAnexarOrigem && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
 
   return (
     <>
@@ -446,6 +490,14 @@ export function PedidoCliente({
               Registre o valor final para poder finalizar o pedido.
             </p>
           )}
+          {mostrarAnexarOrigem && (
+            <>
+              <input ref={inputOrigemRef} type="file" className="hidden" onChange={handleUploadOrigem} />
+              <Button disabled={uploadingOrigem} onClick={() => inputOrigemRef.current?.click()}>
+                {uploadingOrigem ? "Enviando…" : "Anexar pedido de origem"}
+              </Button>
+            </>
+          )}
           {transicoes.map((t) => (
             <button key={t.status} disabled={pending} onClick={() => handleAcao(t.status)}
               className={
@@ -457,6 +509,13 @@ export function PedidoCliente({
             </button>
           ))}
         </div>
+        {mostrarAnexarOrigem && (
+          <p className="mt-1.5 text-xs text-text-3">
+            Este pedido tem item(ns) digitado(s) manualmente (sem vir de uma solicitação do sistema) —
+            anexe o comprovante de origem (PDF, foto, e-mail etc.) para poder enviar para aprovação.
+          </p>
+        )}
+        {erroOrigem && <p className="mt-1 text-xs text-danger">{erroOrigem}</p>}
 
         {showValorFinal && (
           <div className="w-96 rounded-xl border border-border bg-surface p-4 shadow-lg">

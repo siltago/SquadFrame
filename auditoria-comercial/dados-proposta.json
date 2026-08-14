@@ -1,0 +1,183 @@
+{
+  "projeto": {
+    "nome": "SquadSystem / SquadFrame",
+    "descricao": "Plataforma modular de gestão para empresas de esquadrias",
+    "segmento": "Construção, fabricação e instalação de esquadrias",
+    "estado_geral_estimado": "MVP funcional avançado",
+    "data_base": "2026-08-02"
+  },
+  "repositorio": {
+    "aplicacao_principal": "sgi",
+    "arquivos_analisaveis": 715,
+    "pastas": 263,
+    "commits_disponiveis": 189,
+    "periodo_git_dias": 47,
+    "observacao": "Métricas excluem dependências, builds, lockfiles, binários e a própria auditoria."
+  },
+  "stack": [
+    "TypeScript", "React 18", "Next.js 14", "Tailwind CSS", "Supabase PostgreSQL",
+    "Supabase Auth", "Supabase Storage", "Supabase Realtime", "Vercel", "PWA/Web Push",
+    "DnD Kit", "TipTap", "Recharts", "Twilio WhatsApp", "Trello API", "Sharp", "DXF", "PDF"
+  ],
+  "metricas_codigo": {
+    "linhas_total": 77255,
+    "linhas_uteis_estimadas": 64361,
+    "linhas_comentarios": 4103,
+    "linhas_brancas": 8791,
+    "componentes": 205,
+    "paginas": 82,
+    "rotas_api": 7,
+    "layouts": 10,
+    "hooks": 5,
+    "servicos": 32,
+    "utilitarios": 28,
+    "server_actions_exportadas_estimadas": 300,
+    "migrations_oficiais": 73,
+    "ocorrencias_create_table": 180,
+    "funcoes_sql": 89,
+    "policies_rls": 132,
+    "tipos_typescript": 555,
+    "testes_automatizados": 0,
+    "limitacao_sql": "Contagens são ocorrências no histórico, não objetos únicos no schema final."
+  },
+  "metricas_git": {
+    "primeiro_commit": "2026-06-16T18:42:29-03:00",
+    "ultimo_commit": "2026-08-02T16:10:44-03:00",
+    "commits": 189,
+    "dias_ativos": 34,
+    "semanas_ativas": 7,
+    "meses_ativos": 3,
+    "media_commits_dia_ativo": 5.56,
+    "maior_sequencia_dias_ativos": 6,
+    "commits_noturnos": 21,
+    "commits_fim_semana": 13,
+    "coautoria": 16
+  },
+  "estimativas_horas": {
+    "horas_rastreaveis_git": {
+      "conservador": { "horas": 60.4, "sessoes": 75 },
+      "provavel": { "horas": 95.4, "sessoes": 64 },
+      "ampliado": { "horas": 130.2, "sessoes": 54 }
+    },
+    "dedicacao_total_estimada": {
+      "minima": 90,
+      "provavel": 180,
+      "ampliada": 320
+    },
+    "aviso": "Estimativas por reconstrução de sessões; não são apontamento exato."
+  },
+  "estimativas_custo": {
+    "investimento_provavel_reais": {
+      "a_80_h": 14400,
+      "a_100_h": 18000,
+      "a_120_h": 21600
+    },
+    "conclusao": [
+      { "marco": "MVP interno estável", "horas_min": 160, "horas_max": 280 },
+      { "marco": "Versão homologável", "horas_min": 400, "horas_max": 700 },
+      { "marco": "Versão pronta para produção", "horas_min": 800, "horas_max": 1400 },
+      { "marco": "SaaS comercial", "horas_min": 1600, "horas_max": 2800 },
+      { "marco": "Todos os módulos planejados", "horas_min": 3500, "horas_max": 6000 }
+    ]
+  },
+  "custos_operacionais": [
+    { "servico": "Supabase", "uso": "Banco, Auth, Storage e Realtime", "variavel": "compute, storage, egress e usuários", "preco": "Validar comercialmente" },
+    { "servico": "Vercel", "uso": "Aplicação, funções e cron", "variavel": "execução, banda e plano", "preco": "Validar comercialmente" },
+    { "servico": "Twilio", "uso": "WhatsApp", "variavel": "mensagens, templates e país", "preco": "Validar comercialmente" },
+    { "servico": "Trello", "uso": "Provider do SquadBoard", "variavel": "plano e usuários", "preco": "Validar comercialmente" },
+    { "servico": "Domínio, backup e monitoramento", "uso": "Operação futura", "variavel": "retenção, eventos, SLA", "preco": "Não definido no repositório" }
+  ],
+  "modulos": [
+    { "nome": "SquadFrame", "estado": "Funcional", "conclusao_estimada": 78 },
+    { "nome": "SquadBoard", "estado": "MVP funcional", "conclusao_estimada": 68 },
+    { "nome": "SquadStock", "estado": "MVP funcional", "conclusao_estimada": 67 },
+    { "nome": "SquadWise", "estado": "Em desenvolvimento", "conclusao_estimada": 58 },
+    { "nome": "SquadFlow", "estado": "Arquitetado", "conclusao_estimada": 20 },
+    { "nome": "SquadMeasure", "estado": "Conceito", "conclusao_estimada": 10 },
+    { "nome": "SquadHub", "estado": "Conceito", "conclusao_estimada": 10 }
+  ],
+  "funcionalidades": [
+    { "nome": "Gestão de obras", "modulo": "SquadFrame", "status": "Funcional" },
+    { "nome": "Solicitações e pedidos", "modulo": "SquadFrame", "status": "Funcional" },
+    { "nome": "Aprovação e retorno", "modulo": "SquadFrame", "status": "Funcional" },
+    { "nome": "Recebimentos e devoluções", "modulo": "SquadFrame", "status": "Funcional" },
+    { "nome": "Fornecedores e beneficiamento", "modulo": "SquadFrame", "status": "MVP funcional" },
+    { "nome": "Carteiras e contratos", "modulo": "SquadFrame", "status": "MVP funcional" },
+    { "nome": "Tarefas e Kanban", "modulo": "SquadFrame/Board", "status": "Funcional" },
+    { "nome": "Catálogo técnico", "modulo": "SquadStock", "status": "Funcional" },
+    { "nome": "Estoque, locais e movimentações", "modulo": "SquadStock", "status": "MVP funcional" },
+    { "nome": "Trello", "modulo": "SquadBoard", "status": "MVP funcional" },
+    { "nome": "Usuários, papéis e permissões", "modulo": "SquadWise", "status": "MVP funcional" },
+    { "nome": "Auditoria", "modulo": "SquadWise", "status": "MVP funcional" },
+    { "nome": "PWA, push e realtime", "modulo": "Plataforma", "status": "MVP funcional" },
+    { "nome": "Produção", "modulo": "SquadFlow", "status": "Parcial/arquitetado" },
+    { "nome": "Hardware e medição", "modulo": "SquadHub/Measure", "status": "Conceito" }
+  ],
+  "arquitetura": {
+    "estilo": "Monólito modular Next.js com App Router e Supabase",
+    "frontend": "React Server/Client Components e Tailwind",
+    "backend": "Server Actions, Route Handlers, services e RPCs PostgreSQL",
+    "banco": "PostgreSQL/Supabase com migrations, funções, triggers e RLS",
+    "deploy": "Vercel em gru1 com três crons",
+    "tenancy": "Empresa única; multi-tenant removido"
+  },
+  "riscos": [
+    { "nome": "Ausência de testes automatizados", "severidade": "Crítica", "prioridade": "P0" },
+    { "nome": "Schema do Board fora das migrations oficiais", "severidade": "Crítica", "prioridade": "P0" },
+    { "nome": "Uso amplo de service role", "severidade": "Crítica", "prioridade": "P0" },
+    { "nome": "Backup/restore não comprovado", "severidade": "Crítica", "prioridade": "P0" },
+    { "nome": "Ausência de CI e monitoramento", "severidade": "Alta", "prioridade": "P0/P1" },
+    { "nome": "Coexistência de modelos legado e Wise", "severidade": "Alta", "prioridade": "P1" },
+    { "nome": "LGPD não formalizada", "severidade": "Alta", "prioridade": "P1" }
+  ],
+  "pendencias": [
+    "Homologar fluxo ponta a ponta de compras",
+    "Consolidar schema reproduzível",
+    "Criar suíte automatizada e CI",
+    "Implantar observabilidade e backup testado",
+    "Concluir migração de identidade/permissões",
+    "Definir SLA, suporte, LGPD e licenciamento",
+    "Validar desempenho com volume real"
+  ],
+  "beneficios": [
+    "Centralização operacional",
+    "Redução de retrabalho e compras duplicadas",
+    "Rastreabilidade de obras, pedidos e materiais",
+    "Padronização de catálogo e processos",
+    "Melhor visibilidade financeira e gerencial",
+    "Menor dependência de planilhas e conhecimento informal"
+  ],
+  "diferenciais": [
+    "Especialização em esquadrias",
+    "Integração entre obra, compras, estoque e Kanban",
+    "Importação XML e tratamento DXF/PDF",
+    "Automação de cobranças e relatórios",
+    "Modelo de lotes, tipologias e pacotes de trabalho"
+  ],
+  "cenarios_comerciais": [
+    { "modelo": "Piloto assistido", "faixa_reais": "15000-35000" },
+    { "modelo": "Implantação completa empresa única", "faixa_reais": "30000-80000" },
+    { "modelo": "Mensalidade modular", "faixa_reais_mes": "1500-8000" },
+    { "modelo": "Suporte e manutenção", "faixa_reais_mes": "1000-5000" },
+    { "modelo": "Customização", "faixa_reais_hora": "100-180" }
+  ],
+  "dados_faltantes": [
+    "Custos reais de ferramentas, domínio e infraestrutura",
+    "Horas fora do Git e uso de IA",
+    "Usuários, obras, pedidos, produtos e fornecedores previstos",
+    "Volume e crescimento de arquivos/storage",
+    "Baseline de tempo, erros, perdas e retrabalho",
+    "SLA, suporte e treinamento desejados",
+    "Migração de dados e integrações futuras",
+    "Política LGPD, retenção e backup",
+    "Titularidade e condições de licenciamento"
+  ],
+  "nivel_confianca": {
+    "inventario_codigo": "Alto",
+    "historico_git": "Alto para eventos, baixo para horas reais",
+    "maturidade": "Médio",
+    "custos_desenvolvimento": "Médio-baixo",
+    "custos_operacionais": "Baixo sem volumes e planos",
+    "valor_comercial": "Médio-baixo até validar mercado e ROI"
+  }
+}

@@ -1,0 +1,10 @@
+export const VISIT_STATUSES = ["agendada", "disponivel_offline", "em_deslocamento", "em_andamento", "pausada", "aguardando_sincronizacao", "aguardando_revisao", "correcao_solicitada", "concluida", "cancelada"] as const;
+export const PRIORITIES = ["baixa", "normal", "alta", "urgente"] as const;
+export const ENVIRONMENT_STATUSES = ["pendente", "em_andamento", "concluido"] as const;
+export const ELEMENT_STATUSES = ["pendente", "em_andamento", "concluido"] as const;
+export const ELEMENT_TYPES = ["janela", "porta", "fachada", "guarda_corpo", "cobertura", "brise", "portao", "pele_de_vidro", "fechamento", "vao_livre", "estrutura_metalica", "personalizado"] as const;
+export const MEASUREMENT_TYPES = ["largura", "altura", "profundidade", "diagonal_1", "diagonal_2", "espessura", "folga", "nivel", "prumo", "distancia", "raio", "angulo", "quantidade", "personalizada"] as const;
+export const MEASUREMENT_UNITS = ["mm", "cm", "m", "graus", "unidade"] as const;
+export const MEASUREMENT_STATES = ["provisoria", "confirmada", "revisar", "invalidada"] as const;
+export const OBSERVATION_CATEGORIES = ["informacao", "atencao", "impedimento", "decisao_cliente", "pendencia", "risco", "revisao_necessaria"] as const;
+export const MEASURE_PERMISSIONS = { VIEW: "squadmeasure.visualizar", CREATE_VISIT: "squadmeasure.criar_visita", EDIT_VISIT: "squadmeasure.editar_visita", CANCEL_VISIT: "squadmeasure.cancelar_visita", EXECUTE: "squadmeasure.executar_medicao", FINISH: "squadmeasure.finalizar_medicao", REOPEN: "squadmeasure.reabrir_medicao", REVIEW: "squadmeasure.revisar_medicao", MEASURE: "squadmeasure.registrar_medidas", ENVIRONMENTS: "squadmeasure.gerenciar_ambientes", ELEMENTS: "squadmeasure.gerenciar_elementos", OBSERVATIONS: "squadmeasure.gerenciar_observacoes", HISTORY: "squadmeasure.visualizar_historico" } as const;

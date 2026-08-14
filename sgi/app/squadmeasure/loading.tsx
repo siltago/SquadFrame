@@ -1,0 +1,1 @@
+import { SkeletonCard } from "@/ui/components/Skeleton"; export default function Loading(){return <div className="grid gap-4 sm:grid-cols-2"><SkeletonCard/><SkeletonCard/><SkeletonCard/><SkeletonCard/></div>}

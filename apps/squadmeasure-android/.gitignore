@@ -1,0 +1,7 @@
+/.gradle
+/.gradle-bootstrap
+/.idea
+/local.properties
+/**/build
+*.jks
+*.keystore

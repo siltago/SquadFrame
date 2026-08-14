@@ -41,4 +41,11 @@ export const MODULOS: Modulo[] = [
     cor: "success",
     logo: "/logo-stock.png",
   },
+  {
+    slug: "squadmeasure",
+    nome: "SquadMeasure",
+    descricao: "Visitas técnicas, ambientes, elementos, medidas e revisão de obras.",
+    ativo: true,
+    cor: "info",
+  },
 ];

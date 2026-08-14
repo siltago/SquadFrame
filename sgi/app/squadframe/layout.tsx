@@ -18,6 +18,7 @@ const ThemeToggle = dynamic(
 
 const NAV_ITEMS = [
   { href: "/squadframe/obras",           label: "Obras" },
+  { href: "/squadframe/planejamento",    label: "Planejamento" },
   { href: "/squadframe/compras",         label: "Compras" },
   { href: "/squadframe/financeiro",      label: "Financeiro" },
   { href: "/squadframe/beneficiamento",  label: "Beneficiamento" },

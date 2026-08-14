@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest"; import { readFileSync } from "node:fs"; import { resolve } from "node:path";
+const sql=readFileSync(resolve(process.cwd(),"supabase/migrations/20260806000001_squadmeasure_fase1.sql"),"utf8");
+describe("migration security contract",()=>{it("habilita RLS nas sete tabelas",()=>expect((sql.match(/ENABLE ROW LEVEL SECURITY/g)??[])).toHaveLength(7));it("não cria policy aberta",()=>expect(sql).not.toMatch(/USING\s*\(true\)/i));it("registra permissões sem concedê-las",()=>{expect(sql).toContain("squadmeasure.visualizar");expect(sql).not.toContain("INSERT INTO cargo_permissoes");});it("usa soft delete",()=>expect((sql.match(/excluido_em/g)??[]).length).toBeGreaterThan(5));});

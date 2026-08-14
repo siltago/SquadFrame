@@ -6,7 +6,7 @@ const MODULOS = [
   {
     slug: "squadframe",
     titulo: "SquadFrame",
-    descricao: "Usuário, Compras e Financeiro — do primeiro login ao pedido finalizado.",
+    descricao: "Guias de Usuário, Compras, Beneficiamento, Catálogo e Financeiro — do primeiro acesso à operação concluída.",
   },
 ];
 

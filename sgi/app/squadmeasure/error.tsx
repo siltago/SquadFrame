@@ -1,0 +1,1 @@
+"use client"; import { Alert, Button } from "@/ui"; export default function ErrorPage({reset}:{reset:()=>void}){return <Alert variant="danger" title="Não foi possível carregar o SquadMeasure"><p className="mb-3">Tente novamente. Se o problema continuar, registre o horário e a operação executada.</p><Button onClick={reset} size="sm">Tentar novamente</Button></Alert>}

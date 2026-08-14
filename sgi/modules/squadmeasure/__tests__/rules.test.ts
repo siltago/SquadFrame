@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest"; import { calculateProgress, canTransition, nextDuplicateName } from "../services/rules";
+describe("status",()=>{it("permite fluxo operacional",()=>{expect(canTransition("agendada","em_deslocamento")).toBe(true);expect(canTransition("em_andamento","aguardando_revisao")).toBe(true);});it("rejeita salto arbitrário",()=>expect(canTransition("agendada","concluida")).toBe(false));});
+describe("progress",()=>{it("é zero sem ambientes",()=>expect(calculateProgress([])).toBe(0));it("cresce com estrutura medida",()=>expect(calculateProgress([{status:"concluido",elements:[{status:"concluido",measurementCount:2,hasCriticalPending:false}]}])).toBe(100));});
+describe("duplicate",()=>it("sugere nome incremental sem colisão",()=>expect(nextDuplicateName("Janela J01",["Janela J01 2","Janela J01 3"])).toBe("Janela J01 4")));

@@ -77,6 +77,8 @@ export async function criarPedido(formData: FormData) {
     }
   }
 
+  if (lote_id) await exigirComprasLiberadasNoLote(admin, lote_id);
+
   const produtoIds = itens.map((i) => i.produto_id).filter(Boolean);
   if (produtoIds.length > 0) {
     const { data: inativos } = await admin
@@ -270,9 +272,28 @@ export async function editarPedido(id: string, formData: FormData) {
   return { id };
 }
 
+// Só permite vincular um pedido a um lote cuja compra já esteja liberada
+// (frame_pacote_compras.bloqueado = false) — sem contexto de compras ainda
+// criado pro lote, trata como não liberado (padrão conservador: lote novo
+// nasce bloqueado, ver criarLotePlanejamento).
+async function exigirComprasLiberadasNoLote(admin: ReturnType<typeof createAdminClient>, loteId: string) {
+  const { data: contexto } = await admin
+    .from("frame_pacote_compras")
+    .select("bloqueado, motivo_bloqueio")
+    .eq("pacote_id", loteId)
+    .maybeSingle();
+  if (!contexto || contexto.bloqueado) {
+    throw new Error(
+      contexto?.motivo_bloqueio
+        ? `A compra deste lote não está liberada: ${contexto.motivo_bloqueio}`
+        : "A compra deste lote ainda não foi liberada. Libere em Planejamento → Gerenciamento antes de vincular pedidos."
+    );
+  }
+}
+
 // Vínculo de cabeçalho (pedido inteiro → lote), não a alocação granular
 // por item — essa continua existindo via o Bloco B (fn_frame_allocate_*)
-// dentro do detalhe do lote no Wise. Reusa a mesma permissão de
+// dentro do detalhe do lote. Reusa a mesma permissão de
 // editarPedido() (não existe uma "compras.pedido.editar" separada).
 export async function vincularPedidoLote(pedidoId: string, loteId: string | null) {
   await verificarPermissao(PERMISSIONS.COMPRAS_PEDIDO_CRIAR);
@@ -285,9 +306,8 @@ export async function vincularPedidoLote(pedidoId: string, loteId: string | null
     .eq("id", pedidoId)
     .single();
   if (!ped) throw new Error("Pedido não encontrado.");
-  if (!pedidoEditavel(ped.status)) {
-    throw new Error(`Pedidos com status "${ped.status}" não podem ser vinculados a um lote.`);
-  }
+
+  if (loteId) await exigirComprasLiberadasNoLote(admin, loteId);
 
   const { error } = await admin.from("pedidos_compra").update({ lote_id: loteId }).eq("id", pedidoId);
   if (error) throw new Error(error.message);

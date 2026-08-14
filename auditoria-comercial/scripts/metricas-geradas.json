@@ -1,0 +1,160 @@
+﻿{
+    "gerado_em":  "2026-08-02T16:42:22.9856697-03:00",
+    "metodo":  "Varredura do filesystem, excluindo dependÃªncias, builds, binÃ¡rios, lockfiles e a prÃ³pria auditoria.",
+    "arquivos_total":  715,
+    "pastas_total":  263,
+    "extensoes":  [
+                      {
+                          "extensao":  ".tsx",
+                          "arquivos":  306
+                      },
+                      {
+                          "extensao":  ".ts",
+                          "arquivos":  215
+                      },
+                      {
+                          "extensao":  ".sql",
+                          "arquivos":  109
+                      },
+                      {
+                          "extensao":  ".png",
+                          "arquivos":  46
+                      },
+                      {
+                          "extensao":  ".md",
+                          "arquivos":  11
+                      },
+                      {
+                          "extensao":  "[sem extensÃ£o]",
+                          "arquivos":  7
+                      },
+                      {
+                          "extensao":  ".json",
+                          "arquivos":  6
+                      },
+                      {
+                          "extensao":  ".js",
+                          "arquivos":  3
+                      },
+                      {
+                          "extensao":  ".gitignore",
+                          "arquivos":  3
+                      },
+                      {
+                          "extensao":  ".mjs",
+                          "arquivos":  2
+                      },
+                      {
+                          "extensao":  ".toml",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".crt",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".webmanifest",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".example",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".ps1",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".css",
+                          "arquivos":  1
+                      },
+                      {
+                          "extensao":  ".local",
+                          "arquivos":  1
+                      }
+                  ],
+    "linguagens":  [
+                       {
+                           "linguagem":  "CSS",
+                           "arquivos":  1,
+                           "linhas":  531,
+                           "uteis":  96,
+                           "comentarios":  367,
+                           "brancas":  68
+                       },
+                       {
+                           "linguagem":  "JavaScript",
+                           "arquivos":  5,
+                           "linhas":  347,
+                           "uteis":  264,
+                           "comentarios":  33,
+                           "brancas":  50
+                       },
+                       {
+                           "linguagem":  "JSON",
+                           "arquivos":  6,
+                           "linhas":  182,
+                           "uteis":  182,
+                           "comentarios":  0,
+                           "brancas":  0
+                       },
+                       {
+                           "linguagem":  "PowerShell",
+                           "arquivos":  1,
+                           "linhas":  74,
+                           "uteis":  57,
+                           "comentarios":  2,
+                           "brancas":  15
+                       },
+                       {
+                           "linguagem":  "SQL",
+                           "arquivos":  109,
+                           "linhas":  11346,
+                           "uteis":  7370,
+                           "comentarios":  1603,
+                           "brancas":  2373
+                       },
+                       {
+                           "linguagem":  "TypeScript",
+                           "arquivos":  215,
+                           "linhas":  18739,
+                           "uteis":  15016,
+                           "comentarios":  1182,
+                           "brancas":  2541
+                       },
+                       {
+                           "linguagem":  "TypeScript/TSX",
+                           "arquivos":  306,
+                           "linhas":  46036,
+                           "uteis":  41376,
+                           "comentarios":  916,
+                           "brancas":  3744
+                       }
+                   ],
+    "linhas_codigo_total":  77255,
+    "linhas_uteis_total":  64361,
+    "linhas_comentarios_total":  4103,
+    "linhas_brancas_total":  8791,
+    "componentes":  205,
+    "paginas":  82,
+    "rotas_api":  7,
+    "layouts":  10,
+    "hooks":  5,
+    "servicos":  32,
+    "utilitarios":  28,
+    "server_actions":  300,
+    "migrations":  73,
+    "sql":  {
+                "tabelas":  180,
+                "views":  4,
+                "funcoes":  89,
+                "triggers":  16,
+                "indices":  182,
+                "policies":  132,
+                "enums":  0
+            },
+    "tipos_typescript":  555,
+    "schemas_validacao":  2,
+    "testes":  0,
+    "documentacao":  11
+}

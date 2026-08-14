@@ -1,0 +1,2 @@
+import { listSupport } from "@/modules/squadmeasure/services"; import { VisitForm } from "@/modules/squadmeasure/components/visits/visit-form";
+export const dynamic="force-dynamic"; export default async function Page(){const s=await listSupport();return <div><h1 className="mb-5 text-2xl font-bold">Nova visita</h1><VisitForm obras={s.obras as Array<{id:string;nome:string;codigo:string}>} usuarios={s.usuarios}/></div>}

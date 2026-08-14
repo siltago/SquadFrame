@@ -1,21 +1,43 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/shared/database/supabase-admin";
-import { buscarPacoteAction } from "@/modules/wise/work-packages/actions";
 import {
   obterContextoAction,
   listarNecessidadesAction,
   obterCoberturaAction,
 } from "@/modules/squadframe/package-procurement/actions";
-import { STATUS_LABEL, STATUS_COR } from "@/modules/wise/work-packages/types";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { LoteComprasPainel } from "@/modules/squadframe/components/compras/lote-compras-painel";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
+const STATUS_LABEL: Record<string, string> = {
+  RASCUNHO: "Rascunho",
+  ATIVO: "Ativo",
+  SUSPENSO: "Suspenso",
+  CONCLUIDO: "Concluído",
+  CANCELADO: "Cancelado",
+};
+
+const STATUS_COR: Record<string, string> = {
+  RASCUNHO: "bg-slate-100 text-slate-600",
+  ATIVO: "bg-green-100 text-green-700",
+  SUSPENSO: "bg-yellow-100 text-yellow-700",
+  CONCLUIDO: "bg-blue-100 text-blue-700",
+  CANCELADO: "bg-red-100 text-red-600",
+};
+
 export default async function LoteComprasPage({ params }: { params: { loteId: string } }) {
-  const pacote = await buscarPacoteAction(params.loteId);
-  if (!pacote) notFound();
+  const admin = createAdminClient();
+  const { data: pacoteRaw } = await admin
+    .from("lotes_obra")
+    .select("id, obra_id, nome, status, obra:obras(id, nome)")
+    .eq("id", params.loteId)
+    .maybeSingle();
+  type PacoteRaw = { id: string; obra_id: string; nome: string; status: string; obra: { id: string; nome: string }[] | { id: string; nome: string } | null };
+  const raw = pacoteRaw as unknown as PacoteRaw | null;
+  if (!raw) notFound();
+  const pacote = { ...raw, obra: Array.isArray(raw.obra) ? raw.obra[0] ?? null : raw.obra };
 
   const contexto = await obterContextoAction(params.loteId);
   const necessidades = contexto ? await listarNecessidadesAction(params.loteId) : [];
@@ -23,7 +45,6 @@ export default async function LoteComprasPage({ params }: { params: { loteId: st
     ? await obterCoberturaAction(necessidades)
     : { cobertura: [], status: "SEM_NECESSIDADES" as const };
 
-  const admin = createAdminClient();
   const [{ data: pedidosDoLote }, { data: pedidosSoltos }] = await Promise.all([
     admin
       .from("pedidos_compra")
@@ -58,8 +79,8 @@ export default async function LoteComprasPage({ params }: { params: { loteId: st
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{pacote.nome}</h1>
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COR[pacote.status]}`}>
-          {STATUS_LABEL[pacote.status]}
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COR[pacote.status] ?? ""}`}>
+          {STATUS_LABEL[pacote.status] ?? pacote.status}
         </span>
       </div>
       <p className="mt-1 text-sm text-text-2">{pacote.obra?.nome ?? "—"}</p>

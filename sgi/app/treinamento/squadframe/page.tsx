@@ -18,6 +18,11 @@ const GUIAS = [
     titulo: "Carteiras no Financeiro",
     descricao: "Como criar carteiras por contrato e corrigir o saldo de um fornecedor com rastreabilidade.",
   },
+  {
+    slug: "beneficiamento",
+    titulo: "Beneficiamento de pedidos",
+    descricao: "Como transformar um perfil cru em produto beneficiado, escolher a rota e acompanhar o processo até o recebimento.",
+  },
 ];
 
 export default function TreinamentoSquadFramePage() {

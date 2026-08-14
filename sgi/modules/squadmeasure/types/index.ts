@@ -1,3 +1,12 @@
-// modules/squadmeasure/types
-// Preparado para uso futuro (SquadSystem). Nenhuma implementação ainda.
-export {};
+import type { PRIORITIES, VISIT_STATUSES } from "../constants";
+export type VisitStatus = typeof VISIT_STATUSES[number];
+export type Priority = typeof PRIORITIES[number];
+export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; erro: string; campos?: Record<string, string[]> };
+export interface VisitListItem { id: string; obra_id: string; medidor_responsavel_id: string; status: VisitStatus; prioridade: Priority; agendada_para: string | null; progresso: number; observacoes_gerais: string | null; obra: { id: string; nome: string; codigo: string; cidade: string | null; endereco: string | null; cliente: { id: string; nome: string; razao_social: string | null } | null } | null; medidor: { id: string; nome: string } | null; }
+export interface VisitDetail extends VisitListItem { iniciada_em: string | null; finalizada_em: string | null; justificativa_finalizacao: string | null; criado_em: string; atualizado_em: string; membros: Array<{ usuario_id: string; papel_na_visita: string; usuario: { nome: string } | null }>; ambientes: Environment[]; observacoes: Observation[]; historico: HistoryEntry[]; }
+export interface Environment { id: string; visita_id: string; nome: string; codigo: string | null; pavimento: string | null; descricao: string | null; sequencia: number; status: string; observacoes: string | null; arquivado_em: string | null; elementos: Element[]; }
+export interface Element { id: string; ambiente_id: string; nome: string; codigo: string | null; tipo: string; quantidade: number; descricao: string | null; sequencia: number; status: string; requer_atencao: boolean; arquivado_em: string | null; medidas: Measurement[]; }
+export interface Measurement { id: string; elemento_id: string; grupo: string | null; tipo: string; nome: string; valor: number; unidade: string; tolerancia: number | null; posicao: string | null; observacao: string | null; origem: string; estado: string; medida_em: string; }
+export interface Observation { id: string; visita_id: string; ambiente_id: string | null; elemento_id: string | null; medida_id: string | null; categoria: string; texto: string; importante: boolean; resolvida_em: string | null; responsavel: { nome: string } | null; criado_em: string; }
+export interface HistoryEntry { id: string; acao: string; entidade_tipo: string; entidade_id: string | null; dados_antes: unknown; dados_depois: unknown; criado_em: string; usuario: { nome: string } | null; }
+export interface VisitFilters { busca?: string; status?: string; medidorId?: string; obraId?: string; prioridade?: string; de?: string; ate?: string; pagina?: number; porPagina?: number; ordem?: "asc" | "desc"; }

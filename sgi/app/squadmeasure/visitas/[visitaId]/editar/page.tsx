@@ -1,0 +1,2 @@
+import { notFound } from "next/navigation"; import { getVisit, listSupport } from "@/modules/squadmeasure/services"; import { EditVisitForm } from "@/modules/squadmeasure/components/visits/edit-visit-form";
+export const dynamic="force-dynamic"; export default async function Page({params}:{params:{visitaId:string}}){const[v,s]=await Promise.all([getVisit(params.visitaId),listSupport()]);if(!v)notFound();return <div><h1 className="mb-5 text-2xl font-bold">Editar visita · {v.obra?.nome}</h1><EditVisitForm visit={v} users={s.usuarios}/></div>}

@@ -1,0 +1,1 @@
+import { NextRequest } from "next/server";import { createEntity,updateEntity } from "../_lib/mutations";export const POST=(r:NextRequest)=>createEntity(r,"observation");export const PATCH=(r:NextRequest)=>updateEntity(r,"observation");

@@ -1,0 +1,28 @@
+import { z } from "zod";
+import { ELEMENT_STATUSES, ELEMENT_TYPES, ENVIRONMENT_STATUSES, MEASUREMENT_STATES, MEASUREMENT_TYPES, MEASUREMENT_UNITS, OBSERVATION_CATEGORIES, PRIORITIES, VISIT_STATUSES } from "../constants";
+
+const uuid = z.string().uuid("Identificador inválido.");
+const optionalText = z.string().trim().max(5000).optional().nullable();
+export const createVisitSchema = z.object({ obra_id: uuid, medidor_responsavel_id: uuid, prioridade: z.enum(PRIORITIES).default("normal"), agendada_para: z.string().datetime({ offset: true }).optional().nullable(), observacoes_gerais: optionalText });
+export const editVisitSchema = createVisitSchema.partial().extend({ id: uuid });
+export const changeVisitStatusSchema = z.object({ id: uuid, status: z.enum(VISIT_STATUSES), expectedVersion: z.number().int().positive().optional(), justificativa: optionalText, comentario: optionalText });
+export const createEnvironmentSchema = z.object({ id: uuid.optional(), visita_id: uuid, nome: z.string().trim().min(1).max(150), codigo: z.string().trim().max(50).optional().nullable(), pavimento: z.string().trim().max(100).optional().nullable(), descricao: optionalText, sequencia: z.coerce.number().int().min(0).default(0), status: z.enum(ENVIRONMENT_STATUSES).default("pendente"), observacoes: optionalText });
+export const editEnvironmentSchema = createEnvironmentSchema.partial().extend({ id: uuid, visita_id: uuid, expectedVersion: z.number().int().positive().optional(), arquivado: z.boolean().optional() });
+export const reorderEnvironmentSchema = z.object({ visita_id: uuid, ids: z.array(uuid).min(1) });
+export const createElementSchema = z.object({ id: uuid.optional(), ambiente_id: uuid, nome: z.string().trim().min(1).max(150), codigo: z.string().trim().max(50).optional().nullable(), tipo: z.enum(ELEMENT_TYPES), quantidade: z.coerce.number().int().min(1).default(1), descricao: optionalText, sequencia: z.coerce.number().int().min(0).default(0), status: z.enum(ELEMENT_STATUSES).default("pendente"), requer_atencao: z.coerce.boolean().default(false) });
+export const editElementSchema = createElementSchema.partial().extend({ id: uuid, ambiente_id: uuid, expectedVersion: z.number().int().positive().optional(), arquivado: z.boolean().optional() });
+export const duplicateElementSchema = z.object({ id: uuid, copiar_estrutura_medidas: z.boolean().default(false) });
+export const reorderElementSchema = z.object({ ambiente_id: uuid, ids: z.array(uuid).min(1) });
+const measurementBaseSchema = z.object({ id: uuid.optional(), elemento_id: uuid, grupo: z.string().trim().max(100).optional().nullable(), tipo: z.enum(MEASUREMENT_TYPES), nome: z.string().trim().min(1).max(150), valor: z.coerce.number().finite(), unidade: z.enum(MEASUREMENT_UNITS), tolerancia: z.coerce.number().nonnegative().optional().nullable(), posicao: z.string().trim().max(150).optional().nullable(), observacao: optionalText, origem: z.enum(["manual", "importada"]).default("manual"), estado: z.enum(MEASUREMENT_STATES).default("provisoria"), medida_em: z.string().datetime({ offset: true }).optional() });
+export const createMeasurementSchema = measurementBaseSchema.superRefine((v, ctx) => { if (v.valor < 0 && !["nivel", "prumo"].includes(v.tipo)) ctx.addIssue({ code: "custom", path: ["valor"], message: "Valor negativo só é permitido para nível ou prumo." }); });
+export const editMeasurementSchema = z.intersection(z.object({ id: uuid, expectedVersion: z.number().int().positive().optional() }), measurementBaseSchema.partial()).superRefine((v, ctx) => { if (v.valor !== undefined && v.valor < 0 && v.tipo !== undefined && !["nivel", "prumo"].includes(v.tipo)) ctx.addIssue({ code: "custom", path: ["valor"], message: "Valor negativo só é permitido para nível ou prumo." }); });
+export const createObservationSchema = z.object({ id: uuid.optional(), visita_id: uuid, ambiente_id: uuid.optional().nullable(), elemento_id: uuid.optional().nullable(), medida_id: uuid.optional().nullable(), categoria: z.enum(OBSERVATION_CATEGORIES), texto: z.string().trim().min(1).max(5000), importante: z.coerce.boolean().default(false) }).superRefine((v, ctx) => { if ([v.ambiente_id, v.elemento_id, v.medida_id].filter(Boolean).length > 1) ctx.addIssue({ code: "custom", message: "Informe no máximo um alvo específico." }); });
+export const editObservationSchema = z.object({ id: uuid, visita_id: uuid, categoria: z.enum(OBSERVATION_CATEGORIES).optional(), texto: z.string().trim().min(1).max(5000).optional(), importante: z.boolean().optional(), resolvida: z.boolean().optional(), expectedVersion: z.number().int().positive().optional() });
+export const resolveObservationSchema = z.object({ id: uuid, resolvida: z.boolean() });
+export const reviewVisitSchema = z.object({ id: uuid, decisao: z.enum(["aprovar", "solicitar_correcao"]), comentario: z.string().trim().min(1).max(5000) });
+export const finishVisitSchema = z.object({ id: uuid, justificativa: optionalText });
+export type CreateVisitInput = z.infer<typeof createVisitSchema>;
+export type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
+export type CreateElementInput = z.infer<typeof createElementSchema>;
+export type CreateMeasurementInput = z.infer<typeof createMeasurementSchema>;
+export type CreateObservationInput = z.infer<typeof createObservationSchema>;

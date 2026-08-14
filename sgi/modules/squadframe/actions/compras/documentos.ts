@@ -21,6 +21,7 @@ export async function registrarDocumento(
   nome: string,
   caminho: string,
   tamanho: number,
+  ehOrigem = false,
 ) {
   await verificarPermissao(PERMISSIONS.COMPRAS_DOCUMENTO_UPLOAD);
   const admin = createAdminClient();
@@ -31,6 +32,7 @@ export async function registrarDocumento(
     nome_arquivo: nome,
     caminho_storage: caminho,
     tamanho_bytes: tamanho,
+    eh_origem_pedido: ehOrigem,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/squadframe/compras/pedidos/${pedidoId}`);

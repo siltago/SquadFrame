@@ -3,6 +3,7 @@ import { createAdminClient as createClient } from "@/shared/database/supabase-ad
 import { criarLinha } from "@/modules/squadstock/actions/catalogo/actions";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { Button } from "@/ui/components/Button";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function NovaLinhaPage({
         Linhas agrupam produtos de uma mesma série ou fabricante.
       </p>
 
-      <form action={criarLinha} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarLinha} className="card mt-6 max-w-2xl p-6">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="label">Tipo / Aba <span className="text-danger">*</span></label>
@@ -94,7 +95,7 @@ export default async function NovaLinhaPage({
             Cancelar
           </Button>
         </div>
-      </form>
+      </ServerActionForm>
     </div>
   );
 }

@@ -123,6 +123,8 @@ export default async function PedidoPage({ params }: { params: { id: string } })
           <PedidoCliente
             pedido={ped}
             hasRecebimentos={(recebimentos ?? []).length > 0}
+            itens={itens ?? []}
+            documentos={documentos ?? []}
           />
         </div>
       </div>

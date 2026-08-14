@@ -3,6 +3,7 @@ import { criarFornecedor } from "@/app/squadframe/compras/actions";
 import { FornecedoresLista } from "@/modules/squadframe/components/compras/fornecedores-lista";
 import { Button } from "@/ui/components/Button";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function FornecedoresPage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-text-3">Novo fornecedor</h2>
-          <form action={criarFornecedor} className="card p-5 space-y-4">
+          <ServerActionForm action={criarFornecedor} className="card p-5 space-y-4">
             <div>
               <label className="label">Nome Fantasia <span className="text-danger">*</span></label>
               <input name="nome" required className="field" placeholder="Nome fantasia ou comercial" />
@@ -93,7 +94,7 @@ export default async function FornecedoresPage() {
               </div>
             )}
             <Button type="submit" className="w-full">Cadastrar fornecedor</Button>
-          </form>
+          </ServerActionForm>
         </div>
 
         <div>

@@ -5,6 +5,7 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
 import { SubmitButton } from "@/modules/squadframe/components/submit-button";
 import { Button } from "@/ui/components/Button";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function NovaObraPage() {
         O código interno é gerado automaticamente ao salvar.
       </p>
 
-      <form action={criarObra} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarObra} className="card mt-6 max-w-2xl p-6">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label">Nome da obra</label>
@@ -96,7 +97,7 @@ export default async function NovaObraPage() {
           <SubmitButton label="Salvar obra" pendingLabel="Salvando…" />
           <Button as="a" href="/squadframe/obras" variant="ghost">Cancelar</Button>
         </div>
-      </form>
+      </ServerActionForm>
     </div>
   );
 }

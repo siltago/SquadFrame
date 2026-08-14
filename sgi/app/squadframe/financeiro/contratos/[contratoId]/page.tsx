@@ -6,6 +6,7 @@ import { BackButton } from "@/modules/squadframe/components/back-button";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 import { criarContratoDestino, criarContratoAlocacao } from "@/modules/squadframe/actions/compras/contratos";
 import { Button } from "@/ui/components/Button";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,7 @@ export default async function ContratoDetalhePage({ params }: { params: { contra
               )}
 
               {jaAlocado < d.valor && fornecedoresDisponiveis.length > 0 && (
-                <form action={criarContratoAlocacao.bind(null, params.contratoId, d.id)} className="mt-4 flex items-end gap-3 border-t border-border pt-4">
+                <ServerActionForm action={criarContratoAlocacao.bind(null, params.contratoId, d.id)} className="mt-4 flex items-end gap-3 border-t border-border pt-4">
                   <div className="flex-1">
                     <label className="label">Fornecedor</label>
                     <select name="fornecedor_id" required defaultValue="" className="field">
@@ -118,7 +119,7 @@ export default async function ContratoDetalhePage({ params }: { params: { contra
                     <input name="valor" type="number" step="0.01" min="0.01" max={d.valor - jaAlocado} required className="field" />
                   </div>
                   <Button type="submit" size="sm">Alocar</Button>
-                </form>
+                </ServerActionForm>
               )}
             </div>
           );
@@ -132,7 +133,7 @@ export default async function ContratoDetalhePage({ params }: { params: { contra
           <div className="card p-5">
             <h2 className="font-semibold text-text">Novo destino</h2>
             <p className="mt-1 text-xs text-text-3">Restam {formatarValor(contrato.valor_total - valorJaDestinado)} sem destino.</p>
-            <form action={criarContratoDestino.bind(null, params.contratoId)} className="mt-4 flex items-end gap-3">
+            <ServerActionForm action={criarContratoDestino.bind(null, params.contratoId)} className="mt-4 flex items-end gap-3">
               <div className="flex-1">
                 <label className="label">Aba do catálogo</label>
                 <select name="tipo_linha" required defaultValue="" className="field">
@@ -145,7 +146,7 @@ export default async function ContratoDetalhePage({ params }: { params: { contra
                 <input name="valor" type="number" step="0.01" min="0.01" max={contrato.valor_total - valorJaDestinado} required className="field" />
               </div>
               <Button type="submit" size="sm">Adicionar</Button>
-            </form>
+            </ServerActionForm>
           </div>
         )}
       </div>

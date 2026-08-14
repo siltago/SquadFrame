@@ -5,6 +5,7 @@ import { criarProduto } from "@/modules/squadstock/actions/catalogo/actions";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { defaultUnidade, TIPO_UNIDADE_OPCOES, specLabels } from "@/modules/squadframe/lib/tipo-unidade";
 import { Button } from "@/ui/components/Button";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function NovoProdutoPage({
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Novo produto</h1>
       <p className="mt-1 text-sm text-text-2">Linha: {linha.nome}</p>
 
-      <form action={criarProdutoNaLinha} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarProdutoNaLinha} className="card mt-6 max-w-2xl p-6">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="label">Código mestre</label>
@@ -182,7 +183,7 @@ export default async function NovoProdutoPage({
             Cancelar
           </Button>
         </div>
-      </form>
+      </ServerActionForm>
     </div>
   );
 }

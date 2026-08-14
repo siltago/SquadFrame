@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { criarContrato } from "@/modules/squadframe/actions/compras/contratos";
 import { Button } from "@/ui/components/Button";
+import { ServerActionForm } from "@/ui/components/ServerActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function NovoContratoPage() {
         por fornecedor dentro de cada destino.
       </p>
 
-      <form action={criarContrato} className="card mt-6 max-w-xl p-6">
+      <ServerActionForm action={criarContrato} className="card mt-6 max-w-xl p-6">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="label">Obra <span className="text-danger">*</span></label>
@@ -58,7 +59,7 @@ export default async function NovoContratoPage() {
         <div className="mt-6 flex gap-3">
           <Button type="submit">Criar contrato</Button>
         </div>
-      </form>
+      </ServerActionForm>
     </div>
   );
 }

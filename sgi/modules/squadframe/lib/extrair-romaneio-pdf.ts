@@ -1,5 +1,5 @@
 import "server-only";
-import { ensurePdfEnvPolyfills } from "@/modules/squadframe/lib/pdf-env-polyfills";
+import { ensurePdfEnvPolyfills, ensurePdfWorkerLoaded } from "@/modules/squadframe/lib/pdf-env-polyfills";
 
 export type ResultadoExtracaoRomaneio = {
   texto: string;
@@ -42,6 +42,7 @@ export async function extrairDadosRomaneioPdf(buffer: Buffer): Promise<Resultado
   // qualquer página que importe este arquivo, mesmo sem nunca chamar esta
   // função). Polyfill primeiro — ver pdf-env-polyfills.ts.
   ensurePdfEnvPolyfills();
+  await ensurePdfWorkerLoaded();
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   let texto = "";

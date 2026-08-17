@@ -1,5 +1,5 @@
 import "server-only";
-import { ensurePdfEnvPolyfills } from "@/modules/squadframe/lib/pdf-env-polyfills";
+import { ensurePdfEnvPolyfills, ensurePdfWorkerLoaded } from "@/modules/squadframe/lib/pdf-env-polyfills";
 
 export type CandidatoValorFinal = { valor: number; linha: string };
 
@@ -57,6 +57,7 @@ export async function extrairValorFinalPdf(buffer: Buffer): Promise<ResultadoExt
   // @napi-rs/canvas (não instalado), falha silenciosamente e código mais
   // adiante ainda referencia DOMMatrix como global — ver pdf-env-polyfills.ts.
   ensurePdfEnvPolyfills();
+  await ensurePdfWorkerLoaded();
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   let texto = "";

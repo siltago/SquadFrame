@@ -27,3 +27,23 @@ export function ensurePdfEnvPolyfills(): void {
     };
   }
 }
+
+// Sem processo real de Worker em serverless, pdfjs-dist cai pro "fake
+// worker": tenta `import(this.workerSrc)` — um caminho guardado numa
+// variável, não um literal — pra achar pdf.worker.mjs. O rastreador de
+// arquivos da Vercel (@vercel/nft) só inclui no bundle de deploy os módulos
+// que consegue detectar por análise estática; um import por variável é
+// invisível pra ele, então o worker nunca vai pro bundle e o fallback
+// quebra com "Cannot find module .../pdf.worker.mjs" em produção (funciona
+// local porque ali o node_modules inteiro existe). Import aqui com literal
+// (rastreável) e populando `globalThis.pdfjsWorker` faz o pdfjs-dist achar
+// o handler já pronto e nunca tentar aquele import dinâmico — ver
+// `#mainThreadWorkerMessageHandler`/`_setupFakeWorkerGlobal` em
+// pdfjs-dist/legacy/build/pdf.mjs.
+let workerCarregado = false;
+export async function ensurePdfWorkerLoaded(): Promise<void> {
+  if (workerCarregado) return;
+  const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+  (globalThis as Record<string, unknown>).pdfjsWorker = workerModule;
+  workerCarregado = true;
+}

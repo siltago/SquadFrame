@@ -91,7 +91,7 @@ const ACOES = ["criar", "editar", "alterar_status", "apagar"] as const;
 const MODULO_LABEL: Record<string, string> = {
   obras: "Obras", catalogo: "Catálogo", compras: "Compras", financeiro: "Financeiro",
   producao: "Produção", qualidade: "Qualidade", expedicao: "Expedição",
-  tarefas: "Tarefas", usuarios: "Usuários", cargos: "Cargos",
+  tarefas: "Tarefas", usuarios: "Usuários", cargos: "Cargos", stock: "Estoque",
 };
 
 const ACAO_LABEL: Record<string, string> = {
@@ -103,11 +103,20 @@ const COMPRAS_GRUPOS: { key: string; label: string }[] = [
   { key: "compras.solicitacao",    label: "Solicitações" },
   { key: "compras.pedido",         label: "Pedidos" },
   { key: "compras.recebimento",    label: "Recebimentos" },
+  { key: "compras.romaneio",       label: "Romaneios / Entregas" },
+  { key: "compras.beneficiamento", label: "Beneficiamento" },
   { key: "compras.fornecedor",     label: "Fornecedores (legado)" },
   { key: "compras.documento",      label: "Documentos" },
   { key: "compras.anotacao",       label: "Anotações" },
   { key: "compras.formapagamento", label: "Formas de pagamento" },
   { key: "compras.notificacao",    label: "Notificações (WhatsApp)" },
+  { key: "compras.relatorio",      label: "Relatórios" },
+];
+
+const STOCK_GRUPOS: { key: string; label: string }[] = [
+  { key: "stock.movimentacao", label: "Movimentações" },
+  { key: "stock.local",        label: "Locais" },
+  { key: "stock.recebimento",  label: "Recebimento" },
 ];
 
 const CATALOGO_GRUPOS: { key: string; label: string }[] = [
@@ -156,6 +165,16 @@ function CargoCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+    // Permissões de um grupo específico dentro de um módulo (ex: "compras.pedido"
+  // dentro de "compras") — casa só um nível abaixo do prefixo, pra um grupo
+  // mais genérico ("catalogo") não engolir as chaves de um mais específico
+  // ("catalogo.fornecedor"). Vai por chave, não por modulo — modulo tem
+  // grafia inconsistente entre migrations (ex: "COMPRAS" vs "compras").
+  function permsDoGrupo(lista: Permissao[], key: string): Permissao[] {
+    const re = new RegExp(`^${key.replace(/\./g, "\\.")}\\.[^.]+$`);
+    return lista.filter((p) => re.test(p.chave));
+  }
+
   function togglePerm(id: string) {
     setPermsIds((prev) => {
       const n = new Set(prev);
@@ -165,8 +184,11 @@ function CargoCard({
   }
 
   function toggleModulo(modulo: string, checked: boolean) {
+    // Case-insensitive: a coluna modulo tem grafia inconsistente entre
+    // migrations (ex: "OBRAS" vs "obras" pra permissões do mesmo módulo).
+    const alvo = modulo.toUpperCase();
     const ids = permissoes
-      .filter((p) => p.modulo === modulo || p.modulo.startsWith(modulo + "."))
+      .filter((p) => p.modulo.toUpperCase() === alvo || p.modulo.toUpperCase().startsWith(alvo + "."))
       .map((p) => p.id);
     setPermsIds((prev) => {
       const n = new Set(prev);
@@ -209,12 +231,13 @@ function CargoCard({
     });
   }
 
-  const MODULOS_DISPLAY = [...MODULOS, "catalogo", "compras", "financeiro"] as const;
-  const modulosAtivos = MODULOS_DISPLAY.filter((m) =>
-    permissoes
-      .filter((p) => p.modulo === m || p.modulo.startsWith(m + "."))
-      .some((p) => permsIds.has(p.id))
-  );
+  const MODULOS_DISPLAY = [...MODULOS, "catalogo", "compras", "financeiro", "stock"] as const;
+  const modulosAtivos = MODULOS_DISPLAY.filter((m) => {
+    const alvo = m.toUpperCase();
+    return permissoes
+      .filter((p) => p.modulo.toUpperCase() === alvo || p.modulo.toUpperCase().startsWith(alvo + "."))
+      .some((p) => permsIds.has(p.id));
+  });
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -311,7 +334,7 @@ function CargoCard({
               </thead>
               <tbody>
                 {MODULOS.map((modulo) => {
-                  const mPerms = permissoes.filter((p) => p.modulo === modulo);
+                  const mPerms = permissoes.filter((p) => p.modulo.toUpperCase() === modulo.toUpperCase());
                   const todosAtivos = mPerms.length > 0 && mPerms.every((p) => permsIds.has(p.id));
                   return (
                     <tr key={modulo} className="border-b border-border last:border-0 hover:bg-bg/50">
@@ -358,7 +381,15 @@ function CargoCard({
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
                     <input type="checkbox"
                       checked={todosMarcados}
-                      onChange={(e) => toggleModulo("catalogo", e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const ids = todosCatalogo.map((p) => p.id);
+                        setPermsIds((prev) => {
+                          const n = new Set(prev);
+                          ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
+                          return n;
+                        });
+                      }}
                       className="h-3.5 w-3.5 rounded accent-primary"
                     />
                     Tudo
@@ -366,7 +397,7 @@ function CargoCard({
                 </div>
                 <div className="divide-y divide-border">
                   {CATALOGO_GRUPOS.map(({ key, label }) => {
-                    const grupoPerms = todosCatalogo.filter((p) => p.modulo === key);
+                    const grupoPerms = permsDoGrupo(todosCatalogo, key);
                     if (!grupoPerms.length) return null;
                     return (
                       <div key={key} className="px-3 py-2">
@@ -403,7 +434,15 @@ function CargoCard({
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
                     <input type="checkbox"
                       checked={todosMarcados}
-                      onChange={(e) => toggleModulo("compras", e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const ids = todosCompras.map((p) => p.id);
+                        setPermsIds((prev) => {
+                          const n = new Set(prev);
+                          ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
+                          return n;
+                        });
+                      }}
                       className="h-3.5 w-3.5 rounded accent-primary"
                     />
                     Tudo
@@ -411,7 +450,7 @@ function CargoCard({
                 </div>
                 <div className="divide-y divide-border">
                   {COMPRAS_GRUPOS.map(({ key, label }) => {
-                    const grupoPerms = todosCompras.filter((p) => p.modulo === key);
+                    const grupoPerms = permsDoGrupo(todosCompras, key);
                     if (!grupoPerms.length) return null;
                     return (
                       <div key={key} className="px-3 py-2">
@@ -492,7 +531,15 @@ function CargoCard({
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
                     <input type="checkbox"
                       checked={todosMarcados}
-                      onChange={(e) => toggleModulo("financeiro", e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const ids = todosFinanceiro.map((p) => p.id);
+                        setPermsIds((prev) => {
+                          const n = new Set(prev);
+                          ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
+                          return n;
+                        });
+                      }}
                       className="h-3.5 w-3.5 rounded accent-primary"
                     />
                     Tudo
@@ -500,7 +547,62 @@ function CargoCard({
                 </div>
                 <div className="divide-y divide-border">
                   {FINANCEIRO_GRUPOS.map(({ key, label }) => {
-                    const grupoPerms = todosFinanceiro.filter((p) => p.modulo === key || p.chave.startsWith(key + "."));
+                    const grupoPerms = permsDoGrupo(todosFinanceiro, key);
+                    if (!grupoPerms.length) return null;
+                    return (
+                      <div key={key} className="px-3 py-2">
+                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-3">{label}</p>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                          {grupoPerms.map((p) => (
+                            <label key={p.id} className="flex cursor-pointer items-center gap-2">
+                              <input type="checkbox"
+                                checked={permsIds.has(p.id)}
+                                onChange={() => togglePerm(p.id)}
+                                className="h-3.5 w-3.5 rounded accent-primary"
+                              />
+                              <span className="text-xs text-text">{p.nome}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Estoque (SquadStock) — nunca tinha seção nenhuma aqui, mesmo
+              existindo permissões stock.* no banco desde antes; não dava
+              pra conceder por essa tela de jeito nenhum. */}
+          {!isAdmin && (() => {
+            const todosStock = permissoes.filter((p) => p.chave.startsWith("stock."));
+            if (!todosStock.length) return null;
+            const todosMarcados = todosStock.every((p) => permsIds.has(p.id));
+            return (
+              <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                <div className="flex items-center justify-between border-b border-border bg-bg px-3 py-2">
+                  <span className="text-xs font-medium text-text-2">Estoque</span>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
+                    <input type="checkbox"
+                      checked={todosMarcados}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const ids = todosStock.map((p) => p.id);
+                        setPermsIds((prev) => {
+                          const n = new Set(prev);
+                          ids.forEach((id) => (checked ? n.add(id) : n.delete(id)));
+                          return n;
+                        });
+                      }}
+                      className="h-3.5 w-3.5 rounded accent-primary"
+                    />
+                    Tudo
+                  </label>
+                </div>
+                <div className="divide-y divide-border">
+                  {STOCK_GRUPOS.map(({ key, label }) => {
+                    const grupoPerms = permsDoGrupo(todosStock, key);
                     if (!grupoPerms.length) return null;
                     return (
                       <div key={key} className="px-3 py-2">

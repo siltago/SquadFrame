@@ -1,4 +1,5 @@
 import "server-only";
+import { ensurePdfEnvPolyfills } from "@/modules/squadframe/lib/pdf-env-polyfills";
 
 export type ResultadoExtracaoRomaneio = {
   texto: string;
@@ -37,9 +38,10 @@ function paraIso(dia: string, mes: string, ano: string): string | null {
 // extrairValorFinalPdf.
 export async function extrairDadosRomaneioPdf(buffer: Buffer): Promise<ResultadoExtracaoRomaneio> {
   // Import dinâmico de propósito — ver extrair-valor-pdf.ts pro porquê
-  // (pdf-parse carrega pdfjs-dist, que referencia DOMMatrix no topo do
-  // módulo; um import estático aqui quebraria qualquer página que importe
-  // este arquivo, mesmo sem nunca chamar esta função).
+  // (pdf-parse carrega pdfjs-dist; um import estático aqui quebraria
+  // qualquer página que importe este arquivo, mesmo sem nunca chamar esta
+  // função). Polyfill primeiro — ver pdf-env-polyfills.ts.
+  ensurePdfEnvPolyfills();
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   let texto = "";

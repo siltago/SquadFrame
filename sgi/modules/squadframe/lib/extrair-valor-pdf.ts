@@ -1,4 +1,5 @@
 import "server-only";
+import { ensurePdfEnvPolyfills } from "@/modules/squadframe/lib/pdf-env-polyfills";
 
 export type CandidatoValorFinal = { valor: number; linha: string };
 
@@ -52,6 +53,10 @@ export async function extrairValorFinalPdf(buffer: Buffer): Promise<ResultadoExt
   // app/squadframe/compras/actions.ts, isso quebrava até páginas sem nenhuma
   // relação com PDF (ex: /squadframe/compras/fornecedores) com
   // "ReferenceError: DOMMatrix is not defined" na inicialização do módulo.
+  // Polyfill primeiro — pdfjs-dist tenta se auto-polyfillar via
+  // @napi-rs/canvas (não instalado), falha silenciosamente e código mais
+  // adiante ainda referencia DOMMatrix como global — ver pdf-env-polyfills.ts.
+  ensurePdfEnvPolyfills();
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   let texto = "";

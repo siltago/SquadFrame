@@ -10,6 +10,11 @@ export type ResultadoExtracaoRomaneio = {
 
 const PALAVRAS_CHAVE_NUMERO = ["romaneio", "n°", "nº", "numero", "número"];
 const PALAVRAS_CHAVE_DATA = ["data", "entrega", "emissao", "emissão"];
+// Linhas de agregado (total de peças/peso/volumes) têm números isolados que
+// nunca são número de pedido — excluir na origem evita candidato falso
+// (ex: "Total ... 650 peças" batendo por coincidência com um pedido de
+// outro fornecedor que se chama "650").
+const PALAVRAS_CHAVE_AGREGADO = ["total", "subtotal", "soma"];
 
 // dd/mm/yyyy ou dd/mm/yy
 const REGEX_DATA = /(\d{2})\/(\d{2})\/(\d{2,4})/;
@@ -80,7 +85,13 @@ export async function extrairDadosRomaneioPdf(buffer: Buffer): Promise<Resultado
     if (m) dataCandidata = paraIso(m[1], m[2], m[3]);
   }
 
-  const tokensNumericos = Array.from(new Set(texto.match(REGEX_TOKEN_NUMERICO) ?? []));
+  // Tokens numéricos linha a linha (não no texto inteiro de uma vez), pra
+  // dar pra descartar as linhas de agregado sem contaminar o resto.
+  const tokensNumericos = Array.from(new Set(
+    linhas
+      .filter((linha) => !PALAVRAS_CHAVE_AGREGADO.some((p) => normalizar(linha).includes(p)))
+      .flatMap((linha) => linha.match(REGEX_TOKEN_NUMERICO) ?? []),
+  ));
 
   return { texto, numeroCandidato, dataCandidata, tokensNumericos };
 }

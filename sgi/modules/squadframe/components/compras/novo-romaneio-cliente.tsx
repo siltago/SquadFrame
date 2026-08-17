@@ -36,6 +36,10 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
         setNumero(r.numero ?? "");
         setDataEntrega(r.data_entrega ?? "");
         setFornecedorId(r.fornecedor?.id ?? "");
+        // Todo mundo marcado por padrão — o filtro por fornecedor abaixo
+        // (pedidosVisiveis) já esconde quem não bate assim que um
+        // fornecedor está selecionado, então o que sobra visível é sempre
+        // do fornecedor certo.
         setPedidosMarcados(Object.fromEntries(r.pedidosCandidatos.map((p: PedidoCandidatoRomaneio) => [p.id, true])));
       } catch (e: any) {
         setErro(e.message ?? "Falha ao processar o PDF.");
@@ -43,9 +47,20 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
     });
   }
 
+  // Uma vez que o fornecedor está definido (identificado ou escolhido),
+  // pedido de outro fornecedor não é sequer mostrado — não era um pedido
+  // de verdade deste romaneio, só bateu por coincidência num token
+  // numérico do documento (ex: um total de peças).
+  const pedidosVisiveis = resultado
+    ? fornecedorId
+      ? resultado.pedidosCandidatos.filter((p) => p.fornecedorId === fornecedorId)
+      : resultado.pedidosCandidatos
+    : [];
+
   function confirmar() {
     if (!resultado) return;
-    const pedidoIds = Object.entries(pedidosMarcados).filter(([, v]) => v).map(([id]) => id);
+    const idsVisiveis = new Set(pedidosVisiveis.map((p) => p.id));
+    const pedidoIds = Object.entries(pedidosMarcados).filter(([id, v]) => v && idsVisiveis.has(id)).map(([id]) => id);
     if (!pedidoIds.length) { setErro("Selecione ao menos um pedido vinculado."); return; }
     setErro(null);
     startConfirmar(async () => {
@@ -111,10 +126,20 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
 
           <div>
             <label className="label">
-              Pedidos identificados neste romaneio {resultado.pedidosCandidatos.length === 0 && <span className="text-warning font-normal">(nenhum encontrado — confira o PDF)</span>}
+              Pedidos identificados neste romaneio {pedidosVisiveis.length === 0 && (
+                <span className="text-warning font-normal">
+                  {fornecedorId ? "(nenhum pedido deste fornecedor encontrado — confira o PDF)" : "(nenhum encontrado — confira o PDF ou selecione o fornecedor)"}
+                </span>
+              )}
             </label>
+            {!fornecedorId && resultado.pedidosCandidatos.length > 0 && (
+              <p className="mt-1 text-xs text-text-3">
+                Selecione o fornecedor acima pra filtrar só os pedidos dele — evita vincular por engano
+                um número que bateu por coincidência.
+              </p>
+            )}
             <div className="mt-1 divide-y divide-border rounded-lg border border-border">
-              {resultado.pedidosCandidatos.map((p) => (
+              {pedidosVisiveis.map((p) => (
                 <label key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                   <input
                     type="checkbox"

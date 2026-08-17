@@ -8,18 +8,21 @@ import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { getUsuarioId } from "./helpers";
 import { extrairDadosRomaneioPdf } from "@/modules/squadframe/lib/extrair-romaneio-pdf";
 
-// Status elegíveis pra um pedido aparecer como candidato num romaneio —
-// qualquer coisa a partir de EMITIDO (já foi mandado pro fornecedor),
-// incluindo RECEBIDO/FINALIZADO: o romaneio pode chegar/ser cadastrado
-// depois do recebimento já ter sido conferido manualmente (cadastro
-// retroativo), não só enquanto o pedido ainda está "a caminho".
-const STATUS_ELEGIVEL_ROMANEIO = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
+// Status elegíveis pra um pedido aparecer como candidato num romaneio.
+// Inclui APROVADO: na prática o fornecedor às vezes já despacha e o
+// romaneio chega antes de alguém marcar o pedido como EMITIDO no sistema
+// (comprovado com romaneio real — pedidos citados nele estavam em
+// APROVADO). Do EMITIDO em diante inclui até RECEBIDO/FINALIZADO: o
+// romaneio pode ser cadastrado depois do recebimento já conferido
+// manualmente (cadastro retroativo), não só enquanto ainda "a caminho".
+const STATUS_ELEGIVEL_ROMANEIO = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
 
 export type PedidoCandidatoRomaneio = {
   id: string;
   numero: string;
   obra: string | null;
   fornecedor: string | null;
+  fornecedorId: string | null;
 };
 
 export type ResultadoProcessamentoRomaneio = {
@@ -61,7 +64,7 @@ export async function processarRomaneioAction(formData: FormData): Promise<Resul
 
   const { data: pedidosElegiveis } = await admin
     .from("pedidos_compra")
-    .select("id, numero, obra:obras(nome), fornecedor:fornecedores(nome)")
+    .select("id, numero, fornecedor_id, obra:obras(nome), fornecedor:fornecedores(nome)")
     .in("status", STATUS_ELEGIVEL_ROMANEIO);
 
   const pedidosCandidatos: PedidoCandidatoRomaneio[] = (pedidosElegiveis ?? [])
@@ -74,6 +77,7 @@ export async function processarRomaneioAction(formData: FormData): Promise<Resul
         numero: p.numero,
         obra: obra?.nome ?? null,
         fornecedor: fornecedor?.nome ?? null,
+        fornecedorId: p.fornecedor_id,
       };
     });
 
@@ -89,10 +93,28 @@ export async function processarRomaneioAction(formData: FormData): Promise<Resul
       (razao && razao.length > 3 && textoNorm.includes(razao));
   });
 
+  // Fallback: nem todo romaneio imprime o nome do fornecedor por extenso
+  // (ex: o documento só traz o nome do cliente dele) — se não achou por
+  // texto, mas os pedidos batidos pelos números do documento são todos do
+  // mesmo fornecedor, usa esse. Já sabemos de qual pedido é, então já
+  // sabemos de quem é o fornecedor — não faz sentido continuar "não
+  // identificado" só porque o nome não aparece no PDF.
+  let fornecedorResolvido = fornecedorMatch
+    ? { id: fornecedorMatch.id, nome: fornecedorMatch.nome }
+    : null;
+  if (!fornecedorResolvido && pedidosCandidatos.length > 0) {
+    const idsUnicos = new Set(pedidosCandidatos.map((p) => p.fornecedorId).filter(Boolean));
+    if (idsUnicos.size === 1) {
+      const [fornecedorId] = idsUnicos;
+      const nome = pedidosCandidatos.find((p) => p.fornecedorId === fornecedorId)?.fornecedor;
+      if (fornecedorId && nome) fornecedorResolvido = { id: fornecedorId, nome };
+    }
+  }
+
   return {
     numero: numeroCandidato,
     data_entrega: dataCandidata,
-    fornecedor: fornecedorMatch ? { id: fornecedorMatch.id, nome: fornecedorMatch.nome } : null,
+    fornecedor: fornecedorResolvido,
     pedidosCandidatos,
     arquivoNome: arquivo.name,
     arquivoCaminho: caminho,

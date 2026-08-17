@@ -109,6 +109,7 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
             </div>
             <div>
               <Input label="Data de entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+              <p className="mt-1 text-xs text-text-3">Ao confirmar, atualiza o prazo de entrega de cada pedido vinculado.</p>
             </div>
           </div>
 

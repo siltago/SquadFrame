@@ -162,6 +162,18 @@ export async function confirmarRomaneioAction(dados: DadosConfirmacaoRomaneio) {
     .insert(dados.pedidoIds.map((pedido_id) => ({ romaneio_id: romaneio.id, pedido_id })));
   if (erroVinculo) throw new Error(erroVinculo.message);
 
+  // Data de entrega do romaneio é a melhor informação real que temos de
+  // quando o material chega — propaga pro prazo_entrega de cada pedido
+  // vinculado (é esse campo que a tela de Recebimento usa pra calcular
+  // atraso). Só atualiza quando o romaneio de fato tem uma data.
+  if (dados.data_entrega) {
+    const { error: erroPrazo } = await admin
+      .from("pedidos_compra")
+      .update({ prazo_entrega: dados.data_entrega })
+      .in("id", dados.pedidoIds);
+    if (erroPrazo) throw new Error(erroPrazo.message);
+  }
+
   const { error: erroDocs } = await admin.from("pedido_documentos").insert(
     dados.pedidoIds.map((pedido_id) => ({
       pedido_id,

@@ -187,7 +187,12 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
                       toast("Notificações bloqueadas no navegador. Abra as configurações do site (ícone de cadeado na barra de endereço) e permita notificações.", "info");
                       return;
                     }
-                    await requestPushPermission();
+                    const resultado = await requestPushPermission();
+                    if (resultado.ok) {
+                      toast("Notificações ativadas.", "sucesso");
+                    } else if (resultado.motivo) {
+                      toast(resultado.motivo, "info");
+                    }
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-2 hover:bg-bg hover:text-text"
                 >

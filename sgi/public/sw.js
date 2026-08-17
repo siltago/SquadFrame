@@ -13,7 +13,7 @@ const NETWORK_ONLY_PATHS = ['/api/', '/login', '/auth/', '/manifest.webmanifest'
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(['/icon.png']).catch(() => {}))
+      .then(cache => cache.addAll(['/icon-192-v3.png']).catch(() => {}))
       .then(() => self.skipWaiting())
   );
 });
@@ -104,8 +104,8 @@ self.addEventListener('push', (event) => {
   const {
     title = 'SquadFrame',
     body = '',
-    icon = '/icon.png',
-    badge = '/icon.png',
+    icon = '/icon-192-v3.png',
+    badge = '/icon-192-v3.png',
     url = '/',
     tag,
     actions = [],

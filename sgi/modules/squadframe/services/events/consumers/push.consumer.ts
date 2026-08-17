@@ -250,6 +250,31 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
 
     // ── Solicitações ──────────────────────────────────────────────────────────
 
+    case EVENTS.PURCHASE_REQUEST_SUBMITTED: {
+      const admin = createAdminClient();
+      const { data: sol } = await admin
+        .from("solicitacoes_compra")
+        .select("numero, obras(nome), solicitante:usuarios!solicitante_id(nome)")
+        .eq("id", p.request_id)
+        .single();
+
+      const numero = sol?.numero ?? "";
+      const obra = (sol?.obras as any)?.nome ?? "";
+      const obraLabel = obra ? ` - ${obra}` : "";
+      const criadoPor = (sol?.solicitante as any)?.nome ?? "";
+      const enviadoPor = criadoPor ? ` enviada por ${criadoPor}` : "";
+
+      const userIds = await getUsersWithPermission("compras.solicitacao.aprovar");
+      await push(userIds, {
+        title: "Solicitação de compra aguardando aprovação",
+        body: `Solicitação ${numero}${obraLabel}${enviadoPor} para aprovação`,
+        url: `/squadframe/compras/solicitacoes/${p.request_id}`,
+        tag: `sol-aprovacao-${p.request_id}`,
+        actions: [{ action: "open", title: "Ver solicitação" }],
+      });
+      break;
+    }
+
     case EVENTS.PURCHASE_REQUEST_APPROVED: {
       const admin = createAdminClient();
       const { data: sol } = await admin

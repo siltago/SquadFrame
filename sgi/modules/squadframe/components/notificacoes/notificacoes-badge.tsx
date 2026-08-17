@@ -17,6 +17,7 @@ const TIPO_LABEL: Record<string, string> = {
   tarefa_comentario:           "Novo comentário em tarefa",
   pedido_aprovado:             "Pedido aprovado — emita agora",
   pedido_aguardando_aprovacao: "Pedido aguardando aprovação",
+  solicitacao_aguardando_aprovacao: "Solicitação aguardando aprovação",
   solicitacao_aprovada:        "Solicitação aprovada",
   solicitacao_rejeitada:       "Solicitação rejeitada",
   debito_carteira_falhou:      "Débito da carteira não realizado",
@@ -82,6 +83,14 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
       return { titulo: "Devolução enviada ao fornecedor", corpo: `Devolução ${p.numero_devolucao} foi enviada ao fornecedor` };
     case "devolucao_pedido_entregue":
       return { titulo: "Devolução entregue", corpo: `Devolução ${p.numero_devolucao} foi entregue` };
+    case "solicitacao_aguardando_aprovacao": {
+      const obra = p.obra_nome ? ` - ${p.obra_nome}` : "";
+      const enviadoPor = p.criado_por_nome ? ` enviada por ${p.criado_por_nome}` : "";
+      return {
+        titulo: "Solicitação de compra aguardando aprovação",
+        corpo: `Solicitação ${p.numero}${obra}${enviadoPor} para aprovação`,
+      };
+    }
     case "solicitacao_aprovada":
       return { titulo: "Solicitação aprovada", corpo: `Solicitação ${p.numero} foi aprovada` };
     case "solicitacao_rejeitada":
@@ -120,6 +129,7 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "devolucao_pedido_entregue":
       if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
       break;
+    case "solicitacao_aguardando_aprovacao":
     case "solicitacao_aprovada":
     case "solicitacao_rejeitada":
     case "solicitacao_cobranca_prazo":

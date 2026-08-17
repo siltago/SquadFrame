@@ -61,6 +61,33 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       break;
     }
 
+    // Solicitação aguardando aprovação → notifica aprovadores com permissão
+    case EVENTS.PURCHASE_REQUEST_SUBMITTED: {
+      const { request_id } = p;
+      if (!request_id) break;
+
+      const { data: solDetalhe } = await admin
+        .from("solicitacoes_compra")
+        .select("numero, obras(nome), solicitante:usuarios!solicitante_id(nome)")
+        .eq("id", request_id)
+        .single();
+      const numero = solDetalhe?.numero ?? null;
+      const obra_nome = (solDetalhe?.obras as any)?.nome ?? null;
+      const criado_por_nome = (solDetalhe?.solicitante as any)?.nome ?? null;
+
+      const usuarioIds = await getUsuariosComPermissao("compras.solicitacao.aprovar");
+      if (!usuarioIds.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarioIds.map((id) => ({
+          usuario_id: id,
+          tipo: "solicitacao_aguardando_aprovacao",
+          payload: { numero, request_id, obra_nome, criado_por_nome },
+        }))
+      );
+      break;
+    }
+
     // Solicitação aprovada → notifica solicitante
     case EVENTS.PURCHASE_REQUEST_APPROVED: {
       const { request_id, usuario_id } = p;

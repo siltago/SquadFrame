@@ -9,6 +9,7 @@ export type NotificacaoTipo =
   | 'pedido_aprovado'
   | 'pedido_aguardando_aprovacao'
   | 'debito_carteira_falhou'
+  | 'solicitacao_aguardando_aprovacao'
   | 'solicitacao_aprovada'
   | 'solicitacao_rejeitada'
   | 'pedido_cobranca_prazo'
@@ -40,6 +41,7 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'pedido_aprovado',
     'pedido_aguardando_aprovacao',
     'debito_carteira_falhou',
+    'solicitacao_aguardando_aprovacao',
     'solicitacao_aprovada',
     'solicitacao_rejeitada',
     'pedido_cobranca_prazo',

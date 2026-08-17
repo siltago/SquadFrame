@@ -67,7 +67,8 @@ self.addEventListener('fetch', (event) => {
         if (cached) return cached;
         return fetch(request).then(response => {
           if (response.ok) {
-            caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
           }
           return response;
         }).catch(() => cached ?? new Response('', { status: 503 }));

@@ -46,7 +46,11 @@ export async function notificarBoard(
 
     if (push) {
       const subs = await getSubsForUsers(userIds);
-      await sendPushToSubscriptions(subs, push).catch(() => {});
+      const resultados = await sendPushToSubscriptions(subs, push).catch(() => []);
+      const endpointsExpirados = resultados.filter((r) => r.expirado).map((r) => r.endpoint);
+      if (endpointsExpirados.length) {
+        await admin.from("push_subscriptions").delete().in("endpoint", endpointsExpirados);
+      }
     }
   } catch {
     // notificações nunca bloqueiam a operação principal

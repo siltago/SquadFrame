@@ -16,7 +16,12 @@ async function getSubsForUsers(userIds: string[]): Promise<PushSubscription[]> {
 
 async function push(userIds: string[], payload: PushPayload) {
   const subs = await getSubsForUsers(userIds);
-  await sendPushToSubscriptions(subs, payload);
+  const resultados = await sendPushToSubscriptions(subs, payload);
+  const endpointsExpirados = resultados.filter((r) => r.expirado).map((r) => r.endpoint);
+  if (endpointsExpirados.length) {
+    const admin = createAdminClient();
+    await admin.from("push_subscriptions").delete().in("endpoint", endpointsExpirados);
+  }
 }
 
 export async function pushConsumerHandler(event: DomainEvent): Promise<void> {

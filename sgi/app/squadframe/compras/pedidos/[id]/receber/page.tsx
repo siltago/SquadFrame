@@ -23,7 +23,7 @@ export default async function ReceberPage({ params }: { params: { id: string } }
   const itensComSaldo = (itens ?? []).filter((i: any) => Number(i.saldo_pendente) > 0);
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <BackButton href={`/squadframe/compras/pedidos/${params.id}`} />
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Registrar Recebimento</h1>
       <p className="mt-1 text-sm text-text-2">

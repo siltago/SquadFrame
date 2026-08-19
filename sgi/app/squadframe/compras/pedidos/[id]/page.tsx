@@ -78,7 +78,7 @@ export default async function PedidoPage({ params }: { params: { id: string } })
     : null;
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-6xl mx-auto">
       <BackButton href="/squadframe/compras/pedidos" />
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">

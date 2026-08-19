@@ -77,7 +77,7 @@ export default async function RecebimentoPage() {
   });
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">
           <TruckIcon size={20} />

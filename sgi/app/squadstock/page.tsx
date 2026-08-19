@@ -167,7 +167,7 @@ export default async function EstoquePage({
     <div className="flex" style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))" }}>
       <EstoqueSidebar tipos={tiposList ?? []} />
 
-      <div className="min-w-0 flex-1 overflow-y-auto px-8 py-8 max-w-6xl">
+      <div className="min-w-0 flex-1 overflow-y-auto px-8 py-8 max-w-6xl mx-auto">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">

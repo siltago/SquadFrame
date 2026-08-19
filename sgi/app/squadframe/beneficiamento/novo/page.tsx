@@ -80,7 +80,7 @@ export default async function NovoBeneficiamentoPage({
   }
 
   return (
-    <div className="px-8 py-8 max-w-4xl">
+    <div className="px-8 py-8 max-w-4xl mx-auto">
       <BackButton href="/squadframe/beneficiamento" />
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Novo Beneficiamento</h1>
       <p className="mt-1 text-sm text-text-2">

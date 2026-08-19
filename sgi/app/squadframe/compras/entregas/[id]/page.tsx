@@ -22,7 +22,7 @@ export default async function EntregaDetalhePage({ params }: { params: { id: str
   const { data: urlAssinada } = await admin.storage.from("pedido-docs").createSignedUrl(romaneio.arquivo_caminho, 3600);
 
   return (
-    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl mx-auto">
       <BackButton href="/squadframe/compras/entregas" />
 
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Romaneio {romaneio.numero ?? "—"}</h1>

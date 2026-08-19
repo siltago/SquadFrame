@@ -57,7 +57,7 @@ export default async function FinanceiroPage({
   // ── Aba Carteiras ──────────────────────────────────────────
   if (abaAtual === "carteiras") {
     return (
-      <div className="px-8 py-8 max-w-6xl">
+      <div className="px-8 py-8 max-w-6xl mx-auto">
         <RealtimeRefresher channelName="financeiro-carteiras" subs={[{ table: "carteiras" }]} />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
         <FinanceiroTabNav {...tabNavProps} />
@@ -69,7 +69,7 @@ export default async function FinanceiroPage({
   // ── Aba Faturamento Direto ───────────────────────────────────
   if (abaAtual === "faturamento-direto") {
     return (
-      <div className="px-8 py-8 max-w-6xl">
+      <div className="px-8 py-8 max-w-6xl mx-auto">
         <RealtimeRefresher
           channelName="financeiro-faturamento-direto"
           subs={[{ table: "pedidos_compra" }, { table: "carteiras" }, { table: "carteira_movimentacoes" }, { table: "carteira_ajustes" }]}
@@ -184,7 +184,7 @@ export default async function FinanceiroPage({
   };
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-6xl mx-auto">
       <RealtimeRefresher
         channelName="financeiro-dashboard"
         subs={[{ table: "pedidos_compra" }, { table: "pedido_itens" }]}

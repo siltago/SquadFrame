@@ -102,7 +102,7 @@ export default async function HomePage({
     const relatorio = await buscarRelatorioCobranca(admin);
 
     return (
-      <div className="px-8 py-8 max-w-7xl">
+      <div className="px-8 py-8 max-w-7xl mx-auto">
         <RealtimeRefresher channelName={`home-alertas-${usuario.id}`} subs={subsAlertas} />
         <div className="border-b border-border mb-6">
           <CentralTabNav podeCobranca={podeCobranca} />

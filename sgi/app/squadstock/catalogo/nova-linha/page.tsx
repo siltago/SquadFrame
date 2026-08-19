@@ -36,7 +36,7 @@ export default async function NovaLinhaPage({
         Linhas agrupam produtos de uma mesma série ou fabricante.
       </p>
 
-      <ServerActionForm action={criarLinha} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarLinha} className="card mt-6 max-w-2xl p-6 mx-auto">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="label">Tipo / Aba <span className="text-danger">*</span></label>

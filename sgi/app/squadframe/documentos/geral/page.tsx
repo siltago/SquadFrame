@@ -56,7 +56,7 @@ export default async function RelatorioGeralPage({
   }
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight">Relatório Geral de Compras</h1>
       <p className="text-sm text-text-3 mt-1">Todos os pedidos do sistema no período escolhido. Não fica salvo — só imprima ou salve o PDF.</p>
 

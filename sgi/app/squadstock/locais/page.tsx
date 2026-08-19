@@ -18,7 +18,7 @@ export default async function LocaisPage() {
   const { data: locais } = await admin.from("stock_locais").select("id, nome, tipo, ativo").order("nome");
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">
           <WarehouseIcon size={20} />

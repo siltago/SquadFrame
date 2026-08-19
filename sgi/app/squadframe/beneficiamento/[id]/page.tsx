@@ -44,7 +44,7 @@ export default async function BeneficiamentoDetalhePage({ params }: { params: { 
   const fornecedor = pedidoPintura ? rel((pedidoPintura as any).fornecedor) : null;
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <RealtimeRefresher channelName={`beneficiamento-${params.id}`} subs={[{ table: "beneficiamentos", filter: `id=eq.${params.id}` }]} />
       <BackButton href="/squadframe/beneficiamento" />
 

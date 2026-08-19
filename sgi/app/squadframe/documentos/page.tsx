@@ -34,7 +34,7 @@ export default async function DocumentosPage() {
   }
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight">Documentos</h1>
       <p className="text-sm text-text-3 mt-1">Escolha o tipo de relatório.</p>
 

@@ -45,7 +45,7 @@ export default async function RelatorioPorObraPage({
   const { data: obras } = await admin.from("obras").select("id, nome").order("nome").limit(200);
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight">Relatório por Obra</h1>
       <p className="text-sm text-text-3 mt-1">Total histórico de compras de uma obra específica. Não fica salvo — só imprima ou salve o PDF.</p>
 

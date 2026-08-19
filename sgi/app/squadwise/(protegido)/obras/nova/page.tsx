@@ -23,7 +23,7 @@ export default async function NovaObraPage() {
   ]);
 
   return (
-    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl mx-auto">
       <BackButton href="/squadwise/obras" />
       <div className="mt-4 mb-6">
         <p className="text-xs font-medium uppercase tracking-widest text-text-3">SquadWise · Obras</p>

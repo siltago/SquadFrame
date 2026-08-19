@@ -33,7 +33,7 @@ export default async function NovoPacotePage({ params }: { params: { id: string 
   ]);
 
   return (
-    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl mx-auto">
       <BackButton href={`/squadwise/obras/${params.id}`} />
       <div className="mt-4 mb-6">
         <p className="text-xs font-medium uppercase tracking-widest text-text-3">

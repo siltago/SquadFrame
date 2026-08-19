@@ -26,7 +26,7 @@ export default async function NovaMovimentacaoPage({
   ]);
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight">Nova movimentação</h1>
       <p className="text-sm text-text-3 mt-1">Registre uma saída (consumo) ou um ajuste de saldo.</p>
 

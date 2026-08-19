@@ -23,7 +23,8 @@ export {
   vincularPedidoLote,
 } from "@/modules/squadframe/actions/compras/pedidos";
 
-export { registrarRecebimento } from "@/modules/squadframe/actions/compras/recebimentos";
+export { registrarRecebimento, registrarRecebimentoLote } from "@/modules/squadframe/actions/compras/recebimentos";
+export type { ResultadoLote } from "@/modules/squadframe/actions/compras/recebimentos";
 
 export { registrarJustificativaPendencia, adiarPendenciasParaAmanha } from "@/modules/squadframe/actions/compras/pendencias";
 

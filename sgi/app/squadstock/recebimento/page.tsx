@@ -6,6 +6,7 @@ import { TruckIcon, ClockIcon, AlertTriangleIcon } from "@/ui/icons";
 import { StatCard } from "@/modules/squadframe/components/stat-card";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { RecebimentoAcaoBotao } from "@/modules/squadstock/components/recebimento-acao-botao";
+import { BuscaRomaneio } from "@/modules/squadstock/components/busca-romaneio";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,10 @@ export default async function RecebimentoPage() {
           <h1 className="text-2xl font-bold tracking-tight">Recebimento</h1>
           <p className="text-sm text-text-3">Pedidos em trânsito e conferência de material recebido.</p>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <BuscaRomaneio />
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">

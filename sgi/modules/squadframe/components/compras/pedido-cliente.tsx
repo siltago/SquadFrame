@@ -7,6 +7,7 @@ import { alterarStatusPedido, registrarValorFinal, extrairValorFinalDaDevolutiva
 import { createClient } from "@/shared/database/supabase-client";
 import type { ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
 import { recalcularPrecoKgPerfisAction } from "@/modules/squadstock/actions/catalogo/actions";
+import { RecebimentoLoteOuIndividualBotao, useRecebimentoEstoqueVisivel } from "@/modules/squadstock/components/recebimento-lote-ou-individual-botao";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
@@ -249,6 +250,7 @@ export function PedidoCliente({
 
   const podeRegistrarRecebimento =
     podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
+  const podeConferirEstoque = useRecebimentoEstoqueVisivel(pedido.status);
 
   // Todo pedido emitido precisa poder ter o valor final salvo — com ou sem
   // faturamento direto/carteira — então acompanha os mesmos status aceitos
@@ -330,7 +332,7 @@ export function PedidoCliente({
 
   const mostrarAnexarOrigem = faltaOrigem && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status) && podeCriar;
 
-  if (!transicoes.length && !mostrarAnexarOrigem && !podeEditarAgora && !podeRegistrarRecebimento && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
+  if (!transicoes.length && !mostrarAnexarOrigem && !podeEditarAgora && !podeRegistrarRecebimento && !podeConferirEstoque && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
 
   return (
     <>
@@ -485,6 +487,7 @@ export function PedidoCliente({
               Registrar recebimento
             </Button>
           )}
+          <RecebimentoLoteOuIndividualBotao pedidoId={pedido.id} status={pedido.status} />
           {pedido.status === "RECEBIDO" && pedido.valor_final == null && (
             <p className="text-xs text-text-3 self-center">
               Registre o valor final para poder finalizar o pedido.

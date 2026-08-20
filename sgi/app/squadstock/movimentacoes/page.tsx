@@ -30,6 +30,7 @@ interface MovimentacaoRow {
   produto: { codigo_mestre: string; nome: string; unidade: string | null } | { codigo_mestre: string; nome: string; unidade: string | null }[] | null;
   local: { nome: string } | { nome: string }[] | null;
   obra: { nome: string } | { nome: string }[] | null;
+  cor: { codigo_ral: string } | { codigo_ral: string }[] | null;
   usuario: { nome: string } | { nome: string }[] | null;
 }
 
@@ -63,6 +64,7 @@ export default async function MovimentacoesPage({
       produto:produtos(codigo_mestre, nome, unidade),
       local:stock_locais(nome),
       obra:obras(nome),
+      cor:cores_ral(codigo_ral),
       usuario:usuarios(nome)
     `)
     .order("criado_em", { ascending: false })
@@ -152,10 +154,14 @@ export default async function MovimentacoesPage({
             )}
             {movimentacoes.map((m) => {
               const p = Array.isArray(m.produto) ? m.produto[0] : m.produto;
+              const cor = Array.isArray(m.cor) ? m.cor[0] : m.cor;
               return (
                 <tr key={m.id} className="border-t border-border">
                   <td className="px-4 py-2.5 text-text-3 font-mono text-xs">{m.numero}</td>
-                  <td className="px-4 py-2.5">{p?.nome ?? "—"}</td>
+                  <td className="px-4 py-2.5">
+                    {p?.nome ?? "—"}
+                    {cor && <span className="ml-1.5 text-xs text-text-3">({cor.codigo_ral})</span>}
+                  </td>
                   <td className="px-4 py-2.5 text-text-2">{nomeRelacao(m.local)}</td>
                   <td className="px-4 py-2.5 text-text-2">{m.obra ? nomeRelacao(m.obra) : <span className="text-text-3">—</span>}</td>
                   <td className="px-4 py-2.5">

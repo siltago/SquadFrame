@@ -35,7 +35,7 @@ export default async function BeneficiamentoDetalhePage({ params }: { params: { 
 
   const { data: itens } = await admin
     .from("beneficiamento_itens")
-    .select("id, quantidade, produto_cru:produtos!beneficiamento_itens_produto_cru_id_fkey(codigo_mestre, nome, unidade), produto_pintado:produtos!beneficiamento_itens_produto_pintado_id_fkey(codigo_mestre, nome)")
+    .select("id, quantidade, produto_cru:produtos!beneficiamento_itens_produto_cru_id_fkey(codigo_mestre, nome, unidade), cor:cores_ral(codigo_ral, nome)")
     .eq("beneficiamento_id", params.id);
 
   const obra = rel(benef.obra);
@@ -101,15 +101,15 @@ export default async function BeneficiamentoDetalhePage({ params }: { params: { 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
-              <th className="px-4 py-2 font-medium">Cru</th>
-              <th className="px-4 py-2 font-medium">Pintado</th>
+              <th className="px-4 py-2 font-medium">Produto</th>
+              <th className="px-4 py-2 font-medium">Cor</th>
               <th className="px-4 py-2 font-medium text-right">Quantidade</th>
             </tr>
           </thead>
           <tbody>
             {(itens ?? []).map((i: any) => {
               const cru = rel(i.produto_cru);
-              const pintado = rel(i.produto_pintado);
+              const cor = rel(i.cor);
               return (
                 <tr key={i.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5">
@@ -117,8 +117,11 @@ export default async function BeneficiamentoDetalhePage({ params }: { params: { 
                     <p className="text-text-2">{cru?.nome}</p>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="font-mono text-xs text-text-3">{pintado?.codigo_mestre}</span>
-                    <p className="text-text-2">{pintado?.nome}</p>
+                    {cor ? (
+                      <span className="font-mono text-xs text-text-2">{cor.codigo_ral}{cor.nome ? ` — ${cor.nome}` : ""}</span>
+                    ) : (
+                      <span className="text-text-3">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{i.quantidade} {cru?.unidade}</td>
                 </tr>

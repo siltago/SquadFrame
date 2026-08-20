@@ -21,10 +21,16 @@ interface Local {
   nome: string;
 }
 
+interface CorRal {
+  id: string;
+  codigo_ral: string;
+  nome: string | null;
+}
+
 export function NovaMovimentacaoForm({
-  obras, produtos, locais, defaultObraId, defaultProdutoId, defaultLocalId,
+  obras, produtos, locais, coresRal, defaultObraId, defaultProdutoId, defaultLocalId,
 }: {
-  obras: Obra[]; produtos: Produto[]; locais: Local[];
+  obras: Obra[]; produtos: Produto[]; locais: Local[]; coresRal: CorRal[];
   defaultObraId?: string; defaultProdutoId?: string; defaultLocalId?: string;
 }) {
   const router = useRouter();
@@ -108,6 +114,20 @@ export function NovaMovimentacaoForm({
           {produtos.map((p) => (
             <option key={p.id} value={p.id}>
               {p.codigo_mestre} — {p.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text mb-1.5">
+          Cor <span className="font-normal text-text-3">(opcional — só relevante pra perfil/conexões)</span>
+        </label>
+        <select name="cor_id" defaultValue="" className="field w-full">
+          <option value="">Sem cor (natural)</option>
+          {coresRal.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}
             </option>
           ))}
         </select>

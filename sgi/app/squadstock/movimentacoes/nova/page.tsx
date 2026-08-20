@@ -19,10 +19,11 @@ export default async function NovaMovimentacaoPage({
   if (!podeGerenciar) redirect("/squadstock");
 
   const admin = createAdminClient();
-  const [{ data: obras }, { data: produtos }, { data: locais }] = await Promise.all([
+  const [{ data: obras }, { data: produtos }, { data: locais }, { data: coresRal }] = await Promise.all([
     admin.from("obras").select("id, nome").order("nome").limit(200),
     admin.from("produtos").select("id, codigo_mestre, nome").eq("status", true).order("nome").limit(500),
     admin.from("stock_locais").select("id, nome").eq("ativo", true).order("nome"),
+    admin.from("cores_ral").select("id, codigo_ral, nome").order("codigo_ral"),
   ]);
 
   return (
@@ -34,6 +35,7 @@ export default async function NovaMovimentacaoPage({
         obras={obras ?? []}
         produtos={produtos ?? []}
         locais={locais ?? []}
+        coresRal={coresRal ?? []}
         defaultObraId={searchParams.obra_id}
         defaultProdutoId={searchParams.produto_id}
         defaultLocalId={searchParams.local_id}

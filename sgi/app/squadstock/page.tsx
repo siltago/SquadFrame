@@ -31,6 +31,7 @@ interface LinhaAgregada {
   localNome: string | null; // preenchido só quando há filtro de local ativo
   qtdLocais: number;
   atualizadoEm: string | null;
+  coresComSaldo: { codigoRal: string; quantidade: number }[]; // só != [] quando o produto tem saldo em mais de uma cor
 }
 
 const rel = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
@@ -97,11 +98,11 @@ export default async function EstoquePage({
 
   // Só busca saldo pros ≤50 produtos da página atual — .in() com uma lista
   // curta é seguro (o bug do tipo era resolver milhares de IDs de uma vez).
-  let saldosPagina: { produto_id: string; local_id: string; quantidade: number; atualizado_em: string; local: { nome: string } | { nome: string }[] | null }[] = [];
+  let saldosPagina: { produto_id: string; local_id: string; cor_id: string | null; quantidade: number; atualizado_em: string; local: { nome: string } | { nome: string }[] | null; cor: { codigo_ral: string } | { codigo_ral: string }[] | null }[] = [];
   if (produtoIdsPagina.length > 0) {
     let saldosQuery = admin
       .from("stock_saldos")
-      .select("produto_id, local_id, quantidade, atualizado_em, local:stock_locais(nome)")
+      .select("produto_id, local_id, cor_id, quantidade, atualizado_em, local:stock_locais(nome), cor:cores_ral(codigo_ral)")
       .in("produto_id", produtoIdsPagina)
       .gt("quantidade", 0);
     if (localId) saldosQuery = saldosQuery.eq("local_id", localId);
@@ -116,6 +117,20 @@ export default async function EstoquePage({
     const locaisDistintos = new Set(saldosDoProduto.map((s) => s.local_id));
     const atualizadoEm = saldosDoProduto.reduce<string | null>((max, s) => (!max || s.atualizado_em > max ? s.atualizado_em : max), null);
     const localUnico = localId && saldosDoProduto.length > 0 ? rel(saldosDoProduto[0].local) : null;
+
+    // Quebra por cor — só mostrada quando o produto tem saldo em mais de uma
+    // (a maioria do catálogo nunca tem cor, cor_id fica sempre NULL e essa
+    // lista vira só ["Natural"], que não vale a pena exibir sozinha).
+    const porCor = new Map<string, number>();
+    for (const s of saldosDoProduto) {
+      const cor = rel(s.cor);
+      const label = cor?.codigo_ral ?? "Natural";
+      porCor.set(label, (porCor.get(label) ?? 0) + s.quantidade);
+    }
+    const coresComSaldo = porCor.size > 1
+      ? [...porCor.entries()].map(([codigoRal, qtd]) => ({ codigoRal, quantidade: qtd }))
+      : [];
+
     return {
       produtoId: p.id,
       codigo: p.codigo_mestre,
@@ -126,6 +141,7 @@ export default async function EstoquePage({
       localNome: localId ? (localUnico?.nome ?? null) : null,
       qtdLocais: locaisDistintos.size,
       atualizadoEm,
+      coresComSaldo,
     };
   });
 
@@ -276,6 +292,15 @@ export default async function EstoquePage({
                   )}
                   <td className={`px-5 py-2.5 text-right tabular-nums ${semSaldo ? "text-text-3" : "font-semibold"}`}>
                     {l.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} <span className="font-normal text-text-3">{l.unidade}</span>
+                    {l.coresComSaldo.length > 0 && (
+                      <div className="mt-1 flex flex-wrap justify-end gap-1">
+                        {l.coresComSaldo.map((c) => (
+                          <span key={c.codigoRal} className="inline-flex items-center rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-normal text-text-2">
+                            {c.codigoRal}: {c.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-2.5 text-text-3 text-xs">{l.atualizadoEm ? new Date(l.atualizadoEm).toLocaleDateString("pt-BR") : "—"}</td>
                   {podeGerenciar && (

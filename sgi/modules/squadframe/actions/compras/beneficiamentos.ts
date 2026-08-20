@@ -8,10 +8,14 @@ import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { getUsuario, gerarNumeroPedido, derivarUsaCarteira } from "./helpers";
 import { alterarStatusPedido } from "./pedidos";
 
+// O item pintado é sempre o MESMO produto do cru — não cria mais um produto
+// novo no catálogo. A diferenciação é por cor RAL (cor_id), propagada pro
+// pedido_itens do pedido de pintura e pro estoque (ver migration
+// 20260820000001_stock_cor.sql).
 export type ItemBeneficiamento = {
   pedido_item_origem_id: string;
   produto_cru_id: string;
-  produto_pintado_id: string;
+  cor_id: string | null;
   descricao_snapshot: string;
   quantidade: number;
   unidade: string;
@@ -51,22 +55,32 @@ export async function criarBeneficiamento(formData: FormData) {
   const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO"];
   const { data: pedidoOrigem } = await admin
     .from("pedidos_compra")
-    .select("status")
+    .select("status, tipo_linha")
     .eq("id", pedido_origem_id)
     .maybeSingle();
   if (!pedidoOrigem || !STATUS_BENEFICIAVEL.includes(pedidoOrigem.status)) {
     throw new Error("Só é possível gerar beneficiamento depois do pedido de origem emitido.");
   }
+  if (pedidoOrigem.tipo_linha !== "PERFIL") {
+    throw new Error("Só pedidos de perfil podem virar beneficiamento.");
+  }
 
   // Só perfil cor natural pode virar beneficiamento — confirma no servidor,
-  // não confia só no filtro da tela.
+  // não confia só no filtro da tela. Na prática ninguém escolhe uma cor
+  // "NATURAL" explícita no pedido — o dropdown de cor tem "Sem cor
+  // definida" como opção e é isso que fica salvo (cor_id NULL) pra perfil
+  // natural (o alumínio cru, sem pintura). Uma cor RAL explícita chamada
+  // "NATURAL" existe em cores_ral mas não é usada na prática — tratamos as
+  // duas formas como válidas (já que o pedido de origem é garantidamente
+  // PERFIL, checado acima).
   const { data: itensOrigem } = await admin
     .from("pedido_itens")
     .select("id, cor:cores_ral(codigo_ral)")
     .in("id", itens.map((i) => i.pedido_item_origem_id));
   for (const item of itensOrigem ?? []) {
     const cor = Array.isArray(item.cor) ? item.cor[0] : item.cor;
-    if (!cor || cor.codigo_ral?.toUpperCase() !== "NATURAL") {
+    const ehNatural = !cor || cor.codigo_ral?.toUpperCase() === "NATURAL";
+    if (!ehNatural) {
       throw new Error("Só itens de perfil cor natural podem virar beneficiamento.");
     }
   }
@@ -173,6 +187,7 @@ async function debitarEstoqueCascata(
     .from("stock_saldos")
     .select("local_id, obra_id, quantidade")
     .eq("produto_id", produtoId)
+    .is("cor_id", null) // só debita do bucket NATURAL, nunca do já pintado
     .gt("quantidade", 0)
     .order("quantidade", { ascending: false });
 

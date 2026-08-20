@@ -29,6 +29,14 @@ export type { ResultadoLote } from "@/modules/squadframe/actions/compras/recebim
 export { registrarJustificativaPendencia, adiarPendenciasParaAmanha } from "@/modules/squadframe/actions/compras/pendencias";
 
 export {
+  obterUrlUploadEvidencia,
+  solicitarProrrogacaoOuExcecao,
+  decidirExcecaoPendencia,
+  listarExcecoesPendentesParaGestor,
+} from "@/modules/squadframe/actions/compras/prorrogacoes";
+export type { ExcecaoPendente } from "@/modules/squadframe/actions/compras/prorrogacoes";
+
+export {
   obterUrlUploadDocumento,
   registrarDocumento,
   excluirDocumento,

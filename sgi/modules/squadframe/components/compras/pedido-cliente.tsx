@@ -8,6 +8,7 @@ import { createClient } from "@/shared/database/supabase-client";
 import type { ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
 import { recalcularPrecoKgPerfisAction } from "@/modules/squadstock/actions/catalogo/actions";
 import { RecebimentoLoteOuIndividualBotao, useRecebimentoEstoqueVisivel } from "@/modules/squadstock/components/recebimento-lote-ou-individual-botao";
+import { useAcaoBloqueada } from "@/modules/squadframe/components/pendencias/bloqueio-compras-context";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
@@ -251,6 +252,8 @@ export function PedidoCliente({
   const podeRegistrarRecebimento =
     podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
   const podeConferirEstoque = useRecebimentoEstoqueVisivel(pedido.status);
+  const bloqueioEnviarAprovacao = useAcaoBloqueada("enviar_pedido_aprovacao");
+  const bloqueioEmitir = useAcaoBloqueada("emitir_pedido");
 
   // Todo pedido emitido precisa poder ter o valor final salvo — com ou sem
   // faturamento direto/carteira — então acompanha os mesmos status aceitos
@@ -501,21 +504,39 @@ export function PedidoCliente({
               </Button>
             </>
           )}
-          {transicoes.map((t) => (
-            <button key={t.status} disabled={pending} onClick={() => handleAcao(t.status)}
-              className={
-                t.variant === "primary" ? "inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50" :
-                t.variant === "danger"  ? "inline-flex items-center justify-center rounded-lg border border-red-200 bg-surface px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft dark:border-red-800/50 dark:text-danger dark:hover:bg-red-900/20 disabled:opacity-50" :
-                "inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-2 hover:bg-bg disabled:opacity-50"
-              }>
-              {t.label}
-            </button>
-          ))}
+          {transicoes.map((t) => {
+            // Gate de conformidade — mesma checagem que a action já faz no
+            // servidor (verificarBloqueioCompras), só antecipada aqui pra
+            // não deixar o usuário clicar e só descobrir no erro.
+            const bloqueioAcao =
+              t.status === "AGUARDANDO_APROVACAO" ? bloqueioEnviarAprovacao :
+              t.status === "AGUARDANDO_RECEBIMENTO" ? bloqueioEmitir :
+              null;
+            return (
+              <button
+                key={t.status}
+                disabled={pending || bloqueioAcao?.bloqueada}
+                title={bloqueioAcao?.motivo ?? undefined}
+                onClick={() => handleAcao(t.status)}
+                className={
+                  t.variant === "primary" ? "inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50" :
+                  t.variant === "danger"  ? "inline-flex items-center justify-center rounded-lg border border-red-200 bg-surface px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft dark:border-red-800/50 dark:text-danger dark:hover:bg-red-900/20 disabled:opacity-50" :
+                  "inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-2 hover:bg-bg disabled:opacity-50"
+                }>
+                {t.label}
+              </button>
+            );
+          })}
         </div>
         {mostrarAnexarOrigem && (
           <p className="mt-1.5 text-xs text-text-3">
             Este pedido tem item(ns) digitado(s) manualmente (sem vir de uma solicitação do sistema) —
             anexe o comprovante de origem (PDF, foto, e-mail etc.) para poder enviar para aprovação.
+          </p>
+        )}
+        {(bloqueioEnviarAprovacao.bloqueada || bloqueioEmitir.bloqueada) && (
+          <p className="mt-1.5 text-xs text-danger">
+            {bloqueioEmitir.bloqueada ? bloqueioEmitir.motivo : bloqueioEnviarAprovacao.motivo}
           </p>
         )}
         {erroOrigem && <p className="mt-1 text-xs text-danger">{erroOrigem}</p>}

@@ -22,6 +22,9 @@ export type NotificacaoTipo =
   | 'devolucao_pedido_rejeitada'
   | 'devolucao_pedido_enviada'
   | 'devolucao_pedido_entregue'
+  | 'pendencia_escalada'
+  | 'pendencia_excecao_solicitada'
+  | 'pendencia_excecao_decidida'
   // SquadBoard
   | 'board_card_atribuido'
   | 'board_card_movido'
@@ -54,6 +57,9 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'devolucao_pedido_rejeitada',
     'devolucao_pedido_enviada',
     'devolucao_pedido_entregue',
+    'pendencia_escalada',
+    'pendencia_excecao_solicitada',
+    'pendencia_excecao_decidida',
   ],
   squadboard: [
     'board_card_atribuido',

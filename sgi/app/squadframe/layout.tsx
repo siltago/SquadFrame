@@ -12,6 +12,10 @@ import { PendenciasGate } from "@/modules/squadframe/components/pendencias/pende
 import { detectarPendenciasComprador } from "@/modules/squadframe/services/pendencias/detectar-pendencias";
 import { DestaquesBanner } from "@/modules/squadframe/components/destaques/destaques-banner";
 import { detectarDestaquesDashboard } from "@/modules/squadframe/services/destaques/detectar-destaques";
+import { calcularBloqueio } from "@/modules/squadframe/services/pendencias/verificar-bloqueio";
+import { listarColegasDoSetor } from "@/modules/squadframe/services/hierarquia/gestores";
+import { listarExcecoesPendentesParaGestor } from "@/modules/squadframe/actions/compras/prorrogacoes";
+import { BloqueioComprasProvider } from "@/modules/squadframe/components/pendencias/bloqueio-compras-context";
 
 const ThemeToggle = dynamic(
   () => import("@/modules/squadframe/components/theme-toggle").then((m) => m.ThemeToggle),
@@ -44,10 +48,15 @@ export default async function SquadFrameLayout({ children }: { children: React.R
   const naoLidasCount = count ?? 0;
   const pendencias = await detectarPendenciasComprador(usuario.id);
   const destaques = await detectarDestaquesDashboard(usuario);
+  const [bloqueio, colegas, excecoesPendentes] = await Promise.all([
+    calcularBloqueio(usuario.id),
+    listarColegasDoSetor(usuario.id),
+    listarExcecoesPendentesParaGestor(usuario.id),
+  ]);
 
   return (
-    <>
-      <PendenciasGate pendenciasIniciais={pendencias} />
+    <BloqueioComprasProvider bloqueio={bloqueio}>
+      <PendenciasGate pendenciasIniciais={pendencias} colegas={colegas} excecoesPendentesIniciais={excecoesPendentes} />
       <DestaquesBanner destaquesIniciais={destaques} />
       <AppHeader
         logoAlt="SquadFrame"
@@ -67,6 +76,6 @@ export default async function SquadFrameLayout({ children }: { children: React.R
       <main style={{ paddingTop: "calc(56px + env(safe-area-inset-top))" }}>
         {children}
       </main>
-    </>
+    </BloqueioComprasProvider>
   );
 }

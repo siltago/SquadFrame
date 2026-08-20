@@ -311,6 +311,72 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       break;
     }
 
+    // ── Gate de conformidade — pendências críticas ──────────────────────────────
+
+    case EVENTS.PURCHASE_PENDENCY_ESCALATED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const compradorNome = (ped?.comprador as any)?.nome ?? "";
+
+      const gestoresIds = (p.gestores_ids as string[] | undefined) ?? [];
+      await push(gestoresIds, {
+        title: `Pendência crítica escalada — Pedido ${numero}`,
+        body: `Pedido ${numero}${compradorNome ? ` de ${compradorNome}` : ""} está há ${p.dias_em_aberto} dias sem resolução`,
+        url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+        tag: `pendencia-escalada-${p.pedido_id}-${p.tipo_pendencia}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_REQUESTED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const compradorNome = (ped?.comprador as any)?.nome ?? "";
+
+      const gestoresIds = (p.gestores_ids as string[] | undefined) ?? [];
+      await push(gestoresIds, {
+        title: "Exceção de pendência aguardando aprovação",
+        body: `${compradorNome || "Um comprador"} pediu exceção pro pedido ${numero}`,
+        url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+        tag: `pendencia-excecao-${p.prorrogacao_id}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_DECIDED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const solicitanteId = p.solicitante_id as string | undefined;
+      if (solicitanteId) {
+        await push([solicitanteId], {
+          title: p.aprovado ? "Exceção de pendência aprovada" : "Exceção de pendência rejeitada",
+          body: p.aprovado
+            ? `Sua exceção pro pedido ${numero} foi aprovada pelo gestor`
+            : `Sua exceção pro pedido ${numero} foi rejeitada pelo gestor`,
+          url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+          tag: `pendencia-excecao-decidida-${p.prorrogacao_id}`,
+        });
+      }
+      break;
+    }
+
     default:
       break;
   }

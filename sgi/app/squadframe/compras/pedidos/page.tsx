@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/ui/components/Button";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { buildSearchPattern } from "@/ui/lib/search";
 import { getUsuarioAtual } from "@/shared/auth/auth";
@@ -8,6 +7,7 @@ import { PedidosLista } from "@/modules/squadframe/components/compras/pedidos-li
 import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 import { hojeSaoPaulo } from "@/modules/squadframe/services/cobranca/executar-cobranca";
+import { BotaoAcaoCompras } from "@/modules/squadframe/components/pendencias/botao-acao-compras";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +83,7 @@ export default async function PedidosPage({
           </p>
         </div>
         {podeCriar && (
-          <Button as="a" href="/squadframe/compras/pedidos/novo">Novo pedido</Button>
+          <BotaoAcaoCompras acao="criar_pedido" href="/squadframe/compras/pedidos/novo">Novo pedido</BotaoAcaoCompras>
         )}
       </div>
 

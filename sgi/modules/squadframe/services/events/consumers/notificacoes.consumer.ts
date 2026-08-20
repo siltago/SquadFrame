@@ -257,6 +257,58 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       break;
     }
 
+    // Pendência crítica escalada → notifica gestores
+    case EVENTS.PURCHASE_PENDENCY_ESCALATED: {
+      const { pedido_id, tipo_pendencia, dias_em_aberto, gestores_ids } = p;
+      const gestoresIds = (gestores_ids as string[] | undefined) ?? [];
+      if (!gestoresIds.length) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+
+      await admin.from("notificacoes").insert(
+        gestoresIds.map((id) => ({
+          usuario_id: id,
+          tipo: "pendencia_escalada",
+          payload: { pedido_id, numero: ped?.numero ?? null, tipo_pendencia, dias_em_aberto },
+        }))
+      );
+      break;
+    }
+
+    // Exceção de pendência solicitada → notifica gestores
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_REQUESTED: {
+      const { prorrogacao_id, pedido_id, solicitado_por, gestores_ids } = p;
+      const gestoresIds = (gestores_ids as string[] | undefined) ?? [];
+      if (!gestoresIds.length) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+      const { data: solicitante } = await admin.from("usuarios").select("nome").eq("id", solicitado_por).maybeSingle();
+
+      await admin.from("notificacoes").insert(
+        gestoresIds.map((id) => ({
+          usuario_id: id,
+          tipo: "pendencia_excecao_solicitada",
+          payload: { prorrogacao_id, pedido_id, numero: ped?.numero ?? null, solicitante_nome: solicitante?.nome ?? null },
+        }))
+      );
+      break;
+    }
+
+    // Exceção de pendência decidida → notifica solicitante
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_DECIDED: {
+      const { prorrogacao_id, pedido_id, aprovado, solicitante_id } = p;
+      if (!solicitante_id) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+
+      await admin.from("notificacoes").insert({
+        usuario_id: solicitante_id,
+        tipo: "pendencia_excecao_decidida",
+        payload: { prorrogacao_id, pedido_id, numero: ped?.numero ?? null, aprovado },
+      });
+      break;
+    }
+
     default:
       break;
   }

@@ -31,6 +31,9 @@ const TIPO_LABEL: Record<string, string> = {
   devolucao_pedido_rejeitada:  "Devolução de pedido rejeitada",
   devolucao_pedido_enviada:    "Devolução enviada ao fornecedor",
   devolucao_pedido_entregue:   "Devolução entregue",
+  pendencia_escalada:              "Pendência crítica escalada",
+  pendencia_excecao_solicitada:    "Exceção de pendência aguardando aprovação",
+  pendencia_excecao_decidida:      "Exceção de pendência decidida",
   // SquadBoard
   board_card_atribuido:        "Card atribuído a você",
   board_card_movido:           "Card movido de coluna",
@@ -99,6 +102,26 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
       return { titulo: "Cobrança: pedido aguardando aprovação", corpo: `Pedido ${p.numero} ainda aguarda aprovação` };
     case "solicitacao_cobranca_prazo":
       return { titulo: "Cobrança: solicitação aguardando aprovação", corpo: `Solicitação ${p.numero} ainda aguarda aprovação` };
+    case "pendencia_escalada":
+      return {
+        titulo: "Pendência crítica escalada",
+        corpo: `Pedido ${p.numero} está há ${p.dias_em_aberto} dias sem resolução`,
+      };
+    case "pendencia_excecao_solicitada":
+      return {
+        titulo: "Exceção de pendência aguardando aprovação",
+        corpo: `${p.solicitante_nome ?? "Um comprador"} pediu exceção pro pedido ${p.numero}`,
+      };
+    case "pendencia_excecao_decidida": {
+      // JSONB devolve boolean de verdade, não string — payload é tipado
+      // frouxo (Record<string, string|...>) só pra simplificar os outros
+      // casos, então aqui o valor real precisa ser lido sem essa suposição.
+      const aprovado = (n.payload as Record<string, unknown>).aprovado === true;
+      return {
+        titulo: aprovado ? "Exceção de pendência aprovada" : "Exceção de pendência rejeitada",
+        corpo: `Sua exceção pro pedido ${p.numero} foi ${aprovado ? "aprovada" : "rejeitada"} pelo gestor`,
+      };
+    }
     case "tarefa_atribuida":
       return { titulo: p.papel ? "Você foi adicionado a uma tarefa" : "Tarefa atribuída a você", corpo: p.titulo ?? "Nova tarefa" };
     case "tarefa_comentario":
@@ -128,6 +151,11 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "devolucao_pedido_enviada":
     case "devolucao_pedido_entregue":
       if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
+      break;
+    case "pendencia_escalada":
+    case "pendencia_excecao_solicitada":
+    case "pendencia_excecao_decidida":
+      if (p.pedido_id) return { href: `/squadframe/compras/pedidos/${p.pedido_id}`, label: p.numero ?? "Ver pedido" };
       break;
     case "solicitacao_aguardando_aprovacao":
     case "solicitacao_aprovada":

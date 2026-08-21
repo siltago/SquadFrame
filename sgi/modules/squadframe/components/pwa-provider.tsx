@@ -136,6 +136,41 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
 
           // Verificar atualização a cada 60 segundos
           const interval = setInterval(() => reg.update().catch(() => {}), 60_000);
+
+          // Ressincroniza a subscription de push com o servidor. A permissão
+          // do navegador (Notification.permission) fica "granted" pra
+          // sempre, mas a linha em push_subscriptions pode ter sido apagada
+          // (endpoint expirado detectado num envio qualquer) sem o
+          // navegador nunca ficar sabendo — nesse caso o botão de "ativar
+          // notificações" nem aparece mais (só mostra quando permission !==
+          // granted), e o usuário fica travado sem push e sem forma de
+          // consertar pela UI. Reenviar a subscription que o navegador já
+          // tem (ou criar uma nova, se o navegador também a perdeu) a cada
+          // carregamento resolve os dois casos, sem prompt nenhum.
+          if (Notification.permission === "granted" && vapidPublicKey && usuarioId) {
+            reg.pushManager
+              .getSubscription()
+              .then((existing) =>
+                existing ??
+                reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as string,
+                })
+              )
+              .then((subscription) =>
+                fetch("/api/push/subscribe", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    subscription: subscription.toJSON(),
+                    browser: detectBrowser(),
+                    platform: navigator.platform,
+                  }),
+                })
+              )
+              .catch((err) => console.error("[Push] resync failed:", err));
+          }
+
           return () => clearInterval(interval);
         })
         .catch((err) => console.error("[SW] registration failed:", err));

@@ -9,13 +9,19 @@ import { Button } from "@/ui/components/Button";
 
 const STATUS_EM_TRANSITO = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"];
 
-export function useRecebimentoEstoqueVisivel(status: string): boolean {
+// Botão único de recebimento no pedido — visível pra quem tem a permissão
+// de estoque OU a de compras (comprador dono do pedido), pra não tirar a
+// capacidade de ninguém que já tinha um dos dois botões antigos (havia um
+// "Registrar recebimento" só de compras e um "Conferir recebimento
+// (Estoque)" separado — consolidados aqui num só, que sempre leva pro
+// fluxo do SquadStock).
+export function useRecebimentoEstoqueVisivel(status: string, podeCriarPedido: boolean): boolean {
   const podeIniciar = usePode(STOCK_PERMISSIONS.RECEBIMENTO_INICIAR);
-  return podeIniciar && STATUS_EM_TRANSITO.includes(status);
+  return (podeIniciar || podeCriarPedido) && STATUS_EM_TRANSITO.includes(status);
 }
 
-export function RecebimentoLoteOuIndividualBotao({ pedidoId, status }: { pedidoId: string; status: string }) {
-  const visivel = useRecebimentoEstoqueVisivel(status);
+export function RecebimentoLoteOuIndividualBotao({ pedidoId, status, podeCriarPedido }: { pedidoId: string; status: string; podeCriarPedido: boolean }) {
+  const visivel = useRecebimentoEstoqueVisivel(status, podeCriarPedido);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -23,14 +29,13 @@ export function RecebimentoLoteOuIndividualBotao({ pedidoId, status }: { pedidoI
 
   return (
     <Button
-      variant="ghost"
       disabled={pending}
       onClick={() => start(async () => {
         const { href } = await resolverDestinoRecebimento(pedidoId);
         router.push(href);
       })}
     >
-      {pending ? "Abrindo…" : "Conferir recebimento (Estoque)"}
+      {pending ? "Abrindo…" : "Registrar recebimento"}
     </Button>
   );
 }

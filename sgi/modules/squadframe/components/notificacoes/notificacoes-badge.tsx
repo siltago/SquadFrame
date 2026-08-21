@@ -34,6 +34,7 @@ const TIPO_LABEL: Record<string, string> = {
   pendencia_escalada:              "Pendência crítica escalada",
   pendencia_excecao_solicitada:    "Exceção de pendência aguardando aprovação",
   pendencia_excecao_decidida:      "Exceção de pendência decidida",
+  pendencia_carencia_concedida:    "Carência concedida em pendências",
   // SquadBoard
   board_card_atribuido:        "Card atribuído a você",
   board_card_movido:           "Card movido de coluna",
@@ -122,6 +123,11 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
         corpo: `Sua exceção pro pedido ${p.numero} foi ${aprovado ? "aprovada" : "rejeitada"} pelo gestor`,
       };
     }
+    case "pendencia_carencia_concedida":
+      return {
+        titulo: "Carência concedida em pendências",
+        corpo: `Você tem ${p.quantidade} pendência(s) crítica(s) com prazo estendido até ${p.nova_data ?? "novo prazo"} — resolva ou solicite prorrogação antes disso.`,
+      };
     case "tarefa_atribuida":
       return { titulo: p.papel ? "Você foi adicionado a uma tarefa" : "Tarefa atribuída a você", corpo: p.titulo ?? "Nova tarefa" };
     case "tarefa_comentario":
@@ -157,6 +163,8 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "pendencia_excecao_decidida":
       if (p.pedido_id) return { href: `/squadframe/compras/pedidos/${p.pedido_id}`, label: p.numero ?? "Ver pedido" };
       break;
+    case "pendencia_carencia_concedida":
+      return { href: `/squadframe/compras/pedidos`, label: "Ver pendências" };
     case "solicitacao_aguardando_aprovacao":
     case "solicitacao_aprovada":
     case "solicitacao_rejeitada":

@@ -377,6 +377,65 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
       break;
     }
 
+    // ── Beneficiamento (entidade própria, não é PURCHASE_ORDER_*) ───────────────
+
+    case EVENTS.BENEFICIAMENTO_AWAITING_APPROVAL: {
+      const admin = createAdminClient();
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("id, numero, obra:obras(nome)")
+        .eq("pedido_beneficiamento_id", p.pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? "";
+      const obra = (benef?.obra as any)?.nome ?? "";
+      const obraLabel = obra ? ` - ${obra}` : "";
+
+      const usuarioIds = await getUsersWithPermission("compras.beneficiamento.aprovar");
+      await push(usuarioIds, {
+        title: "Beneficiamento aguardando aprovação",
+        body: `Beneficiamento ${numero}${obraLabel} para aprovação`,
+        url: `/squadframe/beneficiamento/${benef?.id ?? ""}`,
+        tag: `beneficiamento-aprovacao-${p.pedido_beneficiamento_id}`,
+        actions: [{ action: "open", title: "Ver beneficiamento" }],
+      });
+      break;
+    }
+
+    case EVENTS.BENEFICIAMENTO_APPROVED:
+    case EVENTS.BENEFICIAMENTO_CANCELLED:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_FULL:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL: {
+      const admin = createAdminClient();
+      const { data: pb } = await admin
+        .from("pedidos_beneficiamento")
+        .select("comprador_id")
+        .eq("id", p.pedido_beneficiamento_id)
+        .single();
+      if (!pb?.comprador_id || pb.comprador_id === p.usuario_id) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("id, numero")
+        .eq("pedido_beneficiamento_id", p.pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? "";
+
+      const TITULO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.BENEFICIAMENTO_APPROVED]:         "Beneficiamento aprovado",
+        [EVENTS.BENEFICIAMENTO_CANCELLED]:        "Beneficiamento cancelado",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_FULL]:    "Beneficiamento recebido",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL]: "Beneficiamento recebido parcialmente",
+      };
+
+      await push([pb.comprador_id], {
+        title: TITULO_POR_EVENTO[event.tipo],
+        body: `Beneficiamento ${numero}`,
+        url: `/squadframe/beneficiamento/${benef?.id ?? ""}`,
+        tag: `beneficiamento-status-${p.pedido_beneficiamento_id}`,
+      });
+      break;
+    }
+
     default:
       break;
   }

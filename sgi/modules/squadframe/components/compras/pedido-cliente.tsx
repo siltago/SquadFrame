@@ -9,6 +9,8 @@ import type { ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extra
 import { recalcularPrecoKgPerfisAction } from "@/modules/squadstock/actions/catalogo/actions";
 import { RecebimentoLoteOuIndividualBotao, useRecebimentoEstoqueVisivel } from "@/modules/squadstock/components/recebimento-lote-ou-individual-botao";
 import { useAcaoBloqueada } from "@/modules/squadframe/components/pendencias/bloqueio-compras-context";
+import { TRANSICOES, ACAO_LABEL } from "@/modules/squadframe/lib/pedido-ui-constants";
+import { DebitoCarteiraBanner } from "@/modules/squadframe/components/compras/debito-carteira-banner";
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { Button } from "@/ui/components/Button";
@@ -17,32 +19,6 @@ import { parseValorBr } from "@/modules/squadframe/lib/valor";
 import { Textarea } from "@/ui/components/Input";
 import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
 import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
-
-type Transicao = { label: string; status: string; variant: "primary" | "ghost" | "danger" };
-
-const TRANSICOES: Record<string, Transicao[]> = {
-  RASCUNHO:               [{ label: "Enviar aprovação", status: "AGUARDANDO_APROVACAO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
-  AGUARDANDO_APROVACAO:   [{ label: "Aprovar", status: "APROVADO", variant: "primary" }, { label: "Rejeitar", status: "REJEITADO", variant: "danger" }],
-  REJEITADO:              [{ label: "Devolver para edição", status: "RASCUNHO", variant: "primary" }, { label: "Cancelar pedido", status: "CANCELADO", variant: "danger" }],
-  APROVADO:               [{ label: "Emitir pedido", status: "AGUARDANDO_RECEBIMENTO", variant: "primary" }, { label: "Cancelar", status: "CANCELADO", variant: "danger" }],
-  EMITIDO:                [{ label: "Emitir pedido", status: "AGUARDANDO_RECEBIMENTO", variant: "primary" }],
-  AGUARDANDO_RECEBIMENTO: [],
-  RECEBIDO_PARCIAL:       [],
-  RECEBIDO:               [{ label: "Finalizar", status: "FINALIZADO", variant: "primary" }],
-  FINALIZADO:             [],
-  CANCELADO:              [],
-};
-
-const ACAO_LABEL: Record<string, string> = {
-  AGUARDANDO_APROVACAO: "Enviar para Aprovação",
-  APROVADO: "Aprovar Pedido de Compra",
-  REJEITADO: "Rejeitar Pedido",
-  RASCUNHO: "Devolver para Edição",
-  EMITIDO: "Emitir Pedido de Compra",
-  AGUARDANDO_RECEBIMENTO: "Marcar como Aguardando Recebimento",
-  FINALIZADO: "Finalizar Pedido",
-  CANCELADO: "Cancelar Pedido",
-};
 
 export function PedidoCliente({
   pedido,
@@ -249,9 +225,7 @@ export function PedidoCliente({
     });
   }
 
-  const podeRegistrarRecebimento =
-    podeCriar && ["AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
-  const podeConferirEstoque = useRecebimentoEstoqueVisivel(pedido.status);
+  const podeConferirEstoque = useRecebimentoEstoqueVisivel(pedido.status, podeCriar);
   const bloqueioEnviarAprovacao = useAcaoBloqueada("enviar_pedido_aprovacao");
   const bloqueioEmitir = useAcaoBloqueada("emitir_pedido");
 
@@ -335,7 +309,7 @@ export function PedidoCliente({
 
   const mostrarAnexarOrigem = faltaOrigem && ["RASCUNHO", "AGUARDANDO_APROVACAO"].includes(pedido.status) && podeCriar;
 
-  if (!transicoes.length && !mostrarAnexarOrigem && !podeEditarAgora && !podeRegistrarRecebimento && !podeConferirEstoque && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
+  if (!transicoes.length && !mostrarAnexarOrigem && !podeEditarAgora && !podeConferirEstoque && !podeRegistrarValorFinal && !podeEditarPrazoEntrega && !podeAbrirRetorno && !podeAbrirDevolucao && !podeGerarBeneficiamento) return null;
 
   return (
     <>
@@ -351,95 +325,23 @@ export function PedidoCliente({
         />
       )}
 
-      {/* Banner de débito de faturamento direto — pendente de aprovação */}
-      {temDebitoPendente && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-warning-soft p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Débito pendente de aprovação
-              </p>
-              <p className="mt-0.5 text-xs text-warning dark:text-amber-400">
-                Este pedido usa faturamento direto e precisa que alguém aprove o débito na carteira
-                {" "}(ou rejeite, se não houver saldo/autorização).
-              </p>
-              {erroDebito && <p className="mt-1 text-xs text-danger">{erroDebito}</p>}
-              {okDebito && <p className="mt-1 text-xs text-success">Débito aprovado com sucesso.</p>}
-              {showRejeitarDebito && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <input
-                    type="text"
-                    value={motivoRejeicaoDebito}
-                    onChange={(e) => setMotivoRejeicaoDebito(e.target.value)}
-                    placeholder="Motivo da rejeição"
-                    className="field h-8 min-w-[220px] flex-1 text-xs"
-                  />
-                  <Button size="sm" variant="danger" disabled={pendingDebito} onClick={handleRejeitarDebito}>
-                    {pendingDebito ? "Enviando…" : "Confirmar rejeição"}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setShowRejeitarDebito(false); setMotivoRejeicaoDebito(""); setErroDebito(null); }}>
-                    Cancelar
-                  </Button>
-                </div>
-              )}
-            </div>
-            {!showRejeitarDebito && (
-              <div className="flex shrink-0 gap-2">
-                <button
-                  disabled={pendingDebito}
-                  onClick={() => setShowRejeitarDebito(true)}
-                  className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-2 hover:bg-surface-2 disabled:opacity-50"
-                >
-                  Rejeitar
-                </button>
-                <button
-                  disabled={pendingDebito}
-                  onClick={handleAprovarDebito}
-                  className="rounded-lg border border-amber-300 bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-                >
-                  {pendingDebito ? "Aprovando…" : "Aprovar débito"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Banner de débito rejeitado — pedido travado até resolver */}
-      {debitoRejeitado && (
-        <div className="mb-3 rounded-lg border border-danger/30 bg-danger-soft p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-danger">Débito de faturamento direto rejeitado</p>
-              <p className="mt-0.5 text-xs text-danger/90">
-                {pedido.debito_rejeitado_motivo ?? "Sem motivo informado."}
-              </p>
-              <p className="mt-1 text-xs text-text-3">
-                Rejeitado por {(pedido as any).debito_aprovador?.nome ?? "—"}
-                {pedido.debito_decidido_em && ` em ${new Date(pedido.debito_decidido_em).toLocaleString("pt-BR")}`}
-                {" — "}o pedido não avança até isso ser resolvido.
-              </p>
-              {erroDebito && <p className="mt-1 text-xs text-danger">{erroDebito}</p>}
-              {okDebito && <p className="mt-1 text-xs text-success">Débito aprovado com sucesso.</p>}
-            </div>
-            <button
-              disabled={pendingDebito}
-              onClick={handleAprovarDebito}
-              className="shrink-0 rounded-lg border border-danger bg-danger px-3 py-1.5 text-xs font-medium text-white hover:bg-danger-hover disabled:opacity-50"
-            >
-              {pendingDebito ? "Aprovando…" : "Aprovar mesmo assim"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Nota discreta de débito já aprovado — mesma info do "Autorizado por" do extrato */}
-      {debitoAprovado && (
-        <p className="mb-3 text-xs text-text-3">
-          Débito aprovado por <span className="font-medium text-text-2">{(pedido as any).debito_aprovador?.nome ?? "—"}</span>
-          {pedido.debito_decidido_em && ` em ${new Date(pedido.debito_decidido_em).toLocaleString("pt-BR")}`}.
-        </p>
-      )}
+      <DebitoCarteiraBanner
+        temDebitoPendente={temDebitoPendente}
+        debitoRejeitado={debitoRejeitado}
+        debitoAprovado={debitoAprovado}
+        debitoRejeitadoMotivo={pedido.debito_rejeitado_motivo ?? null}
+        debitoAprovadorNome={(pedido as any).debito_aprovador?.nome ?? null}
+        debitoDecididoEm={pedido.debito_decidido_em ?? null}
+        pending={pendingDebito}
+        erro={erroDebito}
+        ok={okDebito}
+        showRejeitar={showRejeitarDebito}
+        motivoRejeicao={motivoRejeicaoDebito}
+        onMotivoRejeicaoChange={setMotivoRejeicaoDebito}
+        onAprovar={handleAprovarDebito}
+        onRejeitar={handleRejeitarDebito}
+        onToggleRejeitar={(show) => { setShowRejeitarDebito(show); if (!show) { setMotivoRejeicaoDebito(""); setErroDebito(null); } }}
+      />
 
       <div className="flex flex-col items-end gap-2">
         <div className="flex flex-wrap gap-2 justify-end">
@@ -485,12 +387,7 @@ export function PedidoCliente({
                 : "Definir prazo de entrega"}
             </button>
           )}
-          {podeRegistrarRecebimento && (
-            <Button as="a" href={`/squadframe/compras/pedidos/${pedido.id}/receber`}>
-              Registrar recebimento
-            </Button>
-          )}
-          <RecebimentoLoteOuIndividualBotao pedidoId={pedido.id} status={pedido.status} />
+          <RecebimentoLoteOuIndividualBotao pedidoId={pedido.id} status={pedido.status} podeCriarPedido={podeCriar} />
           {pedido.status === "RECEBIDO" && pedido.valor_final == null && (
             <p className="text-xs text-text-3 self-center">
               Registre o valor final para poder finalizar o pedido.

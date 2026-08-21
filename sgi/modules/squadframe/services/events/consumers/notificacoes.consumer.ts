@@ -309,6 +309,70 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       break;
     }
 
+    // Beneficiamento aguardando aprovação → notifica quem tem
+    // compras.beneficiamento.aprovar (NÃO compras.pedido.aprovar — é
+    // exatamente esse vazamento que motivou separar de pedidos_compra).
+    case EVENTS.BENEFICIAMENTO_AWAITING_APPROVAL: {
+      const { pedido_beneficiamento_id } = p;
+      if (!pedido_beneficiamento_id) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("numero, obra:obras(nome)")
+        .eq("pedido_beneficiamento_id", pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? null;
+      const obra_nome = (benef?.obra as any)?.nome ?? null;
+
+      const usuarioIds = await getUsuariosComPermissao("compras.beneficiamento.aprovar");
+      if (!usuarioIds.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarioIds.map((id) => ({
+          usuario_id: id,
+          tipo: "beneficiamento_aguardando_aprovacao",
+          payload: { numero, pedido_beneficiamento_id, obra_nome },
+        }))
+      );
+      break;
+    }
+
+    // Beneficiamento aprovado/cancelado/recebido → notifica o comprador
+    case EVENTS.BENEFICIAMENTO_APPROVED:
+    case EVENTS.BENEFICIAMENTO_CANCELLED:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_FULL:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL: {
+      const { pedido_beneficiamento_id, usuario_id: atorId } = p;
+      if (!pedido_beneficiamento_id) break;
+
+      const { data: pb } = await admin
+        .from("pedidos_beneficiamento")
+        .select("comprador_id")
+        .eq("id", pedido_beneficiamento_id)
+        .single();
+      if (!pb?.comprador_id || pb.comprador_id === atorId) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("numero")
+        .eq("pedido_beneficiamento_id", pedido_beneficiamento_id)
+        .maybeSingle();
+
+      const TIPO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.BENEFICIAMENTO_APPROVED]:          "beneficiamento_aprovado",
+        [EVENTS.BENEFICIAMENTO_CANCELLED]:         "beneficiamento_cancelado",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_FULL]:     "beneficiamento_recebido",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL]:  "beneficiamento_recebido",
+      };
+
+      await admin.from("notificacoes").insert({
+        usuario_id: pb.comprador_id,
+        tipo: TIPO_POR_EVENTO[event.tipo],
+        payload: { numero: benef?.numero ?? null, pedido_beneficiamento_id },
+      });
+      break;
+    }
+
     default:
       break;
   }

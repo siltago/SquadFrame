@@ -15,7 +15,7 @@ import { extrairDadosRomaneioPdf } from "@/modules/squadframe/lib/extrair-romane
 // APROVADO). Do EMITIDO em diante inclui até RECEBIDO/FINALIZADO: o
 // romaneio pode ser cadastrado depois do recebimento já conferido
 // manualmente (cadastro retroativo), não só enquanto ainda "a caminho".
-export const STATUS_ELEGIVEL_ROMANEIO = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
+const STATUS_ELEGIVEL_ROMANEIO = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
 
 export type PedidoCandidatoRomaneio = {
   id: string;

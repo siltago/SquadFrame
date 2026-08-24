@@ -140,14 +140,18 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
           // Ressincroniza a subscription de push com o servidor. A permissão
           // do navegador (Notification.permission) fica "granted" pra
           // sempre, mas a linha em push_subscriptions pode ter sido apagada
-          // (endpoint expirado detectado num envio qualquer) sem o
-          // navegador nunca ficar sabendo — nesse caso o botão de "ativar
-          // notificações" nem aparece mais (só mostra quando permission !==
-          // granted), e o usuário fica travado sem push e sem forma de
-          // consertar pela UI. Reenviar a subscription que o navegador já
-          // tem (ou criar uma nova, se o navegador também a perdeu) a cada
-          // carregamento resolve os dois casos, sem prompt nenhum.
-          if (Notification.permission === "granted" && vapidPublicKey && usuarioId) {
+          // (endpoint expirado detectado num envio qualquer) ou o navegador
+          // pode ter trocado as chaves da subscription internamente — em
+          // nenhum dos dois casos o app fica sabendo sozinho, e o botão de
+          // "ativar notificações" nem aparece mais (só mostra quando
+          // permission !== granted), deixando o usuário travado sem push e
+          // sem forma de consertar pela UI. Reenviar a subscription que o
+          // navegador tem agora (ou criar uma nova, se ele também perdeu)
+          // resolve os dois casos, sem prompt nenhum — roda no carregamento
+          // e periodicamente enquanto a aba fica aberta, pra não depender
+          // de um F5 pra se recuperar.
+          function resyncPush() {
+            if (!(Notification.permission === "granted" && vapidPublicKey && usuarioId)) return;
             reg.pushManager
               .getSubscription()
               .then((existing) =>
@@ -170,8 +174,10 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
               )
               .catch((err) => console.error("[Push] resync failed:", err));
           }
+          resyncPush();
+          const pushInterval = setInterval(resyncPush, 30 * 60_000);
 
-          return () => clearInterval(interval);
+          return () => { clearInterval(interval); clearInterval(pushInterval); };
         })
         .catch((err) => console.error("[SW] registration failed:", err));
 

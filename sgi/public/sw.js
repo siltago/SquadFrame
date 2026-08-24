@@ -126,6 +126,44 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// ── Push subscription change ────────────────────────────────────────────────
+// Dispara quando o próprio navegador invalida/renova a subscription (ex:
+// rotação interna de chaves) — independe de qualquer aba estar aberta ou de
+// o usuário dar F5. Sem isso, o servidor fica com uma subscription morta e
+// nada nunca reconecta sozinho.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const keyResp = await fetch('/api/push/vapid-public-key');
+        const { key } = await keyResp.json();
+        if (!key) return;
+
+        const subscription = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(key),
+        });
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: subscription.toJSON() }),
+        });
+      } catch (err) {
+        // Best-effort — se falhar aqui, o resync periódico do app (enquanto
+        // a aba estiver aberta) ainda cobre o caso.
+      }
+    })()
+  );
+});
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map((c) => c.charCodeAt(0)));
+}
+
 // ── Notification click ────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

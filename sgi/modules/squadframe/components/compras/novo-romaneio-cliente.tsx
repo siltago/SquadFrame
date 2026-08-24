@@ -8,6 +8,7 @@ import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 import {
   processarRomaneioAction,
   confirmarRomaneioAction,
+  buscarPedidosParaRomaneioAction,
   type ResultadoProcessamentoRomaneio,
   type PedidoCandidatoRomaneio,
 } from "@/modules/squadframe/actions/compras/romaneios";
@@ -19,6 +20,13 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
   const [dataEntrega, setDataEntrega] = useState("");
   const [fornecedorId, setFornecedorId] = useState("");
   const [pedidosMarcados, setPedidosMarcados] = useState<Record<string, boolean>>({});
+  // Pedidos adicionados manualmente (leitor não identificou) — mantidos à
+  // parte de resultado.pedidosCandidatos porque resultado vem direto da
+  // action e não é reprocessado a cada edição.
+  const [pedidosManuais, setPedidosManuais] = useState<PedidoCandidatoRomaneio[]>([]);
+  const [buscaNumero, setBuscaNumero] = useState("");
+  const [buscaResultados, setBuscaResultados] = useState<PedidoCandidatoRomaneio[] | null>(null);
+  const [buscando, startBuscar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [processando, startProcessar] = useTransition();
   const [confirmando, startConfirmar] = useTransition();
@@ -41,21 +49,46 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
         // fornecedor está selecionado, então o que sobra visível é sempre
         // do fornecedor certo.
         setPedidosMarcados(Object.fromEntries(r.pedidosCandidatos.map((p: PedidoCandidatoRomaneio) => [p.id, true])));
+        setPedidosManuais([]);
+        setBuscaNumero("");
+        setBuscaResultados(null);
       } catch (e: any) {
         setErro(e.message ?? "Falha ao processar o PDF.");
       }
     });
   }
 
+  const pedidosTodos = resultado ? [...resultado.pedidosCandidatos, ...pedidosManuais] : [];
+
   // Uma vez que o fornecedor está definido (identificado ou escolhido),
   // pedido de outro fornecedor não é sequer mostrado — não era um pedido
   // de verdade deste romaneio, só bateu por coincidência num token
   // numérico do documento (ex: um total de peças).
-  const pedidosVisiveis = resultado
-    ? fornecedorId
-      ? resultado.pedidosCandidatos.filter((p) => p.fornecedorId === fornecedorId)
-      : resultado.pedidosCandidatos
-    : [];
+  const pedidosVisiveis = fornecedorId
+    ? pedidosTodos.filter((p) => p.fornecedorId === fornecedorId)
+    : pedidosTodos;
+
+  function buscarPedidoManual() {
+    if (!buscaNumero.trim()) return;
+    startBuscar(async () => {
+      try {
+        const r = await buscarPedidosParaRomaneioAction(buscaNumero);
+        setBuscaResultados(r);
+      } catch (e: any) {
+        setErro(e.message ?? "Falha ao buscar pedido.");
+      }
+    });
+  }
+
+  function adicionarPedidoManual(p: PedidoCandidatoRomaneio) {
+    const jaIdentificado = resultado?.pedidosCandidatos.some((x) => x.id === p.id);
+    if (!jaIdentificado) {
+      setPedidosManuais((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
+    }
+    setPedidosMarcados((prev) => ({ ...prev, [p.id]: true }));
+    setBuscaNumero("");
+    setBuscaResultados(null);
+  }
 
   function confirmar() {
     if (!resultado) return;
@@ -149,9 +182,50 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
                   />
                   <span className="font-mono text-xs font-semibold text-primary">{p.numero}</span>
                   <span className="text-text-2">{p.obra ?? "—"}</span>
+                  {pedidosManuais.some((m) => m.id === p.id) && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">manual</span>
+                  )}
                   <span className="ml-auto text-text-3 text-xs">{p.fornecedor ?? "—"}</span>
                 </label>
               ))}
+            </div>
+
+            <div className="mt-3 rounded-lg border border-dashed border-border p-3">
+              <p className="text-xs font-medium text-text-2">O leitor não identificou algum pedido? Adicione manualmente:</p>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={buscaNumero}
+                  onChange={(e) => setBuscaNumero(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscarPedidoManual(); } }}
+                  placeholder="Número do pedido"
+                  fullWidth={false}
+                />
+                <Button type="button" variant="ghost" onClick={buscarPedidoManual} disabled={buscando || !buscaNumero.trim()}>
+                  {buscando ? "Buscando…" : "Buscar"}
+                </Button>
+              </div>
+              {buscaResultados && (
+                buscaResultados.length === 0 ? (
+                  <p className="mt-2 text-xs text-text-3">Nenhum pedido elegível encontrado com esse número.</p>
+                ) : (
+                  <div className="mt-2 divide-y divide-border rounded-lg border border-border">
+                    {buscaResultados.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                        <span className="font-mono text-xs font-semibold text-primary">{p.numero}</span>
+                        <span className="text-text-2">{p.obra ?? "—"}</span>
+                        <span className="text-text-3 text-xs">{p.fornecedor ?? "—"}</span>
+                        <button
+                          type="button"
+                          onClick={() => adicionarPedidoManual(p)}
+                          className="ml-auto text-xs font-medium text-primary hover:underline"
+                        >
+                          + Adicionar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
           </div>
 

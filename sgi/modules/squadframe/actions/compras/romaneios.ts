@@ -15,7 +15,7 @@ import { extrairDadosRomaneioPdf } from "@/modules/squadframe/lib/extrair-romane
 // APROVADO). Do EMITIDO em diante inclui até RECEBIDO/FINALIZADO: o
 // romaneio pode ser cadastrado depois do recebimento já conferido
 // manualmente (cadastro retroativo), não só enquanto ainda "a caminho".
-const STATUS_ELEGIVEL_ROMANEIO = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
+export const STATUS_ELEGIVEL_ROMANEIO = ["APROVADO", "EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
 
 export type PedidoCandidatoRomaneio = {
   id: string;
@@ -121,6 +121,39 @@ export async function processarRomaneioAction(formData: FormData): Promise<Resul
     texto,
     tokensNumericos,
   };
+}
+
+// Busca manual pra quando o leitor de PDF não identifica um pedido do
+// romaneio automaticamente (assinatura ruim, número mal impresso, PDF
+// escaneado sem camada de texto etc.) — mesmo critério de elegibilidade
+// dos candidatos automáticos, só que por busca textual em vez de match
+// contra os tokens extraídos do PDF.
+export async function buscarPedidosParaRomaneioAction(numero: string): Promise<PedidoCandidatoRomaneio[]> {
+  await verificarPermissao(PERMISSIONS.COMPRAS_ROMANEIO_CRIAR);
+
+  const termo = numero.trim();
+  if (!termo) return [];
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("pedidos_compra")
+    .select("id, numero, fornecedor_id, obra:obras(nome), fornecedor:fornecedores(nome)")
+    .in("status", STATUS_ELEGIVEL_ROMANEIO)
+    .ilike("numero", `%${termo}%`)
+    .order("criado_em", { ascending: false })
+    .limit(10);
+
+  return (data ?? []).map((p) => {
+    const obra = Array.isArray(p.obra) ? p.obra[0] : p.obra;
+    const fornecedor = Array.isArray(p.fornecedor) ? p.fornecedor[0] : p.fornecedor;
+    return {
+      id: p.id,
+      numero: p.numero,
+      obra: obra?.nome ?? null,
+      fornecedor: fornecedor?.nome ?? null,
+      fornecedorId: p.fornecedor_id,
+    };
+  });
 }
 
 export type DadosConfirmacaoRomaneio = {

@@ -271,24 +271,13 @@ export async function editarPedido(id: string, formData: FormData) {
     );
   }
 
-  // editar_pedido substitui os itens por completo (DELETE + INSERT) — mas
-  // beneficiamento_itens.pedido_item_origem_id referencia o item de origem
-  // com NOT NULL, sem ON DELETE CASCADE (é rastro real do material mandado
-  // pintar, não dá pra simplesmente apagar). Sem essa checagem, o DELETE
-  // quebra com FK violation direto no banco, virando um erro cru sem
-  // explicação nenhuma pro usuário.
-  const { data: itensDoPedido } = await admin.from("pedido_itens").select("id").eq("pedido_id", id);
-  const { data: itensComBeneficiamento } = await admin
-    .from("beneficiamento_itens")
-    .select("pedido_item_origem_id, pedido_item:pedido_itens!pedido_item_origem_id(descricao_snapshot)")
-    .in("pedido_item_origem_id", (itensDoPedido ?? []).map((i) => i.id));
-  if (itensComBeneficiamento?.length) {
-    const desc = (itensComBeneficiamento[0].pedido_item as unknown as { descricao_snapshot: string } | null)?.descricao_snapshot;
-    throw new Error(
-      `Este pedido não pode ser editado — o item "${desc ?? "?"}" já foi enviado pra beneficiamento. ` +
-      `Cancele o beneficiamento correspondente antes de editar os itens deste pedido.`,
-    );
-  }
+  // A checagem de item já enviado pra beneficiamento (e a limpeza de
+  // beneficiamento_itens cancelado sem recebimento, que libera o item pra
+  // substituição) vive dentro da RPC editar_pedido — precisa ser atômica
+  // com o DELETE/INSERT de itens, e a mesma regra (bloqueia só se ainda
+  // ativo, ou se cancelado só que já recebeu algo) é reaproveitada por
+  // excluir_pedidos_cascade e aprovar_retorno_pedido (ver migration
+  // 20260825000002).
 
   const fornecedor_id      = formData.get("fornecedor_id") as string;
   const obra_id            = (formData.get("obra_id") as string) || null;

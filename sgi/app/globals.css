@@ -470,6 +470,16 @@
   h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.25; }
 }
 
+/* Fundo com leve gradiente (em vez de cor chapada) — mesmo tom de --color-bg
+   na base, só com uma respiração de --color-accent bem suave nos cantos,
+   pra a página não ficar plana atrás dos cards flutuantes. */
+body {
+  background-image:
+    radial-gradient(1200px 600px at 8% -10%, rgb(var(--color-accent) / 0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgb(var(--color-primary) / 0.06), transparent 55%);
+  background-attachment: fixed;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    UTILITÁRIOS
 ═══════════════════════════════════════════════════════════════ */
@@ -523,9 +533,12 @@
   }
 
   .card {
+    /* Sem borda — profundidade por sombra bem mais presente (card
+       "flutuando" sobre o fundo em gradiente) + realce sutil no topo. */
     background-color: rgb(var(--color-surface));
-    border: 1px solid rgb(var(--color-border));
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
+    border: none;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl), inset 0 1px 0 rgb(255 255 255 / 0.07);
+    transition: box-shadow var(--motion-hover) var(--ease-out), transform var(--motion-hover) var(--ease-out);
   }
 }

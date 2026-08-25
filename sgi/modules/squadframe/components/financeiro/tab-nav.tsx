@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { tabLinkClass } from "@/modules/squadframe/lib/tab-link-class";
+import { cn } from "@/ui/lib/cn";
+import { Tooltip } from "@/ui/components/Tooltip";
+import { BarChartIcon, DollarSignIcon, CreditCardIcon, DocumentIcon } from "@/ui/icons";
 
 const ABAS = [
-  { slug: "dashboard", label: "Dashboard" },
-  { slug: "carteiras", label: "Carteiras" },
-  { slug: "faturamento-direto", label: "Faturamento Direto" },
+  { slug: "dashboard",           label: "Dashboard",         icon: BarChartIcon },
+  { slug: "carteiras",           label: "Carteiras",         icon: DollarSignIcon },
+  { slug: "faturamento-direto",  label: "Faturamento Direto", icon: CreditCardIcon },
 ] as const;
 
+// Rail vertical fino de ícones — mesmo padrão de navegação secundária que a
+// referência visual usa (ícone + tooltip, sem texto solto ao lado), em vez
+// da faixa de abas em texto que existia antes. Não move nada de rota, só
+// muda o formato do seletor de aba dentro da própria página financeiro.
 export function FinanceiroTabNav({
   podeDashboard,
   podeCarteiras,
@@ -25,29 +31,46 @@ export function FinanceiroTabNav({
   const abaAtual = emContratos ? null : (searchParams.get("aba") ?? "dashboard");
 
   return (
-    <div className="flex gap-1 border-b border-border mt-6">
-      {ABAS.map(({ slug, label }) => {
+    <nav className="flex shrink-0 flex-col items-center gap-1.5 py-1">
+      {ABAS.map(({ slug, label, icon: Icon }) => {
         const show = slug === "dashboard" ? podeDashboard : podeCarteiras;
         if (!show) return null;
         const active = abaAtual === slug;
         return (
-          <Link
-            key={slug}
-            href={`/squadframe/financeiro?aba=${slug}`}
-            className={tabLinkClass(active)}
-          >
-            {label}
-          </Link>
+          <Tooltip key={slug} content={label} side="right" delay={150}>
+            <Link
+              href={`/squadframe/financeiro?aba=${slug}`}
+              aria-label={label}
+              className={cn(
+                "flex h-11 w-11 items-center justify-center rounded-full",
+                "transition-all duration-[var(--motion-hover)] ease-out hover:scale-110",
+                active
+                  ? "bg-primary text-white shadow-md"
+                  : "text-text-3 hover:bg-surface-2 hover:text-text"
+              )}
+            >
+              <Icon size={19} />
+            </Link>
+          </Tooltip>
         );
       })}
       {podeContratos && (
-        <Link
-          href="/squadframe/financeiro/contratos"
-          className={tabLinkClass(!!emContratos)}
-        >
-          Contratos
-        </Link>
+        <Tooltip content="Contratos" side="right" delay={150}>
+          <Link
+            href="/squadframe/financeiro/contratos"
+            aria-label="Contratos"
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full",
+              "transition-all duration-[var(--motion-hover)] ease-out hover:scale-110",
+              emContratos
+                ? "bg-primary text-white shadow-md"
+                : "text-text-3 hover:bg-surface-2 hover:text-text"
+            )}
+          >
+            <DocumentIcon size={19} />
+          </Link>
+        </Tooltip>
       )}
-    </div>
+    </nav>
   );
 }

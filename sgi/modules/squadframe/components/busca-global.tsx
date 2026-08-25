@@ -90,12 +90,12 @@ export function BuscaGlobal() {
     <>
       <button
         onClick={() => setAberto(true)}
-        className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/15 hover:text-white transition-colors"
+        className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-sm text-white/65 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-105 hover:bg-white/15 hover:text-white"
         title="Buscar (Ctrl+K)"
       >
         <SearchIcon size={14} />
-        <span className="hidden md:inline">Buscar</span>
-        <kbd className="hidden md:inline text-xs opacity-60 font-mono">Ctrl+K</kbd>
+        <span className="hidden 2xl:inline">Buscar</span>
+        <kbd className="hidden 2xl:inline text-xs opacity-60 font-mono">Ctrl+K</kbd>
       </button>
 
       {aberto && (

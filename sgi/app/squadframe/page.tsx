@@ -104,7 +104,7 @@ export default async function HomePage({
     return (
       <div className="px-8 py-8 max-w-7xl mx-auto">
         <RealtimeRefresher channelName={`home-alertas-${usuario.id}`} subs={subsAlertas} />
-        <div className="border-b border-border mb-6">
+        <div className="mb-6">
           <CentralTabNav podeCobranca={podeCobranca} />
         </div>
         <CobrancaDashboard
@@ -212,7 +212,7 @@ export default async function HomePage({
         ]}
       />
       {podeCobranca && (
-        <div className="border-b border-border bg-surface px-5 pt-2">
+        <div className="bg-surface px-5 pt-3 pb-2">
           <CentralTabNav podeCobranca={podeCobranca} />
         </div>
       )}

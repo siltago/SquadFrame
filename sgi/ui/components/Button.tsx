@@ -39,9 +39,9 @@ const sizeStyles: Record<ButtonSize, string> = {
 
 const BASE_CLS = cn(
   "inline-flex items-center justify-center font-semibold border",
-  "transition-all duration-[120ms] active:scale-[0.97]",
+  "transition-all duration-[var(--motion-hover)] ease-out active:scale-[0.97] hover:scale-[1.015]",
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-  "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
+  "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:scale-100",
   "whitespace-nowrap select-none rounded-md"
 );
 

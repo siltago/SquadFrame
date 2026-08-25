@@ -341,7 +341,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
     <div className="relative">
       <button
         onClick={handleAbrir}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110 hover:bg-white/12 hover:text-white"
         title="Notificações"
       >
         <BellIcon size={18} />

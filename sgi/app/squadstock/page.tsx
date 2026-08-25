@@ -4,7 +4,7 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { Button } from "@/ui/components/Button";
 import { StockIcon, LayersIcon, MapPinIcon, CheckCircleIcon } from "@/ui/icons";
-import { StatCard } from "@/modules/squadframe/components/stat-card";
+import { StatCard } from "@/ui/components/Card";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
 import { buildSearchPattern } from "@/ui/lib/search";
 import { EstoqueSidebar } from "@/modules/squadstock/components/estoque-sidebar";
@@ -207,9 +207,9 @@ export default async function EstoquePage({
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard label="Produtos no catálogo" value={totalProdutos} icon={LayersIcon} />
-          <StatCard label="Com saldo" value={produtosComSaldo} sub={`de ${totalProdutos}`} tone={produtosComSaldo < totalProdutos ? "warning" : undefined} icon={CheckCircleIcon} />
-          <StatCard label="Locais com estoque" value={locaisComEstoque} icon={MapPinIcon} />
+          <StatCard label="Produtos no catálogo" value={totalProdutos} icon={<LayersIcon size={18} />} />
+          <StatCard label="Com saldo" value={produtosComSaldo} sub={`de ${totalProdutos}`} tone={produtosComSaldo < totalProdutos ? "warning" : undefined} icon={<CheckCircleIcon size={18} />} />
+          <StatCard label="Locais com estoque" value={locaisComEstoque} icon={<MapPinIcon size={18} />} />
         </div>
 
         <form method="GET" className="mt-6 flex flex-wrap items-end gap-3">

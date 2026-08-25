@@ -29,7 +29,7 @@ export default async function SquadStockLayout({ children }: { children: React.R
         navItems={NAV_ITEMS}
         rightSlot={<HeaderUser usuario={usuario} />}
       />
-      <main style={{ paddingTop: "calc(56px + env(safe-area-inset-top))" }}>{children}</main>
+      <main style={{ paddingTop: "calc(84px + env(safe-area-inset-top))" }}>{children}</main>
     </div>
   );
 }

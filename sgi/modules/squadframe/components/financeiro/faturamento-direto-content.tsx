@@ -3,7 +3,7 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
-import { StatCard } from "@/modules/squadframe/components/stat-card";
+import { StatCard } from "@/ui/components/Card";
 import { Alert } from "@/ui/components/Alert";
 import { ClockIcon, AlertTriangleIcon, CreditCardIcon } from "@/ui/icons";
 import { listarSaldosPorFornecedor, filtrarSaldoBaixo } from "@/modules/squadframe/services/financeiro/carteira-alertas";
@@ -105,9 +105,9 @@ export async function FaturamentoDiretoContent() {
 
       {/* KPIs */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatCard label="Aguardando débito" value={fmt(totalPendente)} sub={`${pedidosComValor.length} pedidos`} icon={CreditCardIcon} />
-        <StatCard label="Pendentes de aprovação" value={pendentes.length} tone={pendentes.length > 0 ? "warning" : undefined} icon={ClockIcon} />
-        <StatCard label="Rejeitados" value={rejeitados.length} tone={rejeitados.length > 0 ? "danger" : undefined} icon={AlertTriangleIcon} />
+        <StatCard label="Aguardando débito" value={fmt(totalPendente)} sub={`${pedidosComValor.length} pedidos`} icon={<CreditCardIcon size={18} />} variant="accent" />
+        <StatCard label="Pendentes de aprovação" value={pendentes.length} tone={pendentes.length > 0 ? "warning" : undefined} icon={<ClockIcon size={18} />} />
+        <StatCard label="Rejeitados" value={rejeitados.length} tone={rejeitados.length > 0 ? "danger" : undefined} icon={<AlertTriangleIcon size={18} />} />
       </div>
 
       {/* Tabela */}

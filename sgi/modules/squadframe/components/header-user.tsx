@@ -58,10 +58,11 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
           </div>
         )}
 
-        {/* Nome + cargo — some antes dos labels da nav/busca (que só somem
-            em 2xl/1536px), mas volta já em 1000px — nessa faixa a nav já
-            caiu pro hamburguer (lg/1024px), então sobra espaço de sobra. */}
-        <div className="hidden text-left min-[1000px]:block">
+        {/* Nome + cargo — some ANTES do texto da busca e do texto das
+            abas da nav (que só somem em 2xl/1536px): breakpoint próprio
+            mais alto, então em telas médias já não tem mais nome de
+            usuário, mas busca e abas continuam por escrito até 1536px. */}
+        <div className="hidden text-left min-[1650px]:block">
           <p className="text-sm font-medium leading-none text-white">
             {usuario.nome.split(" ")[0]}
           </p>
@@ -75,7 +76,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
         {/* Chevron */}
         <ChevronDownIcon
           size={14}
-          className={`hidden shrink-0 text-white/60 transition-transform min-[1000px]:block ${aberto ? "rotate-180" : ""}`}
+          className={`hidden shrink-0 text-white/60 transition-transform min-[1650px]:block ${aberto ? "rotate-180" : ""}`}
         />
       </button>
 

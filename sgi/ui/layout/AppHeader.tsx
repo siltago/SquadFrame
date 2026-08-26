@@ -74,20 +74,26 @@ export function AppHeader({
           espremer nav+busca+usuário numa faixa estreita demais. */}
       {mobileNavSlot && <div className="lg:hidden shrink-0">{mobileNavSlot}</div>}
 
-      {/* Logo — bolinha própria, separada da pastilha de navegação, com
-          EXATAMENTE o mesmo tratamento de vidro da pastilha (mesma cor
-          translúcida + blur) — antes estava em cor sólida opaca enquanto a
-          pastilha é translúcida, e por trás terem fundos ligeiramente
-          diferentes as duas liam como cores diferentes mesmo usando a
-          mesma variável. */}
+      {/* Logo sem bolha/fundo — só o ícone, sem glass nenhum (o vazamento
+          de cor entre a bolha e a pastilha, mesmo depois de várias
+          tentativas de correção de blur/composição, não parou de forma
+          confiável — tirar o fundo elimina o problema pela raiz). */}
       <Link
         href={homeHref}
         title={appName}
         aria-label={appName}
-        className="flex shrink-0 items-center justify-center rounded-full ring-1 ring-white/10 transition-transform duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-105"
-        style={{ ...glassStyle(height), width: height }}
+        className="group flex shrink-0 items-center justify-center"
+        style={{ height, width: height }}
       >
-        {logoSrc && <Image src={logoSrc} alt={logoAlt} width={26} height={26} className="shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />}
+        {logoSrc && (
+          <Image
+            src={logoSrc}
+            alt={logoAlt}
+            width={32}
+            height={32}
+            className="shrink-0 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] transition-transform duration-[var(--motion-hover)] ease-[var(--ease-spring)] group-hover:scale-110"
+          />
+        )}
       </Link>
 
       {/* Pastilha principal: nav + ações */}
@@ -113,9 +119,9 @@ export function AppHeader({
                   title={item.label}
                   className={cn(
                     "relative flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap 2xl:px-3.5",
-                    "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-[1.04] active:scale-[0.96]",
+                    "transition-[color,background-color] duration-[var(--motion-hover)] ease-[var(--ease-spring)]",
                     active
-                      ? "text-[rgb(var(--color-header))]"
+                      ? "text-[rgb(var(--color-header))] dark:text-white/65"
                       : "text-white/65 hover:bg-white/12 hover:text-white"
                   )}
                 >
@@ -142,7 +148,7 @@ export function AppHeader({
                       <path
                         d="M40,8 Q100,7.5 160,8 C168,8 172.5,12.5 174,17 L178.2,23.9 C184.3,34 190.4,38 200,38 L0,38 C9.6,38 15.7,34 21.8,23.9 L26,17 C27.5,12.5 32,8 40,8 Z"
                         fill="rgb(var(--color-bg))"
-                        style={{ filter: "drop-shadow(0 8px 14px rgb(0 0 0 / 0.3))" }}
+                        style={{ filter: "drop-shadow(0 6px 16px rgb(0 0 0 / 0.18))" }}
                       />
                     </svg>
                   )}
@@ -150,7 +156,7 @@ export function AppHeader({
                       Nome de usuário e texto da busca escondem antes disso
                       (ver header-user.tsx/busca-global.tsx). */}
                   {item.icon && <span className="relative top-2 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>}
-                  <span className="relative top-2 hidden 2xl:inline">{item.label}</span>
+                  <span className="relative top-2 hidden xl:inline">{item.label}</span>
                 </Link>
               );
             })}

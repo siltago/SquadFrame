@@ -82,6 +82,12 @@
   --shadow-md: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
   --shadow-xl: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+
+  /* Glow colorido do badge de ícone do StatCard e do card de destaque —
+     só faz sentido contra uma superfície clara; no escuro, sobre
+     --color-surface já escura, lia como um "brilho" indevido. */
+  --statcard-icon-glow: 0.4;
+  --statcard-accent-glow: 0.45;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -125,6 +131,9 @@
   --shadow-md: 0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.3);
   --shadow-lg: 0 4px 16px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2);
   --shadow-xl: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+
+  --statcard-icon-glow: 0;
+  --statcard-accent-glow: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -473,10 +482,15 @@
 /* Fundo com leve gradiente (em vez de cor chapada) — mesmo tom de --color-bg
    na base, só com uma respiração de --color-accent bem suave nos cantos,
    pra a página não ficar plana atrás dos cards flutuantes. */
+/* Centros dos gradientes deslocados pra longe da faixa do header (y perto
+   de 0%) — perto do topo, a bolha do logo (canto esquerdo) pegava um tom
+   bem mais forte que a pastilha central (mais larga, média mais fraca),
+   fazendo as duas lerem como cores diferentes mesmo usando o mesmo
+   glassStyle(). */
 body {
   background-image:
-    radial-gradient(1200px 600px at 8% -10%, rgb(var(--color-accent) / 0.07), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgb(var(--color-primary) / 0.06), transparent 55%);
+    radial-gradient(1200px 600px at 15% 30%, rgb(var(--color-accent) / 0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 25%, rgb(var(--color-primary) / 0.06), transparent 55%);
   background-attachment: fixed;
 }
 

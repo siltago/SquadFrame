@@ -16,6 +16,12 @@ const ABAS = [
 // referência visual usa (ícone + tooltip, sem texto solto ao lado), em vez
 // da faixa de abas em texto que existia antes. Não move nada de rota, só
 // muda o formato do seletor de aba dentro da própria página financeiro.
+// Fixed na tela (não fica dentro do fluxo do conteúdo centralizado) e
+// ancorado no MESMO left que o header usa (px-3/sm:px-5) — é a única forma
+// de garantir que a coluna de ícones fique exatamente embaixo do logo, já
+// que o conteúdo da página é centralizado (max-w-6xl mx-auto) e o header
+// não é, então os dois nunca compartilhariam a mesma origem X se o rail
+// ficasse dentro do fluxo normal do conteúdo.
 export function FinanceiroTabNav({
   podeDashboard,
   podeCarteiras,
@@ -31,7 +37,7 @@ export function FinanceiroTabNav({
   const abaAtual = emContratos ? null : (searchParams.get("aba") ?? "dashboard");
 
   return (
-    <nav className="flex shrink-0 flex-col items-center gap-1.5 py-1">
+    <nav className="fixed left-3 top-[158px] z-40 flex w-14 flex-col items-center gap-1.5 py-1 sm:left-5">
       {ABAS.map(({ slug, label, icon: Icon }) => {
         const show = slug === "dashboard" ? podeDashboard : podeCarteiras;
         if (!show) return null;

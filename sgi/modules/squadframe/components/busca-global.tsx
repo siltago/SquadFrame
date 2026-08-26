@@ -94,8 +94,8 @@ export function BuscaGlobal() {
         title="Buscar (Ctrl+K)"
       >
         <SearchIcon size={14} />
-        <span className="hidden 2xl:inline">Buscar</span>
-        <kbd className="hidden 2xl:inline text-xs opacity-60 font-mono">Ctrl+K</kbd>
+        <span className="hidden xl:inline">Buscar</span>
+        <kbd className="hidden xl:inline text-xs opacity-60 font-mono">Ctrl+K</kbd>
       </button>
 
       {aberto && (

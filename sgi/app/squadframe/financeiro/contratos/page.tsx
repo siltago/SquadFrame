@@ -42,15 +42,13 @@ export default async function ContratosPage() {
   const rows = (contratos ?? []) as unknown as ContratoRow[];
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
+    <div className="pl-24 pr-8 py-8 max-w-5xl mx-auto">
       <RealtimeRefresher channelName="financeiro-contratos" subs={[{ table: "contratos" }]} />
+      <FinanceiroTabNav podeDashboard={podeDashboard} podeCarteiras={podeCarteiras} podeContratos={podeContratos} />
+
       <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
 
-      <div className="mt-6 flex gap-6">
-        <FinanceiroTabNav podeDashboard={podeDashboard} podeCarteiras={podeCarteiras} podeContratos={podeContratos} />
-        <div className="min-w-0 flex-1">
-
-      <div className="flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-text-2 max-w-2xl">
           Contratos de faturamento direto por obra. O contrato não trava o gasto na obra dele — o
           valor alocado a cada fornecedor financia a carteira, e qualquer obra pode consumir dela
@@ -94,9 +92,6 @@ export default async function ContratosPage() {
             })}
           </tbody>
         </table>
-      </div>
-
-        </div>
       </div>
     </div>
   );

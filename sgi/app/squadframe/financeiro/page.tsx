@@ -57,14 +57,12 @@ export default async function FinanceiroPage({
   // ── Aba Carteiras ──────────────────────────────────────────
   if (abaAtual === "carteiras") {
     return (
-      <div className="px-8 py-8 max-w-6xl mx-auto">
+      <div className="pl-24 pr-8 py-8 max-w-6xl mx-auto">
         <RealtimeRefresher channelName="financeiro-carteiras" subs={[{ table: "carteiras" }]} />
+        <FinanceiroTabNav {...tabNavProps} />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
-        <div className="mt-6 flex gap-6">
-          <FinanceiroTabNav {...tabNavProps} />
-          <div className="min-w-0 flex-1">
-            <CarteirasContent visao={searchParams.visao === "fornecedor" ? "fornecedor" : "obra"} />
-          </div>
+        <div className="mt-6">
+          <CarteirasContent visao={searchParams.visao === "fornecedor" ? "fornecedor" : "obra"} />
         </div>
       </div>
     );
@@ -73,17 +71,15 @@ export default async function FinanceiroPage({
   // ── Aba Faturamento Direto ───────────────────────────────────
   if (abaAtual === "faturamento-direto") {
     return (
-      <div className="px-8 py-8 max-w-6xl mx-auto">
+      <div className="pl-24 pr-8 py-8 max-w-6xl mx-auto">
         <RealtimeRefresher
           channelName="financeiro-faturamento-direto"
           subs={[{ table: "pedidos_compra" }, { table: "carteiras" }, { table: "carteira_movimentacoes" }, { table: "carteira_ajustes" }]}
         />
+        <FinanceiroTabNav {...tabNavProps} />
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
-        <div className="mt-6 flex gap-6">
-          <FinanceiroTabNav {...tabNavProps} />
-          <div className="min-w-0 flex-1">
-            <FaturamentoDiretoContent />
-          </div>
+        <div className="mt-6">
+          <FaturamentoDiretoContent />
         </div>
       </div>
     );
@@ -192,22 +188,20 @@ export default async function FinanceiroPage({
   };
 
   return (
-    <div className="px-8 py-8 max-w-6xl mx-auto">
+    <div className="pl-24 pr-8 py-8 max-w-6xl mx-auto">
       <RealtimeRefresher
         channelName="financeiro-dashboard"
         subs={[{ table: "pedidos_compra" }, { table: "pedido_itens" }]}
       />
+      <FinanceiroTabNav {...tabNavProps} />
+
       <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
       <p className="mt-1 text-sm text-text-2">
         Gasto consolidado em compras. Pedidos sem valor final registrado mostram a soma estimada dos itens.
       </p>
 
-      <div className="mt-6 flex gap-6">
-        <FinanceiroTabNav {...tabNavProps} />
-        <div className="min-w-0 flex-1">
-
       {/* Filtros */}
-      <form method="GET" action="/squadframe/financeiro" className="flex flex-wrap gap-3 items-end">
+      <form method="GET" action="/squadframe/financeiro" className="mt-6 flex flex-wrap gap-3 items-end">
         <input type="hidden" name="aba" value="dashboard" />
         <div className="min-w-[160px] flex-1">
           <label className="label">Fornecedor</label>
@@ -356,9 +350,6 @@ export default async function FinanceiroPage({
             ))}
           </tbody>
         </table>
-      </div>
-
-        </div>
       </div>
     </div>
   );

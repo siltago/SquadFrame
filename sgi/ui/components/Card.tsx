@@ -120,7 +120,7 @@ export function StatCard({ label, value, sub, icon, color, tone, href, trend, va
         ...(isAccent
           ? {
               background: "linear-gradient(135deg, rgb(var(--color-accent)), rgb(var(--color-accent-hover)))",
-              boxShadow: "0 20px 40px -12px rgb(var(--color-accent) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.25)",
+              boxShadow: "0 20px 40px -12px rgb(var(--color-accent) / var(--statcard-accent-glow)), inset 0 1px 0 rgb(255 255 255 / 0.25)",
             }
           : {}),
       }}
@@ -148,7 +148,9 @@ export function StatCard({ label, value, sub, icon, color, tone, href, trend, va
                 ? {
                     backgroundColor: toneVar ? `rgb(var(${toneVar}) / 0.14)` : color ? `${color}18` : "rgb(var(--color-accent) / 0.14)",
                     color: toneVar ? `rgb(var(${toneVar}))` : color ?? "rgb(var(--color-accent))",
-                    boxShadow: toneVar ? `0 4px 12px -4px rgb(var(${toneVar}) / 0.4)` : "0 4px 12px -4px rgb(var(--color-accent) / 0.4)",
+                    boxShadow: toneVar
+                      ? `0 4px 12px -4px rgb(var(${toneVar}) / var(--statcard-icon-glow))`
+                      : "0 4px 12px -4px rgb(var(--color-accent) / var(--statcard-icon-glow))",
                   }
                 : undefined
             }

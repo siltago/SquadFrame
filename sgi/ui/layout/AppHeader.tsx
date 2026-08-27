@@ -107,10 +107,22 @@ export function AppHeader({
         {/* Desktop nav — nunca deixa o conteúdo estourar a pastilha (era o
             bug: sem min-w-0, o nav não encolhia e empurrava a foto/nome do
             usuário pra fora). justify-between espalha os itens pra ocupar o
-            espaço sobrando em vez de ficarem grudados à esquerda. */}
+            espaço sobrando em vez de ficarem grudados à esquerda.
+            overflow-hidden aqui corta qualquer vazamento HORIZONTAL da
+            decoração de aba ativa (o item mais à esquerda/direita fica
+            colado na própria borda da nav, então o vazamento lateral de
+            16px por lado saía por cima do canto arredondado do header).
+            pb dá altura de sobra por BAIXO pra decoração continuar
+            vazando pra baixo sem ser cortada (é proposital: ela se
+            conecta visualmente ao conteúdo abaixo do header) — só o
+            excesso lateral é cortado, e por ser um corte reto e simétrico
+            em todo item igual, nenhum ícone se desloca. A proteção contra
+            colisão com busca/usuário é o breakpoint do label (2xl,
+            ver comentário mais abaixo) — abaixo dele todo item é só ícone,
+            bem mais estreito que a pastilha nunca teria espaço pra sobrar. */}
         {navItems.length > 0 && (
-          <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-between gap-1 self-start pt-1.5" aria-label="Navegação principal">
-            {navItems.map(item => {
+          <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-between gap-1 self-start overflow-hidden pt-1.5 pb-5" aria-label="Navegação principal">
+            {navItems.map((item) => {
               const active = isActive(item);
               return (
                 <Link
@@ -156,7 +168,7 @@ export function AppHeader({
                       Nome de usuário e texto da busca escondem antes disso
                       (ver header-user.tsx/busca-global.tsx). */}
                   {item.icon && <span className="relative top-2 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>}
-                  <span className="relative top-2 hidden xl:inline">{item.label}</span>
+                  <span className="relative top-2 hidden 2xl:inline">{item.label}</span>
                 </Link>
               );
             })}

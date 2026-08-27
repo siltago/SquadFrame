@@ -5,12 +5,13 @@ import Image from "next/image";
 import Link, { LinkProps } from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  MenuIcon, CloseIcon, BuildingIcon,
+  MenuIcon, CloseIcon, BuildingIcon, CalendarIcon,
   ShoppingBagIcon, DollarSignIcon, TasksIcon, UsersIcon, DocumentIcon, RefreshIcon,
 } from "@/ui/icons";
 
 const NAV_ITEMS = [
   { href: "/squadframe/obras",           label: "Obras",           icon: <BuildingIcon size={20} />    },
+  { href: "/squadframe/planejamento",    label: "Planejamento",    icon: <CalendarIcon size={20} />    },
   { href: "/squadframe/compras",         label: "Compras",         icon: <ShoppingBagIcon size={20} /> },
   { href: "/squadframe/financeiro",      label: "Financeiro",      icon: <DollarSignIcon size={20} />  },
   { href: "/squadframe/beneficiamento",  label: "Beneficiamento",  icon: <RefreshIcon size={20} />     },

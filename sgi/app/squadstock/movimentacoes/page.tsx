@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { Button } from "@/ui/components/Button";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { RefreshIcon } from "@/ui/icons";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export default async function MovimentacoesPage({
         </Link>
       </div>
 
-      <form method="GET" className="mt-6 flex flex-wrap items-end gap-3">
+      <FilterBar method="GET" className="mt-6">
         <div>
           <label className="label">Local</label>
           <select name="local_id" defaultValue={searchParams.local_id ?? ""} className="field h-9 text-sm">
@@ -127,8 +128,8 @@ export default async function MovimentacoesPage({
             <option value="AJUSTE">Ajuste</option>
           </select>
         </div>
-        <Button type="submit" size="sm">Filtrar</Button>
-      </form>
+        <Button type="submit" variant="accent" size="sm">Filtrar</Button>
+      </FilterBar>
 
       <div className="card mt-6 overflow-hidden">
         <table className="w-full text-sm">

@@ -28,7 +28,10 @@ const variantStyles: Record<ButtonVariant, string> = {
   danger:    "bg-danger text-white hover:bg-danger-hover border-transparent",
   success:   "bg-success text-white hover:bg-success-hover border-transparent",
   warning:   "bg-warning text-white hover:bg-warning-hover border-transparent",
-  accent:    "bg-accent text-white hover:bg-accent-hover border-transparent",
+  accent:
+    "text-white border-transparent bg-gradient-to-br from-accent to-accent-hover rounded-full " +
+    "shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_4px_14px_-4px_rgb(var(--color-accent)/var(--button-accent-glow))] " +
+    "hover:brightness-110",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -37,9 +40,11 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: "h-11 px-5   text-base gap-2.5",
 };
 
+// Motion "bubble" — spring easing + scale no hover pra todo botão do
+// sistema, não só o de destaque (consistente com nav/StatCard).
 const BASE_CLS = cn(
   "inline-flex items-center justify-center font-semibold border",
-  "transition-all duration-[var(--motion-hover)] ease-out active:scale-[0.97] hover:scale-[1.015]",
+  "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] active:scale-[0.97] hover:scale-[1.03]",
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
   "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:scale-100",
   "whitespace-nowrap select-none rounded-md"

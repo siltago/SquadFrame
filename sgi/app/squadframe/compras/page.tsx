@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { STATUS_SOL_COR, STATUS_SOL_LABEL, STATUS_PED_COR, STATUS_PED_LABEL, PRIORIDADE_COR, PRIORIDADE_LABEL } from "@/modules/squadframe/types/compras";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
+import { StatCard } from "@/ui/components/Card";
+import { InboxIcon, ClockIcon, TruckIcon, PackageIcon } from "@/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +24,10 @@ export default async function ComprasPage() {
   ]);
 
   const stats = [
-    { label: "Solicitações abertas",      value: (c1.data ?? []).length, href: "/squadframe/compras/solicitacoes",                              cor: "#3b82f6" },
-    { label: "Pedidos aguard. aprovação", value: (c2.data ?? []).length, href: "/squadframe/compras/pedidos?status=AGUARDANDO_APROVACAO",        cor: "#f59e0b" },
-    { label: "Aguardando recebimento",    value: (c3.data ?? []).length, href: "/squadframe/compras/pedidos?status=AGUARDANDO_RECEBIMENTO",      cor: "#8b5cf6" },
-    { label: "Recebimentos parciais",     value: (c4.data ?? []).length, href: "/squadframe/compras/pedidos?status=RECEBIDO_PARCIAL",            cor: "#f97316" },
+    { label: "Solicitações abertas",      value: (c1.data ?? []).length, href: "/squadframe/compras/solicitacoes",                              icon: <InboxIcon size={18} />, cor: "#3b82f6" },
+    { label: "Pedidos aguard. aprovação", value: (c2.data ?? []).length, href: "/squadframe/compras/pedidos?status=AGUARDANDO_APROVACAO",        icon: <ClockIcon size={18} />, cor: "#f59e0b" },
+    { label: "Aguardando recebimento",    value: (c3.data ?? []).length, href: "/squadframe/compras/pedidos?status=AGUARDANDO_RECEBIMENTO",      icon: <TruckIcon size={18} />, cor: "#8b5cf6" },
+    { label: "Recebimentos parciais",     value: (c4.data ?? []).length, href: "/squadframe/compras/pedidos?status=RECEBIDO_PARCIAL",            icon: <PackageIcon size={18} />, cor: "#f97316" },
   ];
 
   return (
@@ -40,10 +42,7 @@ export default async function ComprasPage() {
       {/* Cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="card px-5 py-4 hover:shadow-md transition-shadow">
-            <p className="text-3xl font-bold" style={{ color: s.cor }}>{s.value}</p>
-            <p className="mt-1 text-xs text-text-2">{s.label}</p>
-          </Link>
+          <StatCard key={s.label} label={s.label} value={s.value} href={s.href} icon={s.icon} color={s.cor} />
         ))}
       </div>
 

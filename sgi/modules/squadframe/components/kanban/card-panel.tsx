@@ -27,7 +27,7 @@ import {
 } from "@/modules/squadframe/actions/tarefas/actions";
 import { createClient } from "@/shared/database/supabase-client";
 import { Button } from "@/ui/components/Button";
-import { Input } from "@/ui/components/Input";
+import { DatePicker } from "@/ui/components/DatePicker";
 
 const PAPEL_LABEL: Record<string, string> = {
   responsavel: "Responsável",
@@ -135,8 +135,8 @@ export function CardPanel({ tarefaId, onClose, standalone = false }: Props) {
     });
   }
 
-  function handleDataLimite(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value || null;
+  function handleDataLimite(novaData: string) {
+    const val = novaData || null;
     startTransition(async () => {
       await editarTarefa(tarefaId, { data_limite: val });
       await reload();
@@ -347,14 +347,8 @@ export function CardPanel({ tarefaId, onClose, standalone = false }: Props) {
               </select>
             </div>
             <div>
-              <Input
-                label="Data Limite"
-                type="date"
-                key={tarefa.data_limite ?? ""}
-                defaultValue={tarefa.data_limite ?? ""}
-                onChange={handleDataLimite}
-                className="text-sm"
-              />
+              <label className="label">Data Limite</label>
+              <DatePicker value={tarefa.data_limite ?? ""} onChange={handleDataLimite} />
             </div>
           </div>
 

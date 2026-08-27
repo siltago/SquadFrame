@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
 import { Tooltip } from "@/ui/components/Tooltip";
-import { ChevronLeftIcon, ChevronRightIcon, MenuIcon, CloseIcon } from "@/ui/icons";
+import { MenuIcon, CloseIcon } from "@/ui/icons";
 
 export interface SidebarNavItem {
   href: string;
@@ -23,45 +23,30 @@ export interface SidebarSection {
 
 interface AppSidebarProps {
   sections: SidebarSection[];
-  header?: ReactNode;
+  /** Rail estreito: sem rótulo, ícone com tooltip — mesmo padrão do
+   * FinanceiroTabNav. Passe botões redondos (h-11 w-11 rounded-full) com
+   * Tooltip próprio, no mesmo estilo dos itens de navegação. */
   footer?: ReactNode;
-  defaultCollapsed?: boolean;
-  storageKey?: string;
   className?: string;
   hideMobileTrigger?: boolean;
 }
 
+// Rail vertical fino de ícones — mesmo padrão em todo o sistema (era o
+// financeiro que definiu a referência): botão redondo, bolinha escura
+// (--color-primary) no item ativo, tooltip no lugar de rótulo de texto.
+// Substituiu a versão anterior (lista larga com rótulo sempre visível +
+// toggle colapsar) que destoava visualmente desse padrão já estabelecido.
 export function AppSidebar({
   sections,
-  header,
   footer,
-  defaultCollapsed = false,
-  storageKey = "squad-sidebar",
   className,
   hideMobileTrigger = false,
 }: AppSidebarProps) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
-  /* Persist collapsed state */
-  useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored !== null) setCollapsed(stored === "true");
-  }, [storageKey]);
-
-  const toggle = () => {
-    setCollapsed(c => {
-      const next = !c;
-      localStorage.setItem(storageKey, String(next));
-      return next;
-    });
-  };
-
-  /* Close mobile on navigate */
   useEffect(() => setMobileOpen(false), [pathname]);
 
-  /* Body scroll lock on mobile */
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
@@ -74,122 +59,58 @@ export function AppSidebar({
       ? pathname === item.href
       : pathname === item.href || pathname.startsWith(item.href + "/") || pathname.startsWith(item.href + "?");
 
-  const navContent = (
-    <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none px-2 py-2">
-      {sections.map((section, si) => (
-        <div key={si} className={cn(si > 0 && "mt-4")}>
-          {section.title && !collapsed && (
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-text-3">
-              {section.title}
-            </p>
+  const railItem = (item: SidebarNavItem) => {
+    const active = isActive(item);
+    return (
+      <Tooltip key={item.href} content={item.label} side="right" delay={150}>
+        <Link
+          href={item.href}
+          aria-label={item.label}
+          className={cn(
+            "relative flex h-11 w-11 items-center justify-center rounded-full",
+            "transition-all duration-[var(--motion-hover)] ease-out hover:scale-110",
+            active ? "bg-primary text-white shadow-md" : "text-text-3 hover:bg-surface-2 hover:text-text"
           )}
-          {section.items
-            .filter(item => item.permission !== false)
-            .map(item => {
-              const active = isActive(item);
-              const button = (
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold",
-                    "transition-colors duration-[120ms]",
-                    active
-                      ? "bg-primary text-white"
-                      : "text-text-2 hover:bg-surface-2 hover:text-text",
-                    collapsed && "justify-center px-2"
-                  )}
-                >
-                  <span className={cn(
-                    "h-[18px] w-[18px] shrink-0",
-                    active ? "text-white" : "text-text-3 group-hover:text-text"
-                  )}>
-                    {item.icon}
-                  </span>
-                  {!collapsed && (
-                    <span className="flex-1 truncate">{item.label}</span>
-                  )}
-                  {!collapsed && item.badge !== undefined && (
-                    <span className={cn(
-                      "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold",
-                      active ? "bg-white/25 text-white" : "bg-surface-3 text-text-2"
-                    )}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
+        >
+          <span className="[&>svg]:h-[19px] [&>svg]:w-[19px]">{item.icon}</span>
+          {item.badge !== undefined && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-bold text-white">
+              {item.badge}
+            </span>
+          )}
+        </Link>
+      </Tooltip>
+    );
+  };
 
-              return collapsed ? (
-                <Tooltip key={item.href} content={item.label} side="right" delay={100}>
-                  <div className="relative">
-                    {button}
-                    {item.badge !== undefined && (
-                      <span className="absolute right-0.5 top-0.5 h-3.5 min-w-3.5 rounded-full bg-danger text-[9px] font-bold text-white flex items-center justify-center px-0.5">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                </Tooltip>
-              ) : (
-                <div key={item.href}>{button}</div>
-              );
-            })}
-        </div>
-      ))}
-    </nav>
-  );
-
-  /* ── Desktop sidebar ─────────────────────────────────────── */
+  // Mesma configuração exata do FinanceiroTabNav — fixed, ancorado no
+  // mesmo left do header (px-3/sm:px-5), w-14, gap-1.5 py-1, sem painel
+  // nem borda. É o padrão de referência: qualquer rail de ícones do
+  // sistema usa esses mesmos valores, não uma reinterpretação.
   const desktopSidebar = (
-    <aside
+    <nav
       className={cn(
-        "hidden lg:flex flex-col border-r border-border bg-surface overflow-hidden shrink-0",
-        "transition-[width] ease-out",
-        collapsed ? "w-[72px]" : "w-[260px]",
+        "fixed left-3 top-[158px] z-40 hidden w-14 flex-col items-center gap-1.5 py-1 sm:left-5 lg:flex",
         className
       )}
-      style={{ transitionDuration: "var(--motion-sidebar)" }}
     >
-      {/* Header slot */}
-      {header && (
-        <div className={cn(
-          "shrink-0 border-b border-divider transition-all duration-[120ms]",
-          collapsed ? "px-2 py-3" : "px-4 py-3"
-        )}>
-          {header}
+      {sections.map((section, si) => (
+        <div key={si} className={cn("flex flex-col items-center gap-1.5", si > 0 && "mt-3")}>
+          {section.items.filter(item => item.permission !== false).map(railItem)}
         </div>
-      )}
-
-      {/* Nav */}
-      {navContent}
-
-      {/* Footer slot — hidden when collapsed (buttons too wide for 72px) */}
-      {footer && !collapsed && (
-        <div className="shrink-0 border-t border-divider px-4 py-3">
+      ))}
+      {footer && (
+        <div className="mt-3 flex flex-col items-center gap-1.5">
           {footer}
         </div>
       )}
-
-      {/* Collapse toggle */}
-      <button
-        onClick={toggle}
-        className={cn(
-          "shrink-0 flex items-center justify-center h-10 border-t border-divider",
-          "text-text-3 hover:text-text hover:bg-surface-2 transition-colors duration-[120ms]",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-        )}
-        aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-        title={collapsed ? "Expandir menu" : "Recolher menu"}
-      >
-        {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
-      </button>
-    </aside>
+    </nav>
   );
 
-  /* ── Mobile FAB + Drawer ─────────────────────────────────── */
+  /* ── Mobile FAB + Drawer (rótulos visíveis — espaço não é um problema
+      no drawer cheio, e toque precisa de alvo maior que ícone puro) ── */
   const mobileSidebar = (
     <>
-      {/* FAB */}
       {!hideMobileTrigger && (
         <button
           onClick={() => setMobileOpen(true)}
@@ -197,7 +118,7 @@ export function AppSidebar({
           className={cn(
             "fixed z-40 flex h-14 w-14 items-center justify-center rounded-full",
             "shadow-xl text-white lg:hidden",
-            "transition-transform active:scale-95"
+            "transition-transform duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
           )}
           style={{
             bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
@@ -210,7 +131,6 @@ export function AppSidebar({
         </button>
       )}
 
-      {/* Backdrop */}
       <div
         onClick={() => setMobileOpen(false)}
         className={cn(
@@ -220,7 +140,6 @@ export function AppSidebar({
         )}
       />
 
-      {/* Drawer */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-surface border-r border-border",
@@ -239,7 +158,6 @@ export function AppSidebar({
             <CloseIcon size={16} />
           </button>
         </div>
-        {header && <div className="px-4 py-3 border-b border-divider shrink-0">{header}</div>}
         <nav className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin">
           {sections.map((section, si) => (
             <div key={si} className={cn(si > 0 && "mt-4")}>
@@ -255,8 +173,8 @@ export function AppSidebar({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold",
-                      "transition-colors duration-[120ms]",
+                      "group flex items-center gap-3 rounded-full px-3 py-2.5 text-sm font-semibold",
+                      "transition-colors duration-[var(--motion-hover)]",
                       active
                         ? "bg-primary text-white"
                         : "text-text-2 hover:bg-surface-2 hover:text-text"
@@ -280,7 +198,7 @@ export function AppSidebar({
             </div>
           ))}
         </nav>
-        {footer && <div className="px-4 py-3 border-t border-divider shrink-0">{footer}</div>}
+        {footer && <div className="px-4 py-3 border-t border-divider shrink-0 flex flex-wrap gap-2 justify-center">{footer}</div>}
       </aside>
     </>
   );

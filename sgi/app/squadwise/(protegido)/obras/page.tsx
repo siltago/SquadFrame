@@ -5,6 +5,8 @@ import { buscarUsuarioPorAuthId } from "@/modules/wise/identity/service";
 import { listarObras } from "@/modules/wise/works/service";
 import { ObrasLista } from "@/modules/wise/works/components/obras-lista";
 import { Button } from "@/ui/components/Button";
+import { StatCard } from "@/ui/components/Card";
+import { BuildingIcon, CheckCircleIcon, MapPinIcon, UsersIcon } from "@/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +33,25 @@ export default async function SquadWiseObrasPage() {
 
       {/* Stats */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "Total",   value: obras.length },
-          { label: "Ativas",  value: obras.filter((o) => !(o.status as any)?.is_final).length },
-          { label: "Cidades", value: new Set(obras.map((o) => o.cidade).filter(Boolean)).size },
-          { label: "Clientes",value: new Set(obras.map((o) => o.cliente_id)).size },
-        ].map(({ label, value }) => (
-          <div key={label} className="card px-4 py-3">
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-            <p className="mt-0.5 text-xs text-text-2">{label}</p>
-          </div>
-        ))}
+        <StatCard label="Total" value={obras.length} icon={<BuildingIcon size={18} />} variant="accent" />
+        <StatCard
+          label="Ativas"
+          value={obras.filter((o) => !(o.status as any)?.is_final).length}
+          icon={<CheckCircleIcon size={18} />}
+          tone="success"
+        />
+        <StatCard
+          label="Cidades"
+          value={new Set(obras.map((o) => o.cidade).filter(Boolean)).size}
+          icon={<MapPinIcon size={18} />}
+          tone="info"
+        />
+        <StatCard
+          label="Clientes"
+          value={new Set(obras.map((o) => o.cliente_id)).size}
+          icon={<UsersIcon size={18} />}
+          tone="warning"
+        />
       </div>
 
       <ObrasLista obras={obras} />

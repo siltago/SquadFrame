@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { criarObraAction, editarObraAction } from "@/modules/wise/works/actions";
 import { Button } from "@/ui/components/Button";
+import { DatePicker } from "@/ui/components/DatePicker";
 import type { WiseObra, WiseObraStatusRow, WiseCliente } from "@/modules/wise/works/types";
 import type { WiseUnidade } from "@/modules/wise/organizations/types";
 
@@ -102,7 +103,7 @@ export function ObraForm({ obra, clientes, statusOptions, unidades, onSuccess, o
           </div>
           <div>
             <label className="label">Prazo previsto</label>
-            <input name="data_prevista" type="date" defaultValue={obra?.data_prevista ?? ""} className="field" />
+            <DatePicker name="data_prevista" defaultValue={obra?.data_prevista ?? ""} />
           </div>
         </div>
       </fieldset>

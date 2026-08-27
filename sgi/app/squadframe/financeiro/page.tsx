@@ -12,6 +12,8 @@ import { StatCard } from "@/ui/components/Card";
 import { BarChartIcon, CheckCircleIcon, ClockIcon, UsersIcon, CreditCardIcon } from "@/ui/icons";
 import Link from "next/link";
 import { Button } from "@/ui/components/Button";
+import { DatePicker } from "@/ui/components/DatePicker";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 
 export const dynamic = "force-dynamic";
@@ -200,8 +202,10 @@ export default async function FinanceiroPage({
         Gasto consolidado em compras. Pedidos sem valor final registrado mostram a soma estimada dos itens.
       </p>
 
-      {/* Filtros */}
-      <form method="GET" action="/squadframe/financeiro" className="mt-6 flex flex-wrap gap-3 items-end">
+      {/* Filtros — mesma superfície flutuante (.card, sombra, cantos
+          arredondados) dos StatCards logo abaixo, em vez de ficar solto
+          direto sobre o fundo em gradiente da página. */}
+      <FilterBar method="GET" action="/squadframe/financeiro" className="mt-6">
         <input type="hidden" name="aba" value="dashboard" />
         <div className="min-w-[160px] flex-1">
           <label className="label">Fornecedor</label>
@@ -230,9 +234,9 @@ export default async function FinanceiroPage({
             ))}
           </select>
         </div>
-        <div>
+        <div className="w-[150px]">
           <label className="label">De</label>
-          <input type="date" name="de" defaultValue={filtroDe} className="field h-9 text-sm" />
+          <DatePicker name="de" defaultValue={filtroDe} />
         </div>
         <div className="min-w-[160px]">
           <label className="label">Forma de pagamento</label>
@@ -242,15 +246,15 @@ export default async function FinanceiroPage({
             <option value="outros">Só outras formas</option>
           </select>
         </div>
-        <div>
+        <div className="w-[150px]">
           <label className="label">Até</label>
-          <input type="date" name="ate" defaultValue={filtroAte} className="field h-9 text-sm" />
+          <DatePicker name="ate" defaultValue={filtroAte} />
         </div>
-        <Button type="submit" className="h-9 px-4 text-sm shrink-0">Filtrar</Button>
+        <Button type="submit" variant="accent" className="h-9 shrink-0 text-sm">Filtrar</Button>
         {(filtroFornecedor || filtroObra || filtroStatus || filtroDe || filtroAte || filtroFaturamento) && (
-          <Button as="a" href="/squadframe/financeiro" variant="ghost" className="h-9 px-3 text-sm shrink-0">Limpar</Button>
+          <Button as="a" href="/squadframe/financeiro" variant="ghost" className="h-9 shrink-0 text-sm">Limpar</Button>
         )}
-      </form>
+      </FilterBar>
 
       {/* Cards de resumo */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

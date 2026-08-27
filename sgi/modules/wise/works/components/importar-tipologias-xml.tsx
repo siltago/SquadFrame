@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { Button } from "@/ui/components/Button";
 import { importarTipologiasXmlAction } from "@/modules/wise/works/actions";
 import { lerArquivoXml, parseXml, type RascunhoTipologia } from "@/modules/wise/works/lib/xml-tipologias";
 import type { WiseTipologia } from "@/modules/wise/works/types";
@@ -64,8 +65,8 @@ function RascunhoRow({
           <input type="number" step="0.01" placeholder="Preço unit (R$)" value={draft.preco_unit ?? ""} onChange={(e) => f("preco_unit", parseFloat(e.target.value))} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" />
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={salvar} className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary/90">Salvar</button>
-          <button type="button" onClick={() => { setDraft(item); setEditando(false); }} className="text-xs text-text-3 hover:text-text-2">Cancelar</button>
+          <Button type="button" size="sm" variant="accent" className="h-auto px-3 py-1 text-xs" onClick={salvar}>Salvar</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-auto px-3 py-1 text-xs" onClick={() => { setDraft(item); setEditando(false); }}>Cancelar</Button>
         </div>
       </div>
     );

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { Button } from "@/ui/components/Button";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { StockIcon, LayersIcon, MapPinIcon, CheckCircleIcon } from "@/ui/icons";
 import { StatCard } from "@/ui/components/Card";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
@@ -212,7 +213,7 @@ export default async function EstoquePage({
           <StatCard label="Locais com estoque" value={locaisComEstoque} icon={<MapPinIcon size={18} />} />
         </div>
 
-        <form method="GET" className="mt-6 flex flex-wrap items-end gap-3">
+        <FilterBar method="GET" className="mt-6">
         {tipoSlug && <input type="hidden" name="tipo" value={tipoSlug} />}
         <div className="flex-1 max-w-xs">
           <label className="label">Local</label>
@@ -232,13 +233,13 @@ export default async function EstoquePage({
             className="field h-9 text-sm w-full"
           />
         </div>
-        <Button type="submit" size="sm">Filtrar</Button>
+        <Button type="submit" variant="accent" size="sm">Filtrar</Button>
         {(localId || filtroQ || tipoSlug) && (
           <Link href="/squadstock" className="text-xs text-text-3 hover:text-text underline pb-2">
             Limpar filtros
           </Link>
         )}
-      </form>
+      </FilterBar>
 
       <div className="mt-4 card overflow-x-auto">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between">

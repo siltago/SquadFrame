@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import Link from "next/link";
+import { StatCard } from "@/ui/components/Card";
+import { AlertTriangleIcon, RefreshIcon, LayersIcon, GridIcon } from "@/ui/icons";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -227,6 +229,7 @@ export async function DashboardTab({
       sub: nAtencaoTotal === 0 ? "Nenhuma pendência em compras" : `${nPedidosAtencao} pedido${nPedidosAtencao !== 1 ? "s" : ""} · ${nSolsAtencao} sol.`,
       href: `?aba=workspace&filtro=atencao`,
       destaque: nAtencaoTotal > 0,
+      icon: <AlertTriangleIcon size={18} />,
     },
     {
       label: "Em andamento",
@@ -234,6 +237,7 @@ export async function DashboardTab({
       sub: "pedidos e solicitações",
       href: `?aba=workspace&filtro=em_andamento`,
       destaque: false,
+      icon: <RefreshIcon size={18} />,
     },
     {
       label: "Produção",
@@ -241,6 +245,7 @@ export async function DashboardTab({
       sub: totalPcs > 0 ? "peças concluídas" : "Nenhuma tipologia",
       href: `?aba=producao`,
       destaque: false,
+      icon: <LayersIcon size={18} />,
     },
     {
       label: "Ver workspace",
@@ -248,6 +253,7 @@ export async function DashboardTab({
       sub: "pedidos e solicitações",
       href: `?aba=workspace`,
       destaque: false,
+      icon: <GridIcon size={18} />,
     },
   ];
 
@@ -311,16 +317,16 @@ export async function DashboardTab({
 
       {/* Cards de resumo / navegação */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {resumoCards.map(({ label, valor, sub, href, destaque }) => (
-          <Link
+        {resumoCards.map(({ label, valor, sub, href, destaque, icon }) => (
+          <StatCard
             key={label}
+            label={label}
+            value={valor}
+            sub={sub}
             href={href}
-            className={`card flex flex-col gap-1 p-4 transition-colors hover:bg-bg ${destaque ? "border-red-200 bg-danger-soft dark:border-red-800/60 dark:bg-red-950/40" : ""}`}
-          >
-            <p className={`text-xs font-medium uppercase tracking-wider ${destaque ? "text-danger dark:text-red-400" : "text-text-3"}`}>{label}</p>
-            <p className={`text-2xl font-bold tracking-tight ${destaque ? "text-red-700 dark:text-red-300" : "text-text"}`}>{valor}</p>
-            <p className={`text-xs ${destaque ? "text-danger/70 dark:text-red-400/70" : "text-text-2"}`}>{sub}</p>
-          </Link>
+            icon={icon}
+            tone={destaque ? "danger" : undefined}
+          />
         ))}
       </div>
 

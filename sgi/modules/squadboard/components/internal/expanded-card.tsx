@@ -3,8 +3,10 @@
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useUsuario } from "@/modules/squadframe/components/user-provider";
 import { cn } from "@/ui/lib/cn";
+import { DatePicker } from "@/ui/components/DatePicker";
+import { Button } from "@/ui/components/Button";
 import {
-  CloseIcon, CalendarIcon, CheckSquareIcon, AttachmentIcon,
+  CloseIcon, CheckSquareIcon, AttachmentIcon,
   ExternalLinkIcon, SendIcon, UserIcon, UsersIcon, TagIcon,
   ActivityIcon, LinkIcon, ClockIcon, PlusIcon, TrashIcon,
 } from "@/ui/icons";
@@ -116,8 +118,8 @@ function EditableDescription({
           placeholder="Adicionar descrição..."
         />
         <div className="flex gap-1.5">
-          <button type="button" onClick={save} className="rounded px-2.5 py-1 text-[11px] font-medium bg-primary text-white">Salvar</button>
-          <button type="button" onClick={() => { setEditing(false); setText(value); }} className="rounded px-2.5 py-1 text-[11px] text-text-3 hover:text-text">Cancelar</button>
+          <Button type="button" size="sm" variant="accent" className="h-auto px-2.5 py-1 text-[11px]" onClick={save}>Salvar</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-auto px-2.5 py-1 text-[11px]" onClick={() => { setEditing(false); setText(value); }}>Cancelar</Button>
         </div>
       </div>
     );
@@ -464,15 +466,10 @@ function ResumoTab({
         {/* Prazo */}
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-3">Prazo</p>
-          <div className="flex items-center gap-1.5">
-            <CalendarIcon size={11} className="text-text-3 shrink-0" />
-            <input
-              type="date"
-              defaultValue={detalhe.prazo ? detalhe.prazo.slice(0, 10) : ""}
-              onChange={(e) => savePrazo(e.target.value)}
-              className="bg-transparent text-xs text-text-2 focus:outline-none"
-            />
-          </div>
+          <DatePicker
+            defaultValue={detalhe.prazo ? detalhe.prazo.slice(0, 10) : ""}
+            onChange={savePrazo}
+          />
         </div>
 
         {/* Lista */}

@@ -6,6 +6,7 @@ import { registrarRecebimentoBeneficiamento } from "@/modules/squadframe/actions
 import { AssinarModal } from "@/modules/squadframe/components/assinar-modal";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { DatePicker } from "@/ui/components/DatePicker";
 
 type ItemBenef = {
   id: string; // beneficiamento_item_id
@@ -71,7 +72,10 @@ export function ReceberBeneficiamentoCliente({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card p-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Data de recebimento" type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+            <div>
+              <label className="label">Data de recebimento</label>
+              <DatePicker value={data} onChange={setData} />
+            </div>
             <div>
               <label className="label">Observações <span className="text-text-3 font-normal">(opcional)</span></label>
               <Input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observações gerais…" />

@@ -2,6 +2,8 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import Link from "next/link";
+import { StatCard } from "@/ui/components/Card";
+import { ShoppingBagIcon, DollarSignIcon, CreditCardIcon, RefreshIcon } from "@/ui/icons";
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -65,26 +67,20 @@ export async function FinanceiroTab({ obraId }: { obraId: string }) {
             Pedidos desta obra
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="card p-4">
-              <p className="text-xs text-text-3">Total de pedidos</p>
-              <p className="mt-1 text-2xl font-bold text-text">{totalPedidos}</p>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-text-3">Valor confirmado</p>
-              <p className="mt-1 text-xl font-bold text-text">{totalValor > 0 ? fmt(totalValor) : "—"}</p>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-text-3">Saldo em carteiras</p>
-              <p className={`mt-1 text-xl font-bold ${saldoTotal > 0 ? "text-success" : "text-text-3"}`}>
-                {carteirasList.length > 0 ? fmt(saldoTotal) : "—"}
-              </p>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-text-3">Faturamento direto</p>
-              <p className="mt-1 text-xl font-bold text-primary">
-                {pedidosList.filter((p) => p.usa_carteira).length} pedido(s)
-              </p>
-            </div>
+            <StatCard label="Total de pedidos" value={totalPedidos} icon={<ShoppingBagIcon size={18} />} variant="accent" />
+            <StatCard label="Valor confirmado" value={totalValor > 0 ? fmt(totalValor) : "—"} icon={<DollarSignIcon size={18} />} />
+            <StatCard
+              label="Saldo em carteiras"
+              value={carteirasList.length > 0 ? fmt(saldoTotal) : "—"}
+              icon={<CreditCardIcon size={18} />}
+              tone={saldoTotal > 0 ? "success" : undefined}
+            />
+            <StatCard
+              label="Faturamento direto"
+              value={`${pedidosList.filter((p) => p.usa_carteira).length} pedido(s)`}
+              icon={<RefreshIcon size={18} />}
+              tone="info"
+            />
           </div>
 
           {/* Lista de pedidos */}

@@ -3,6 +3,7 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { Button } from "@/ui/components/Button";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { gerarRelatorioPedidos } from "@/modules/squadframe/services/relatorios/relatorio-pedidos";
 import { RelatorioPedidosDocumento } from "@/modules/squadframe/components/documentos/relatorio-pedidos-documento";
 
@@ -49,10 +50,10 @@ export default async function RelatorioPorObraPage({
       <h1 className="text-2xl font-bold tracking-tight">Relatório por Obra</h1>
       <p className="text-sm text-text-3 mt-1">Total histórico de compras de uma obra específica. Não fica salvo — só imprima ou salve o PDF.</p>
 
-      <form method="GET" className="mt-6 space-y-5 max-w-xl">
-        <div>
-          <label className="block text-sm font-medium text-text mb-1.5">Obra</label>
-          <select name="obra_id" required defaultValue="" className="field w-full">
+      <FilterBar method="GET" className="mt-6 max-w-xl">
+        <div className="min-w-[220px] flex-1">
+          <label className="label">Obra</label>
+          <select name="obra_id" required defaultValue="" className="field h-9 w-full text-sm">
             <option value="" disabled>
               Selecione uma obra
             </option>
@@ -63,10 +64,8 @@ export default async function RelatorioPorObraPage({
             ))}
           </select>
         </div>
-        <div className="flex gap-3 pt-2">
-          <Button type="submit">Gerar</Button>
-        </div>
-      </form>
+        <Button type="submit" variant="accent" className="h-9 shrink-0 text-sm">Gerar</Button>
+      </FilterBar>
     </div>
   );
 }

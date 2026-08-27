@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { criarPacoteAction, editarPacoteAction } from "@/modules/wise/work-packages/actions";
 import { Button } from "@/ui/components/Button";
+import { DatePicker } from "@/ui/components/DatePicker";
 import {
   MODULOS_LABEL, PRIORIDADE_LABEL,
   type WisePacote, type WisePacoteInput, type WisePacoteModulo, type WisePrioridade,
@@ -105,7 +106,7 @@ export function PacoteForm({
           </div>
           <div>
             <label className="label">Prazo</label>
-            <input name="prazo" type="date" defaultValue={pacote?.prazo ?? ""} className="field" />
+            <DatePicker name="prazo" defaultValue={pacote?.prazo ?? ""} />
           </div>
           <div>
             <label className="label">Responsável</label>

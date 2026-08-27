@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/ui/components/Button";
 import {
   resolverCodigosImportadosAction,
   listarLinhasAction,
@@ -245,17 +246,12 @@ export function ImportarSolicitacaoXml({ obraId, loteId }: { obraId: string; lot
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={confirmar}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-            >
+            <Button type="button" size="sm" variant="accent" disabled={isPending} onClick={confirmar}>
               {isPending ? "Criando solicitação…" : "Confirmar e criar solicitação"}
-            </button>
-            <button type="button" onClick={cancelar} className="text-xs text-text-3 hover:text-text-2">
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={cancelar}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -527,17 +523,12 @@ function CadastroInline({
           />
         </label>
       )}
-      <button
-        type="button"
-        disabled={salvando}
-        onClick={salvar}
-        className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-      >
+      <Button type="button" size="sm" variant="accent" className="h-auto px-2 py-1 text-[11px]" disabled={salvando} onClick={salvar}>
         {salvando ? "Salvando…" : "Salvar"}
-      </button>
-      <button type="button" onClick={onCancelar} className="text-[11px] text-text-3 hover:text-text-2">
+      </Button>
+      <Button type="button" size="sm" variant="ghost" className="h-auto px-2 py-1 text-[11px]" onClick={onCancelar}>
         cancelar
-      </button>
+      </Button>
       {erro && <span className="w-full text-[11px] text-danger">{erro}</span>}
     </div>
   );
@@ -644,15 +635,18 @@ function LinhaCombobox({
                       <option key={t.slug} value={t.slug}>{t.nome}</option>
                     ))}
                   </select>
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="accent"
+                    fullWidth
+                    className="h-auto px-2 py-1 text-[11px]"
                     onMouseDown={(e) => e.preventDefault()}
                     disabled={salvando}
                     onClick={criar}
-                    className="w-full rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
                   >
                     {salvando ? "Criando…" : "Confirmar criação"}
-                  </button>
+                  </Button>
                 </div>
               )}
               {erro && <p className="mt-1 text-[11px] text-danger">{erro}</p>}

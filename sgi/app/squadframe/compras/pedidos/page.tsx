@@ -8,6 +8,7 @@ import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
 import { hojeSaoPaulo } from "@/modules/squadframe/services/cobranca/executar-cobranca";
 import { BotaoAcaoCompras } from "@/modules/squadframe/components/pendencias/botao-acao-compras";
+import { FilterBar } from "@/ui/components/FilterBar";
 
 export const dynamic = "force-dynamic";
 
@@ -88,11 +89,11 @@ export default async function PedidosPage({
       </div>
 
       {/* Busca por código de item */}
-      <form method="GET" action="/squadframe/compras/pedidos" className="mt-6">
+      <FilterBar method="GET" action="/squadframe/compras/pedidos" className="mt-6">
         {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
         {searchParams.fornecedor && <input type="hidden" name="fornecedor" value={searchParams.fornecedor} />}
         {somenteAtrasados && <input type="hidden" name="atraso" value="1" />}
-        <div className="relative max-w-sm">
+        <div className="relative max-w-sm flex-1">
           <input
             name="q"
             defaultValue={filtroQ}
@@ -110,7 +111,7 @@ export default async function PedidosPage({
             </a>
           )}
         </div>
-      </form>
+      </FilterBar>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link href={filtroQ ? `/squadframe/compras/pedidos?q=${encodeURIComponent(filtroQ)}` : "/squadframe/compras/pedidos"}
@@ -130,21 +131,26 @@ export default async function PedidosPage({
         })}
       </div>
 
-      <div className="mt-4 card overflow-x-auto">
-        <PedidosLista pedidos={(pedidos ?? []) as any} hojeISO={hojeISO} />
-        <Pagination
-          currentPage={pagina}
-          total={count ?? 0}
-          perPage={POR_PAGINA}
-          buildUrl={(p) => {
-            const params = new URLSearchParams();
-            params.set("page", String(p));
-            if (searchParams.status) params.set("status", searchParams.status);
-            if (searchParams.fornecedor) params.set("fornecedor", searchParams.fornecedor);
-            if (filtroQ) params.set("q", filtroQ);
-            if (somenteAtrasados) params.set("atraso", "1");
-            return `/squadframe/compras/pedidos?${params}`;
-          }}
+      <div className="mt-4">
+        <PedidosLista
+          pedidos={(pedidos ?? []) as any}
+          hojeISO={hojeISO}
+          pagination={
+            <Pagination
+              currentPage={pagina}
+              total={count ?? 0}
+              perPage={POR_PAGINA}
+              buildUrl={(p) => {
+                const params = new URLSearchParams();
+                params.set("page", String(p));
+                if (searchParams.status) params.set("status", searchParams.status);
+                if (searchParams.fornecedor) params.set("fornecedor", searchParams.fornecedor);
+                if (filtroQ) params.set("q", filtroQ);
+                if (somenteAtrasados) params.set("atraso", "1");
+                return `/squadframe/compras/pedidos?${params}`;
+              }}
+            />
+          }
         />
       </div>
     </div>

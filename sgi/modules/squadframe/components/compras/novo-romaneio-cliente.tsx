@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { DatePicker } from "@/ui/components/DatePicker";
 import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
 import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 import {
@@ -141,7 +142,8 @@ export function NovoRomaneioCliente({ fornecedores }: { fornecedores: { id: stri
               <Input label="Número do romaneio" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Não identificado" />
             </div>
             <div>
-              <Input label="Data de entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+              <label className="label">Data de entrega</label>
+              <DatePicker value={dataEntrega} onChange={setDataEntrega} />
               <p className="mt-1 text-xs text-text-3">Ao confirmar, atualiza o prazo de entrega de cada pedido vinculado.</p>
             </div>
           </div>

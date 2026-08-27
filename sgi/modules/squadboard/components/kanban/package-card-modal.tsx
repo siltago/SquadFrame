@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
 import { Button } from "@/ui/components/Button";
 import { Avatar } from "@/ui/components/Avatar";
+import { DatePicker } from "@/ui/components/DatePicker";
 import {
   ClockIcon, LayersIcon, DocumentIcon, CartIcon,
   ExternalLinkIcon, CloseIcon,
@@ -428,12 +429,10 @@ export function PackageCardModal({
                   <ClockIcon size={11} /> Atrasado
                 </p>
               )}
-              <input
-                type="date"
+              <DatePicker
                 value={prazoValue}
-                onChange={(e) => salvarPrazo(e.target.value)}
-                disabled={isPending}
-                className={cn("field w-full", prazoAtrasado && "text-danger")}
+                onChange={salvarPrazo}
+                className={cn(isPending && "pointer-events-none opacity-50")}
               />
             </div>
 

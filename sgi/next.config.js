@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["sharp", "dxf", "web-push", "pdf-parse"],
+    // pdfjs-dist precisa estar aqui também, não só pdf-parse: o import
+    // literal do worker (pdf-env-polyfills.ts, ~2MB) referencia
+    // "pdfjs-dist/..." direto, e sem isso o webpack embutia esse arquivo
+    // no bundle de QUALQUER página que toque no barrel de actions de
+    // compras (pedidos.ts é reexportado lá) — inflando o cold start de
+    // praticamente toda tela do módulo, não só a de romaneio/devolutiva.
+    serverComponentsExternalPackages: ["sharp", "dxf", "web-push", "pdf-parse", "pdfjs-dist"],
   },
 
   images: {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { BackButton } from "@/modules/squadframe/components/back-button";
+import { RecebimentoLoteBotao } from "@/modules/squadstock/components/recebimento-lote-botao";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function EntregaDetalhePage({ params }: { params: { id: str
   const { data: urlAssinada } = await admin.storage.from("pedido-docs").createSignedUrl(romaneio.arquivo_caminho, 3600);
 
   return (
-    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-3xl mx-auto">
       <BackButton href="/squadframe/compras/entregas" />
 
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Romaneio {romaneio.numero ?? "—"}</h1>
@@ -30,6 +31,10 @@ export default async function EntregaDetalhePage({ params }: { params: { id: str
         {fornecedor?.nome ?? "Fornecedor não identificado"}
         {romaneio.data_entrega && ` · entrega em ${new Date(romaneio.data_entrega + "T00:00:00").toLocaleDateString("pt-BR")}`}
       </p>
+
+      <div className="mt-4">
+        <RecebimentoLoteBotao romaneioId={romaneio.id} />
+      </div>
 
       <div className="mt-6 card p-5 space-y-2">
         <p className="text-sm text-text-2">

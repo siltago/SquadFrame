@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { TruckIcon, ClockIcon, AlertTriangleIcon } from "@/ui/icons";
-import { StatCard } from "@/modules/squadframe/components/stat-card";
+import { StatCard } from "@/ui/components/Card";
 import { STATUS_PED_LABEL } from "@/modules/squadframe/types/compras";
 import { RecebimentoAcaoBotao } from "@/modules/squadstock/components/recebimento-acao-botao";
+import { BuscaRomaneio } from "@/modules/squadstock/components/busca-romaneio";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export default async function RecebimentoPage() {
   });
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">
           <TruckIcon size={20} />
@@ -88,10 +89,14 @@ export default async function RecebimentoPage() {
         </div>
       </div>
 
+      <div className="mt-6">
+        <BuscaRomaneio />
+      </div>
+
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatCard label="Em trânsito" value={pedidos.length} sub="pedidos emitidos" icon={TruckIcon} />
-        <StatCard label="Atrasados" value={atrasados.length} tone={atrasados.length > 0 ? "danger" : undefined} icon={AlertTriangleIcon} />
-        <StatCard label="Chegando em 7 dias" value={chegandoSemana.length} tone={chegandoSemana.length > 0 ? "warning" : undefined} icon={ClockIcon} />
+        <StatCard label="Em trânsito" value={pedidos.length} sub="pedidos emitidos" icon={<TruckIcon size={18} />} />
+        <StatCard label="Atrasados" value={atrasados.length} tone={atrasados.length > 0 ? "danger" : undefined} icon={<AlertTriangleIcon size={18} />} />
+        <StatCard label="Chegando em 7 dias" value={chegandoSemana.length} tone={chegandoSemana.length > 0 ? "warning" : undefined} icon={<ClockIcon size={18} />} />
       </div>
 
       <div className="mt-6 card overflow-x-auto">

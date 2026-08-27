@@ -18,7 +18,7 @@ interface PwaContextValue {
   showIOSInstructions: boolean;
   isPushSupported: boolean;
   pushPermission: NotificationPermission | "unsupported";
-  requestPushPermission: () => Promise<void>;
+  requestPushPermission: () => Promise<{ ok: boolean; motivo?: string }>;
   hasUpdate: boolean;
   applyUpdate: () => void;
 }
@@ -31,7 +31,7 @@ const PwaContext = createContext<PwaContextValue>({
   showIOSInstructions: false,
   isPushSupported: false,
   pushPermission: "unsupported",
-  requestPushPermission: async () => {},
+  requestPushPermission: async () => ({ ok: false }),
   hasUpdate: false,
   applyUpdate: () => {},
 });
@@ -136,7 +136,48 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
 
           // Verificar atualização a cada 60 segundos
           const interval = setInterval(() => reg.update().catch(() => {}), 60_000);
-          return () => clearInterval(interval);
+
+          // Ressincroniza a subscription de push com o servidor. A permissão
+          // do navegador (Notification.permission) fica "granted" pra
+          // sempre, mas a linha em push_subscriptions pode ter sido apagada
+          // (endpoint expirado detectado num envio qualquer) ou o navegador
+          // pode ter trocado as chaves da subscription internamente — em
+          // nenhum dos dois casos o app fica sabendo sozinho, e o botão de
+          // "ativar notificações" nem aparece mais (só mostra quando
+          // permission !== granted), deixando o usuário travado sem push e
+          // sem forma de consertar pela UI. Reenviar a subscription que o
+          // navegador tem agora (ou criar uma nova, se ele também perdeu)
+          // resolve os dois casos, sem prompt nenhum — roda no carregamento
+          // e periodicamente enquanto a aba fica aberta, pra não depender
+          // de um F5 pra se recuperar.
+          function resyncPush() {
+            if (!(Notification.permission === "granted" && vapidPublicKey && usuarioId)) return;
+            reg.pushManager
+              .getSubscription()
+              .then((existing) =>
+                existing ??
+                reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as string,
+                })
+              )
+              .then((subscription) =>
+                fetch("/api/push/subscribe", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    subscription: subscription.toJSON(),
+                    browser: detectBrowser(),
+                    platform: navigator.platform,
+                  }),
+                })
+              )
+              .catch((err) => console.error("[Push] resync failed:", err));
+          }
+          resyncPush();
+          const pushInterval = setInterval(resyncPush, 30 * 60_000);
+
+          return () => { clearInterval(interval); clearInterval(pushInterval); };
         })
         .catch((err) => console.error("[SW] registration failed:", err));
 
@@ -184,18 +225,28 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
     }
   }, []);
 
-  const requestPushPermission = useCallback(async () => {
-    if (!usuarioId || !vapidPublicKey) return;
+  const requestPushPermission = useCallback(async (): Promise<{ ok: boolean; motivo?: string }> => {
+    if (!usuarioId) return { ok: false, motivo: "Usuário não identificado." };
+    if (!vapidPublicKey) {
+      // Sem NEXT_PUBLIC_VAPID_PUBLIC_KEY no build, o botão não tinha
+      // nenhum retorno visível — parecia simplesmente não fazer nada ao
+      // clicar. NEXT_PUBLIC_* é embutido em build time: se a env var foi
+      // adicionada depois do último deploy, só passa a valer no próximo.
+      console.error("[Push] NEXT_PUBLIC_VAPID_PUBLIC_KEY ausente — variável não estava disponível no build.");
+      return { ok: false, motivo: "Notificações push não estão configuradas neste ambiente (chave VAPID ausente)." };
+    }
     // No iOS o PushManager só fica disponível após interação — retestar no momento do clique
     const pushOk =
       "serviceWorker" in navigator &&
       "PushManager" in window &&
       "Notification" in window;
-    if (!pushOk) return;
+    if (!pushOk) return { ok: false, motivo: "Este navegador não suporta notificações push." };
     try {
       const permission = await Notification.requestPermission();
       setPushPermission(permission);
-      if (permission !== "granted") return;
+      if (permission !== "granted") {
+        return { ok: false, motivo: "Permissão de notificação não concedida." };
+      }
 
       const sw = await navigator.serviceWorker.ready;
       const subscription = await sw.pushManager.subscribe({
@@ -203,7 +254,7 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as string,
       });
 
-      await fetch("/api/push/subscribe", {
+      const resp = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -212,10 +263,16 @@ export function PwaProvider({ children, usuarioId, vapidPublicKey }: Props) {
           platform: navigator.platform,
         }),
       });
+      if (!resp.ok) {
+        console.error("[Push] /api/push/subscribe respondeu", resp.status);
+        return { ok: false, motivo: "Falha ao registrar a assinatura no servidor." };
+      }
+      return { ok: true };
     } catch (err) {
       console.error("[Push] subscription failed:", err);
+      return { ok: false, motivo: "Não foi possível ativar as notificações. Tente de novo em instantes." };
     }
-  }, [isPushSupported, usuarioId, vapidPublicKey]);
+  }, [usuarioId, vapidPublicKey]);
 
   return (
     <PwaContext.Provider

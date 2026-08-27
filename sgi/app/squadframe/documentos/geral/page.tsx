@@ -3,6 +3,8 @@ import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { PERMISSIONS } from "@/modules/squadframe/lib/permissions";
 import { Button } from "@/ui/components/Button";
+import { DatePicker } from "@/ui/components/DatePicker";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { gerarRelatorioPedidos } from "@/modules/squadframe/services/relatorios/relatorio-pedidos";
 import { RelatorioPedidosDocumento } from "@/modules/squadframe/components/documentos/relatorio-pedidos-documento";
 
@@ -56,25 +58,21 @@ export default async function RelatorioGeralPage({
   }
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight">Relatório Geral de Compras</h1>
       <p className="text-sm text-text-3 mt-1">Todos os pedidos do sistema no período escolhido. Não fica salvo — só imprima ou salve o PDF.</p>
 
-      <form method="GET" className="mt-6 space-y-5 max-w-xl">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">Data início</label>
-            <input type="date" name="data_inicio" required defaultValue={primeiroDiaDoMes()} className="field w-full" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text mb-1.5">Data fim</label>
-            <input type="date" name="data_fim" required defaultValue={hojeISO()} className="field w-full" />
-          </div>
+      <FilterBar method="GET" className="mt-6 max-w-xl">
+        <div className="w-[150px]">
+          <label className="label">Data início</label>
+          <DatePicker name="data_inicio" defaultValue={primeiroDiaDoMes()} />
         </div>
-        <div className="flex gap-3 pt-2">
-          <Button type="submit">Gerar</Button>
+        <div className="w-[150px]">
+          <label className="label">Data fim</label>
+          <DatePicker name="data_fim" defaultValue={hojeISO()} />
         </div>
-      </form>
+        <Button type="submit" variant="accent" className="h-9 shrink-0 text-sm">Gerar</Button>
+      </FilterBar>
     </div>
   );
 }

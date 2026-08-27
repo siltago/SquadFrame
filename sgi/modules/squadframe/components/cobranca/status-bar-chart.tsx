@@ -37,8 +37,8 @@ export interface SolicitacaoStatusCount {
   itens: SolicitacaoStatusItem[];
 }
 
-const COR_BARRA = "rgb(var(--color-primary))";
-const COR_BARRA_ATIVA = "rgb(var(--color-primary-hover))";
+const COR_BARRA = "rgb(var(--color-accent))";
+const COR_BARRA_ATIVA = "rgb(var(--color-accent-hover))";
 const COR_GRADE = "rgb(var(--color-border))";
 const COR_EIXO = "rgb(var(--color-text-3))";
 
@@ -77,9 +77,9 @@ function StatusBarChart<T extends { id: string; numero: string }>({
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <h2 className="text-sm font-semibold text-text">{titulo}</h2>
-        <span className="text-xs tabular-nums text-text-3">{total} no total</span>
+      <div className="flex items-center justify-between px-5 py-4">
+        <h2 className="text-base font-semibold text-text">{titulo}</h2>
+        <span className="text-xs font-medium tabular-nums text-text-3">{total} no total</span>
       </div>
 
       {dados.length === 0 ? (
@@ -99,6 +99,16 @@ function StatusBarChart<T extends { id: string; numero: string }>({
                   if (clicado) setAberto(aberto === clicado.status ? null : clicado.status);
                 }}
               >
+                <defs>
+                  <linearGradient id="squadui-barra-status" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={COR_BARRA} stopOpacity={0.55} />
+                    <stop offset="100%" stopColor={COR_BARRA} stopOpacity={1} />
+                  </linearGradient>
+                  <linearGradient id="squadui-barra-status-ativa" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={COR_BARRA_ATIVA} stopOpacity={0.6} />
+                    <stop offset="100%" stopColor={COR_BARRA_ATIVA} stopOpacity={1} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid horizontal={false} stroke={COR_GRADE} strokeDasharray="3 3" />
                 <XAxis
                   type="number"
@@ -116,9 +126,9 @@ function StatusBarChart<T extends { id: string; numero: string }>({
                   tickLine={false}
                 />
                 <Tooltip content={(props: any) => <ChartTooltip {...props} />} cursor={{ fill: "rgb(var(--color-surface-2))" }} isAnimationActive={false} />
-                <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false} cursor="pointer">
+                <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={20} isAnimationActive animationDuration={700} animationEasing="ease-out" cursor="pointer">
                   {dados.map((d) => (
-                    <Cell key={d.status} fill={aberto === d.status ? COR_BARRA_ATIVA : COR_BARRA} />
+                    <Cell key={d.status} fill={`url(#${aberto === d.status ? "squadui-barra-status-ativa" : "squadui-barra-status"})`} />
                   ))}
                 </Bar>
               </BarChart>

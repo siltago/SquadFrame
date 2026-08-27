@@ -1,5 +1,6 @@
 "use client";
 
+import { ReactNode } from "react";
 import Link from "next/link";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 import { excluirPedidos } from "@/app/squadframe/compras/actions";
@@ -20,7 +21,7 @@ function estaAtrasado(p: Pedido, hojeISO: string): boolean {
   return p.status === "AGUARDANDO_RECEBIMENTO" && !!p.prazo_entrega && p.prazo_entrega < hojeISO;
 }
 
-export function PedidosLista({ pedidos, hojeISO }: { pedidos: Pedido[]; hojeISO: string }) {
+export function PedidosLista({ pedidos, hojeISO, pagination }: { pedidos: Pedido[]; hojeISO: string; pagination?: ReactNode }) {
   const podeExcluir = usePode("compras.pedido.excluir");
   const { modoExcluir, ativar, cancelar, selecionados, toggleItem, toggleTodos, confirmarExclusao, pending, erro, n } =
     useBulkSelect(excluirPedidos);
@@ -33,7 +34,8 @@ export function PedidosLista({ pedidos, hojeISO }: { pedidos: Pedido[]; hojeISO:
         </div>
       )}
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-3">
@@ -71,6 +73,8 @@ export function PedidosLista({ pedidos, hojeISO }: { pedidos: Pedido[]; hojeISO:
             )}
           </tbody>
         </table>
+        </div>
+        {pagination}
       </div>
 
       <BulkDeleteBar count={n} onConfirm={confirmarExclusao} onCancel={cancelar} pending={pending} erro={erro} label="pedido(s) selecionado(s)" />

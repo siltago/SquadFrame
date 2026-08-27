@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { Button } from "@/ui/components/Button";
+import { FilterBar } from "@/ui/components/FilterBar";
 import { RefreshIcon } from "@/ui/icons";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ interface MovimentacaoRow {
   produto: { codigo_mestre: string; nome: string; unidade: string | null } | { codigo_mestre: string; nome: string; unidade: string | null }[] | null;
   local: { nome: string } | { nome: string }[] | null;
   obra: { nome: string } | { nome: string }[] | null;
+  cor: { codigo_ral: string } | { codigo_ral: string }[] | null;
   usuario: { nome: string } | { nome: string }[] | null;
 }
 
@@ -63,6 +65,7 @@ export default async function MovimentacoesPage({
       produto:produtos(codigo_mestre, nome, unidade),
       local:stock_locais(nome),
       obra:obras(nome),
+      cor:cores_ral(codigo_ral),
       usuario:usuarios(nome)
     `)
     .order("criado_em", { ascending: false })
@@ -77,7 +80,7 @@ export default async function MovimentacoesPage({
   const movimentacoes = (data ?? []) as unknown as MovimentacaoRow[];
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-soft text-primary-active">
@@ -93,7 +96,7 @@ export default async function MovimentacoesPage({
         </Link>
       </div>
 
-      <form method="GET" className="mt-6 flex flex-wrap items-end gap-3">
+      <FilterBar method="GET" className="mt-6">
         <div>
           <label className="label">Local</label>
           <select name="local_id" defaultValue={searchParams.local_id ?? ""} className="field h-9 text-sm">
@@ -125,8 +128,8 @@ export default async function MovimentacoesPage({
             <option value="AJUSTE">Ajuste</option>
           </select>
         </div>
-        <Button type="submit" size="sm">Filtrar</Button>
-      </form>
+        <Button type="submit" variant="accent" size="sm">Filtrar</Button>
+      </FilterBar>
 
       <div className="card mt-6 overflow-hidden">
         <table className="w-full text-sm">
@@ -152,10 +155,14 @@ export default async function MovimentacoesPage({
             )}
             {movimentacoes.map((m) => {
               const p = Array.isArray(m.produto) ? m.produto[0] : m.produto;
+              const cor = Array.isArray(m.cor) ? m.cor[0] : m.cor;
               return (
                 <tr key={m.id} className="border-t border-border">
                   <td className="px-4 py-2.5 text-text-3 font-mono text-xs">{m.numero}</td>
-                  <td className="px-4 py-2.5">{p?.nome ?? "—"}</td>
+                  <td className="px-4 py-2.5">
+                    {p?.nome ?? "—"}
+                    {cor && <span className="ml-1.5 text-xs text-text-3">({cor.codigo_ral})</span>}
+                  </td>
                   <td className="px-4 py-2.5 text-text-2">{nomeRelacao(m.local)}</td>
                   <td className="px-4 py-2.5 text-text-2">{m.obra ? nomeRelacao(m.obra) : <span className="text-text-3">—</span>}</td>
                   <td className="px-4 py-2.5">

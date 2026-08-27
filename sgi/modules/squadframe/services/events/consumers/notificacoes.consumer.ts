@@ -61,6 +61,33 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
       break;
     }
 
+    // Solicitação aguardando aprovação → notifica aprovadores com permissão
+    case EVENTS.PURCHASE_REQUEST_SUBMITTED: {
+      const { request_id } = p;
+      if (!request_id) break;
+
+      const { data: solDetalhe } = await admin
+        .from("solicitacoes_compra")
+        .select("numero, obras(nome), solicitante:usuarios!solicitante_id(nome)")
+        .eq("id", request_id)
+        .single();
+      const numero = solDetalhe?.numero ?? null;
+      const obra_nome = (solDetalhe?.obras as any)?.nome ?? null;
+      const criado_por_nome = (solDetalhe?.solicitante as any)?.nome ?? null;
+
+      const usuarioIds = await getUsuariosComPermissao("compras.solicitacao.aprovar");
+      if (!usuarioIds.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarioIds.map((id) => ({
+          usuario_id: id,
+          tipo: "solicitacao_aguardando_aprovacao",
+          payload: { numero, request_id, obra_nome, criado_por_nome },
+        }))
+      );
+      break;
+    }
+
     // Solicitação aprovada → notifica solicitante
     case EVENTS.PURCHASE_REQUEST_APPROVED: {
       const { request_id, usuario_id } = p;
@@ -226,6 +253,122 @@ export async function notificacoesConsumerHandler(event: DomainEvent): Promise<v
         usuario_id: dev.criado_por,
         tipo: TIPO_POR_EVENTO[event.tipo],
         payload: { numero_devolucao: dev.numero, order_id, devolucao_id },
+      });
+      break;
+    }
+
+    // Pendência crítica escalada → notifica gestores
+    case EVENTS.PURCHASE_PENDENCY_ESCALATED: {
+      const { pedido_id, tipo_pendencia, dias_em_aberto, gestores_ids } = p;
+      const gestoresIds = (gestores_ids as string[] | undefined) ?? [];
+      if (!gestoresIds.length) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+
+      await admin.from("notificacoes").insert(
+        gestoresIds.map((id) => ({
+          usuario_id: id,
+          tipo: "pendencia_escalada",
+          payload: { pedido_id, numero: ped?.numero ?? null, tipo_pendencia, dias_em_aberto },
+        }))
+      );
+      break;
+    }
+
+    // Exceção de pendência solicitada → notifica gestores
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_REQUESTED: {
+      const { prorrogacao_id, pedido_id, solicitado_por, gestores_ids } = p;
+      const gestoresIds = (gestores_ids as string[] | undefined) ?? [];
+      if (!gestoresIds.length) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+      const { data: solicitante } = await admin.from("usuarios").select("nome").eq("id", solicitado_por).maybeSingle();
+
+      await admin.from("notificacoes").insert(
+        gestoresIds.map((id) => ({
+          usuario_id: id,
+          tipo: "pendencia_excecao_solicitada",
+          payload: { prorrogacao_id, pedido_id, numero: ped?.numero ?? null, solicitante_nome: solicitante?.nome ?? null },
+        }))
+      );
+      break;
+    }
+
+    // Exceção de pendência decidida → notifica solicitante
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_DECIDED: {
+      const { prorrogacao_id, pedido_id, aprovado, solicitante_id } = p;
+      if (!solicitante_id) break;
+
+      const { data: ped } = await admin.from("pedidos_compra").select("numero").eq("id", pedido_id).single();
+
+      await admin.from("notificacoes").insert({
+        usuario_id: solicitante_id,
+        tipo: "pendencia_excecao_decidida",
+        payload: { prorrogacao_id, pedido_id, numero: ped?.numero ?? null, aprovado },
+      });
+      break;
+    }
+
+    // Beneficiamento aguardando aprovação → notifica quem tem
+    // compras.beneficiamento.aprovar (NÃO compras.pedido.aprovar — é
+    // exatamente esse vazamento que motivou separar de pedidos_compra).
+    case EVENTS.BENEFICIAMENTO_AWAITING_APPROVAL: {
+      const { pedido_beneficiamento_id } = p;
+      if (!pedido_beneficiamento_id) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("numero, obra:obras(nome)")
+        .eq("pedido_beneficiamento_id", pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? null;
+      const obra_nome = (benef?.obra as any)?.nome ?? null;
+
+      const usuarioIds = await getUsuariosComPermissao("compras.beneficiamento.aprovar");
+      if (!usuarioIds.length) break;
+
+      await admin.from("notificacoes").insert(
+        usuarioIds.map((id) => ({
+          usuario_id: id,
+          tipo: "beneficiamento_aguardando_aprovacao",
+          payload: { numero, pedido_beneficiamento_id, obra_nome },
+        }))
+      );
+      break;
+    }
+
+    // Beneficiamento aprovado/cancelado/recebido → notifica o comprador
+    case EVENTS.BENEFICIAMENTO_APPROVED:
+    case EVENTS.BENEFICIAMENTO_CANCELLED:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_FULL:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL: {
+      const { pedido_beneficiamento_id, usuario_id: atorId } = p;
+      if (!pedido_beneficiamento_id) break;
+
+      const { data: pb } = await admin
+        .from("pedidos_beneficiamento")
+        .select("comprador_id")
+        .eq("id", pedido_beneficiamento_id)
+        .single();
+      if (!pb?.comprador_id || pb.comprador_id === atorId) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("numero")
+        .eq("pedido_beneficiamento_id", pedido_beneficiamento_id)
+        .maybeSingle();
+
+      const TIPO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.BENEFICIAMENTO_APPROVED]:          "beneficiamento_aprovado",
+        [EVENTS.BENEFICIAMENTO_CANCELLED]:         "beneficiamento_cancelado",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_FULL]:     "beneficiamento_recebido",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL]:  "beneficiamento_recebido",
+      };
+
+      await admin.from("notificacoes").insert({
+        usuario_id: pb.comprador_id,
+        tipo: TIPO_POR_EVENTO[event.tipo],
+        payload: { numero: benef?.numero ?? null, pedido_beneficiamento_id },
       });
       break;
     }

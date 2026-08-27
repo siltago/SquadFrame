@@ -8,6 +8,7 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { emitirEvento } from "@/modules/squadframe/services/events/event-bus";
 import { EVENTS } from "@/modules/squadframe/services/events/event-types";
 import { validarTransicaoPedido, pedidoEditavel } from "@/modules/squadframe/services/state-machines/compras";
+import { verificarBloqueioCompras } from "@/modules/squadframe/services/pendencias/verificar-bloqueio";
 import { getUsuario, getUsuarioId, gerarNumeroPedido, enriquecerItensChapa, derivarUsaCarteira } from "./helpers";
 import { calcPesoItem } from "@/modules/squadframe/lib/tipo-unidade";
 import { extrairValorFinalPdf, type ResultadoExtracaoValorFinal } from "@/modules/squadframe/lib/extrair-valor-pdf";
@@ -27,6 +28,7 @@ export async function criarPedido(formData: FormData) {
 
   const admin = createAdminClient();
   const usuario = await getUsuario();
+  await verificarBloqueioCompras(usuario.id, "criar_pedido");
 
   const obra_id            = (formData.get("obra_id") as string | null) || null;
   const fornecedor_id      = formData.get("fornecedor_id") as string;
@@ -164,6 +166,21 @@ export async function alterarStatusPedido(
 
   validarTransicaoPedido(ped.status, status);
 
+  // Gate de conformidade — bloqueia enviar/emitir se o comprador dono do
+  // pedido acumulou pendência crítica (ver verificar-bloqueio.ts). Aprovar/
+  // rejeitar (ação do aprovador) e cancelar (correção) ficam sempre livres.
+  // "Emitir pedido" na UI transiciona direto pra AGUARDANDO_RECEBIMENTO
+  // (pedido-cliente.tsx:TRANSICOES) — é o evento PURCHASE_ORDER_SENT (pedido
+  // enviado ao fornecedor), o "emitir" de verdade nesta UI. EMITIDO também é
+  // checado por defesa em profundidade, caso algum fluxo futuro use esse
+  // status intermediário do state-machine diretamente.
+  if (status === "AGUARDANDO_APROVACAO" && ped.comprador_id) {
+    await verificarBloqueioCompras(ped.comprador_id, "enviar_pedido_aprovacao");
+  }
+  if ((status === "AGUARDANDO_RECEBIMENTO" || status === "EMITIDO") && ped.comprador_id) {
+    await verificarBloqueioCompras(ped.comprador_id, "emitir_pedido");
+  }
+
   // Débito de faturamento direto rejeitado trava o pedido — só sai daqui
   // aprovando o débito (aprovarDebitoPedido) ou cancelando o pedido inteiro.
   if (ped.debito_status === "REJEITADO" && status !== "CANCELADO") {
@@ -255,6 +272,14 @@ export async function editarPedido(id: string, formData: FormData) {
       `Somente pedidos em RASCUNHO ou AGUARDANDO_APROVACAO são editáveis.`,
     );
   }
+
+  // A checagem de item já enviado pra beneficiamento (e a limpeza de
+  // beneficiamento_itens cancelado sem recebimento, que libera o item pra
+  // substituição) vive dentro da RPC editar_pedido — precisa ser atômica
+  // com o DELETE/INSERT de itens, e a mesma regra (bloqueia só se ainda
+  // ativo, ou se cancelado só que já recebeu algo) é reaproveitada por
+  // excluir_pedidos_cascade e aprovar_retorno_pedido (ver migration
+  // 20260825000002).
 
   const fornecedor_id      = formData.get("fornecedor_id") as string;
   const obra_id            = (formData.get("obra_id") as string) || null;

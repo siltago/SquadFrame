@@ -16,7 +16,12 @@ async function getSubsForUsers(userIds: string[]): Promise<PushSubscription[]> {
 
 async function push(userIds: string[], payload: PushPayload) {
   const subs = await getSubsForUsers(userIds);
-  await sendPushToSubscriptions(subs, payload);
+  const resultados = await sendPushToSubscriptions(subs, payload);
+  const endpointsExpirados = resultados.filter((r) => r.expirado).map((r) => r.endpoint);
+  if (endpointsExpirados.length) {
+    const admin = createAdminClient();
+    await admin.from("push_subscriptions").delete().in("endpoint", endpointsExpirados);
+  }
 }
 
 export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
@@ -245,6 +250,31 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
 
     // ── Solicitações ──────────────────────────────────────────────────────────
 
+    case EVENTS.PURCHASE_REQUEST_SUBMITTED: {
+      const admin = createAdminClient();
+      const { data: sol } = await admin
+        .from("solicitacoes_compra")
+        .select("numero, obras(nome), solicitante:usuarios!solicitante_id(nome)")
+        .eq("id", p.request_id)
+        .single();
+
+      const numero = sol?.numero ?? "";
+      const obra = (sol?.obras as any)?.nome ?? "";
+      const obraLabel = obra ? ` - ${obra}` : "";
+      const criadoPor = (sol?.solicitante as any)?.nome ?? "";
+      const enviadoPor = criadoPor ? ` enviada por ${criadoPor}` : "";
+
+      const userIds = await getUsersWithPermission("compras.solicitacao.aprovar");
+      await push(userIds, {
+        title: "Solicitação de compra aguardando aprovação",
+        body: `Solicitação ${numero}${obraLabel}${enviadoPor} para aprovação`,
+        url: `/squadframe/compras/solicitacoes/${p.request_id}`,
+        tag: `sol-aprovacao-${p.request_id}`,
+        actions: [{ action: "open", title: "Ver solicitação" }],
+      });
+      break;
+    }
+
     case EVENTS.PURCHASE_REQUEST_APPROVED: {
       const admin = createAdminClient();
       const { data: sol } = await admin
@@ -278,6 +308,131 @@ export async function pushConsumerHandler(event: DomainEvent): Promise<void> {
           tag: `sol-rejeitada-${p.request_id}`,
         });
       }
+      break;
+    }
+
+    // ── Gate de conformidade — pendências críticas ──────────────────────────────
+
+    case EVENTS.PURCHASE_PENDENCY_ESCALATED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const compradorNome = (ped?.comprador as any)?.nome ?? "";
+
+      const gestoresIds = (p.gestores_ids as string[] | undefined) ?? [];
+      await push(gestoresIds, {
+        title: `Pendência crítica escalada — Pedido ${numero}`,
+        body: `Pedido ${numero}${compradorNome ? ` de ${compradorNome}` : ""} está há ${p.dias_em_aberto} dias sem resolução`,
+        url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+        tag: `pendencia-escalada-${p.pedido_id}-${p.tipo_pendencia}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_REQUESTED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero, comprador:usuarios!pedidos_compra_comprador_id_fkey(nome)")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const compradorNome = (ped?.comprador as any)?.nome ?? "";
+
+      const gestoresIds = (p.gestores_ids as string[] | undefined) ?? [];
+      await push(gestoresIds, {
+        title: "Exceção de pendência aguardando aprovação",
+        body: `${compradorNome || "Um comprador"} pediu exceção pro pedido ${numero}`,
+        url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+        tag: `pendencia-excecao-${p.prorrogacao_id}`,
+        actions: [{ action: "open", title: "Ver pedido" }],
+      });
+      break;
+    }
+
+    case EVENTS.PURCHASE_PENDENCY_EXCEPTION_DECIDED: {
+      const admin = createAdminClient();
+      const { data: ped } = await admin
+        .from("pedidos_compra")
+        .select("numero")
+        .eq("id", p.pedido_id)
+        .single();
+      const numero = ped?.numero ?? "";
+      const solicitanteId = p.solicitante_id as string | undefined;
+      if (solicitanteId) {
+        await push([solicitanteId], {
+          title: p.aprovado ? "Exceção de pendência aprovada" : "Exceção de pendência rejeitada",
+          body: p.aprovado
+            ? `Sua exceção pro pedido ${numero} foi aprovada pelo gestor`
+            : `Sua exceção pro pedido ${numero} foi rejeitada pelo gestor`,
+          url: `/squadframe/compras/pedidos/${p.pedido_id}`,
+          tag: `pendencia-excecao-decidida-${p.prorrogacao_id}`,
+        });
+      }
+      break;
+    }
+
+    // ── Beneficiamento (entidade própria, não é PURCHASE_ORDER_*) ───────────────
+
+    case EVENTS.BENEFICIAMENTO_AWAITING_APPROVAL: {
+      const admin = createAdminClient();
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("id, numero, obra:obras(nome)")
+        .eq("pedido_beneficiamento_id", p.pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? "";
+      const obra = (benef?.obra as any)?.nome ?? "";
+      const obraLabel = obra ? ` - ${obra}` : "";
+
+      const usuarioIds = await getUsersWithPermission("compras.beneficiamento.aprovar");
+      await push(usuarioIds, {
+        title: "Beneficiamento aguardando aprovação",
+        body: `Beneficiamento ${numero}${obraLabel} para aprovação`,
+        url: `/squadframe/beneficiamento/${benef?.id ?? ""}`,
+        tag: `beneficiamento-aprovacao-${p.pedido_beneficiamento_id}`,
+        actions: [{ action: "open", title: "Ver beneficiamento" }],
+      });
+      break;
+    }
+
+    case EVENTS.BENEFICIAMENTO_APPROVED:
+    case EVENTS.BENEFICIAMENTO_CANCELLED:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_FULL:
+    case EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL: {
+      const admin = createAdminClient();
+      const { data: pb } = await admin
+        .from("pedidos_beneficiamento")
+        .select("comprador_id")
+        .eq("id", p.pedido_beneficiamento_id)
+        .single();
+      if (!pb?.comprador_id || pb.comprador_id === p.usuario_id) break;
+
+      const { data: benef } = await admin
+        .from("beneficiamentos")
+        .select("id, numero")
+        .eq("pedido_beneficiamento_id", p.pedido_beneficiamento_id)
+        .maybeSingle();
+      const numero = benef?.numero ?? "";
+
+      const TITULO_POR_EVENTO: Record<string, string> = {
+        [EVENTS.BENEFICIAMENTO_APPROVED]:         "Beneficiamento aprovado",
+        [EVENTS.BENEFICIAMENTO_CANCELLED]:        "Beneficiamento cancelado",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_FULL]:    "Beneficiamento recebido",
+        [EVENTS.BENEFICIAMENTO_RECEIVED_PARTIAL]: "Beneficiamento recebido parcialmente",
+      };
+
+      await push([pb.comprador_id], {
+        title: TITULO_POR_EVENTO[event.tipo],
+        body: `Beneficiamento ${numero}`,
+        url: `/squadframe/beneficiamento/${benef?.id ?? ""}`,
+        tag: `beneficiamento-status-${p.pedido_beneficiamento_id}`,
+      });
       break;
     }
 

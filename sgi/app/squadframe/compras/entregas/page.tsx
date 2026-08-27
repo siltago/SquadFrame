@@ -15,7 +15,7 @@ export default async function EntregasPage() {
   const romaneios = romaneiosRaw ?? [];
 
   return (
-    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-5xl">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Entregas</h1>

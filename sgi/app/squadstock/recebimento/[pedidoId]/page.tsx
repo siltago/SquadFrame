@@ -30,7 +30,7 @@ export default async function RecebimentoPedidoPage({ params }: { params: { pedi
   const romaneioId = maisRecente?.id ?? null;
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <BackButton href="/squadstock/recebimento" />
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Conferência de Recebimento</h1>
       <p className="mt-1 text-sm text-text-2">

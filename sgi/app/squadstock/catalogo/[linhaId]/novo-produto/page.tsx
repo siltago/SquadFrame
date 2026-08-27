@@ -55,7 +55,7 @@ export default async function NovoProdutoPage({
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Novo produto</h1>
       <p className="mt-1 text-sm text-text-2">Linha: {linha.nome}</p>
 
-      <ServerActionForm action={criarProdutoNaLinha} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarProdutoNaLinha} className="card mt-6 max-w-2xl p-6 mx-auto">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="label">Código mestre</label>

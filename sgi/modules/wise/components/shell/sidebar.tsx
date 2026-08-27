@@ -7,8 +7,7 @@ import { cn } from "@/ui/lib/cn";
 import { Tooltip } from "@/ui/components/Tooltip";
 import {
   DashboardIcon, BuildingIcon, LayersIcon, BriefcaseIcon,
-  UsersIcon, ShieldIcon, ActivityIcon,
-  ChevronLeftIcon, ChevronRightIcon, MenuIcon, CloseIcon,
+  UsersIcon, ShieldIcon, ActivityIcon, MenuIcon, CloseIcon,
   HomeIcon,
 } from "@/ui/icons";
 
@@ -58,20 +57,14 @@ const NAV: NavGroup[] = [
 ];
 
 /**
- * Sidebar do SquadWise — sempre escura (tokens --color-sidebar-*),
- * mesmo padrão de interação do SquadBoardSidebar (colapsa, persiste em
- * localStorage, drawer mobile), agrupada por domínio em vez de lista
- * plana — ver seção 12 da spec de UI/UX do Wise.
+ * Sidebar do SquadWise — sempre escura (tokens --color-sidebar-*). Rail
+ * estreito só de ícones, mesmo padrão do resto do sistema: bolinha de
+ * destaque (--color-sidebar-active) no item ativo, tooltip no hover,
+ * grupos separados por divisor fino em vez de rótulo de texto.
  */
 export function SquadWiseSidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("squadwise-sidebar-collapsed");
-    if (stored !== null) setCollapsed(stored === "true");
-  }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -80,88 +73,47 @@ export function SquadWiseSidebar() {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  function toggle() {
-    setCollapsed((c) => {
-      localStorage.setItem("squadwise-sidebar-collapsed", String(!c));
-      return !c;
-    });
-  }
-
   const isActive = (item: NavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
-  const nav = (isCollapsed: boolean) => (
-    <nav className="flex-1 overflow-y-auto px-2 py-3">
-      {NAV.map((group, gi) => (
-        <div key={gi} className={gi > 0 ? "mt-4" : undefined}>
-          {group.label && !isCollapsed && (
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-sidebar-muted">
-              {group.label}
-            </p>
-          )}
-          {group.label && isCollapsed && <div className="my-2 border-t border-sidebar-border" />}
-          {group.items.map((item) => {
-            const active = isActive(item);
-            const link = (
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-[120ms]",
-                  isCollapsed && "justify-center px-2",
-                  active
-                    ? "bg-sidebar-surface text-sidebar-text"
-                    : "text-sidebar-muted hover:bg-sidebar-surface hover:text-sidebar-text"
-                )}
-              >
-                <span className={cn("shrink-0", active && "text-sidebar-active")}>{item.icon}</span>
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-            return (
-              <div key={item.href} className="mb-0.5">
-                {isCollapsed ? (
-                  <Tooltip content={item.label} side="right" delay={150}>{link}</Tooltip>
-                ) : link}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
-
   return (
     <>
-      {/* Desktop */}
-      <aside
-        className={cn(
-          "hidden lg:flex flex-col shrink-0 bg-sidebar border-r border-sidebar-border",
-          "transition-[width] ease-out"
-        )}
-        style={{ width: collapsed ? 72 : 260, transitionDuration: "var(--motion-sidebar)" }}
-      >
-        <div className={cn("flex shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4 py-4", collapsed && "justify-center px-2")}>
-          <img src="/squadwise.png" alt="SquadWise" className="h-6 w-6 shrink-0 object-contain" />
-          {!collapsed && <span className="truncate text-sm font-semibold text-sidebar-text">SquadWise</span>}
+      {/* Desktop rail */}
+      <aside className="hidden lg:flex w-[64px] shrink-0 flex-col items-center bg-sidebar border-r border-sidebar-border">
+        <div className="flex shrink-0 items-center justify-center border-b border-sidebar-border py-4">
+          <img src="/squadwise.png" alt="SquadWise" className="h-7 w-7 shrink-0 object-contain" />
         </div>
-
-        {nav(collapsed)}
-
-        <button
-          onClick={toggle}
-          className="flex h-10 shrink-0 items-center justify-center border-t border-sidebar-border text-sidebar-muted transition-colors duration-[120ms] hover:bg-sidebar-surface hover:text-sidebar-text"
-          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-          title={collapsed ? "Expandir menu" : "Recolher menu"}
-        >
-          {collapsed ? <ChevronRightIcon size={15} /> : <ChevronLeftIcon size={15} />}
-        </button>
+        <nav className="flex flex-1 flex-col items-center gap-1.5 overflow-y-auto py-3">
+          {NAV.map((group, gi) => (
+            <div key={gi} className={cn("flex flex-col items-center gap-1.5", gi > 0 && "mt-2 border-t border-sidebar-border pt-2")}>
+              {group.items.map((item) => {
+                const active = isActive(item);
+                return (
+                  <Tooltip key={item.href} content={item.label} side="right" delay={150}>
+                    <Link
+                      href={item.href}
+                      aria-label={item.label}
+                      className={cn(
+                        "flex h-11 w-11 items-center justify-center rounded-full",
+                        "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110",
+                        active ? "bg-sidebar-active text-white shadow-md" : "text-sidebar-muted hover:bg-sidebar-surface hover:text-sidebar-text"
+                      )}
+                    >
+                      {item.icon}
+                    </Link>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
       </aside>
 
       {/* Mobile FAB */}
       <button
         onClick={() => setMobileOpen(true)}
         aria-label="Abrir menu"
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-sidebar text-sidebar-text shadow-lg lg:hidden"
+        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-sidebar-active text-white shadow-lg transition-transform duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95 lg:hidden"
       >
         <MenuIcon size={20} />
       </button>
@@ -188,7 +140,34 @@ export function SquadWiseSidebar() {
             <CloseIcon size={18} />
           </button>
         </div>
-        {nav(false)}
+        <nav className="flex-1 overflow-y-auto px-2 py-3">
+          {NAV.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? "mt-4" : undefined}>
+              {group.label && (
+                <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-sidebar-muted">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => {
+                const active = isActive(item);
+                return (
+                  <div key={item.href} className="mb-0.5">
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors",
+                        active ? "bg-sidebar-active text-white" : "text-sidebar-muted hover:bg-sidebar-surface hover:text-sidebar-text"
+                      )}
+                    >
+                      <span className="shrink-0">{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
       </aside>
     </>
   );

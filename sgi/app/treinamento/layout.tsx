@@ -28,7 +28,7 @@ export default async function TreinamentoLayout({ children }: { children: React.
           </>
         }
       />
-      <main style={{ paddingTop: "calc(56px + env(safe-area-inset-top))" }}>
+      <main style={{ paddingTop: "calc(84px + env(safe-area-inset-top))" }}>
         {children}
       </main>
     </>

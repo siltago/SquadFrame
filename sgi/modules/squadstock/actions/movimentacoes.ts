@@ -6,9 +6,10 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { getUsuarioId } from "@/modules/squadframe/actions/compras/helpers";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
 
-async function buscarSaldoAtual(admin: ReturnType<typeof createAdminClient>, produtoId: string, localId: string, obraId: string | null) {
+async function buscarSaldoAtual(admin: ReturnType<typeof createAdminClient>, produtoId: string, localId: string, obraId: string | null, corId: string | null) {
   let q = admin.from("stock_saldos").select("quantidade").eq("produto_id", produtoId).eq("local_id", localId);
   q = obraId ? q.eq("obra_id", obraId) : q.is("obra_id", null);
+  q = corId ? q.eq("cor_id", corId) : q.is("cor_id", null);
   const { data } = await q.maybeSingle();
   return data?.quantidade ?? 0;
 }
@@ -25,6 +26,7 @@ export async function registrarSaida(formData: FormData) {
   const localId = String(formData.get("local_id") ?? "");
   const obraId = String(formData.get("obra_id") ?? "").trim() || null;
   const produtoId = String(formData.get("produto_id") ?? "");
+  const corId = String(formData.get("cor_id") ?? "").trim() || null;
   const quantidade = Number(formData.get("quantidade") ?? 0);
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
 
@@ -32,7 +34,7 @@ export async function registrarSaida(formData: FormData) {
   if (!produtoId) throw new Error("Selecione o produto.");
   if (!(quantidade > 0)) throw new Error("Quantidade precisa ser maior que zero.");
 
-  const saldoAtual = await buscarSaldoAtual(admin, produtoId, localId, obraId);
+  const saldoAtual = await buscarSaldoAtual(admin, produtoId, localId, obraId, corId);
   if (quantidade > saldoAtual) {
     throw new Error(`Saldo insuficiente — disponível: ${saldoAtual}.`);
   }
@@ -45,6 +47,7 @@ export async function registrarSaida(formData: FormData) {
     produto_id: produtoId,
     local_id: localId,
     obra_id: obraId,
+    cor_id: corId,
     tipo: "SAIDA",
     quantidade: -quantidade,
     origem_tipo: "manual",
@@ -67,6 +70,7 @@ export async function registrarAjuste(formData: FormData) {
   const localId = String(formData.get("local_id") ?? "");
   const obraId = String(formData.get("obra_id") ?? "").trim() || null;
   const produtoId = String(formData.get("produto_id") ?? "");
+  const corId = String(formData.get("cor_id") ?? "").trim() || null;
   const direcao = String(formData.get("direcao") ?? "positivo");
   const quantidade = Number(formData.get("quantidade") ?? 0);
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
@@ -79,7 +83,7 @@ export async function registrarAjuste(formData: FormData) {
   const quantidadeComSinal = direcao === "negativo" ? -quantidade : quantidade;
 
   if (quantidadeComSinal < 0) {
-    const saldoAtual = await buscarSaldoAtual(admin, produtoId, localId, obraId);
+    const saldoAtual = await buscarSaldoAtual(admin, produtoId, localId, obraId, corId);
     if (quantidade > saldoAtual) {
       throw new Error(`Ajuste negativo maior que o saldo — disponível: ${saldoAtual}.`);
     }
@@ -93,6 +97,7 @@ export async function registrarAjuste(formData: FormData) {
     produto_id: produtoId,
     local_id: localId,
     obra_id: obraId,
+    cor_id: corId,
     tipo: "AJUSTE",
     quantidade: quantidadeComSinal,
     origem_tipo: "manual",

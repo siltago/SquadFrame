@@ -12,22 +12,18 @@ function diasDesde(d: Date): number {
   return Math.round((hoje.getTime() - dia.getTime()) / 86_400_000);
 }
 
-// Pendências ficam visíveis pro comprador (dono do pedido) enquanto o pedido
-// não muda de fato — resolução é sempre automática (ver TRANSICOES_PEDIDO em
-// state-machines/compras.ts), nunca por um botão "marcar como resolvido".
-// A justificativa registrada hoje só silencia o banner por hoje; se amanhã o
-// pedido continuar no mesmo estado, a pendência reaparece puxando o motivo
-// mais recente como contexto.
-export async function detectarPendenciasComprador(usuarioId: string): Promise<Pendencia[]> {
-  const admin = createAdminClient();
+type Candidata = {
+  pedido: { id: string; numero: string; fornecedor: unknown };
+  tipo: TipoPendencia;
+  ultimoToque: Date;
+};
 
-  const hojeIso = new Date().toISOString().slice(0, 10);
-  const { data: snooze } = await admin
-    .from("usuario_pendencia_snooze")
-    .select("snoozed_em")
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  if (snooze?.snoozed_em === hojeIso) return [];
+// Núcleo de detecção compartilhado entre o banner (detectarPendenciasComprador,
+// que some com a pendência quando justificada/adiada hoje) e o gate de
+// bloqueio (detectarPendenciasBrutas, que NUNCA filtra por justificativa/
+// snooze — a gravidade real não pode ser resetada por um "Lembrar amanhã").
+async function coletarCandidatas(usuarioId: string): Promise<Candidata[]> {
+  const admin = createAdminClient();
 
   const { data: pedidos } = await admin
     .from("pedidos_compra")
@@ -52,7 +48,7 @@ export async function detectarPendenciasComprador(usuarioId: string): Promise<Pe
   }
 
   const hoje = inicioDoDia(new Date());
-  const candidatas: { pedido: (typeof pedidos)[number]; tipo: TipoPendencia; ultimoToque: Date }[] = [];
+  const candidatas: Candidata[] = [];
 
   for (const pedido of pedidos) {
     const ultimoToque = new Date(ultimoToqueMap.get(pedido.id) ?? pedido.criado_em);
@@ -72,8 +68,41 @@ export async function detectarPendenciasComprador(usuarioId: string): Promise<Pe
     }
   }
 
+  return candidatas;
+}
+
+function mapearParaPendencia(c: Candidata, ultimoMotivo: string | null): Pendencia {
+  return {
+    pedidoId: c.pedido.id,
+    numero: c.pedido.numero,
+    fornecedorNome: (c.pedido.fornecedor as unknown as { nome: string } | null)?.nome ?? null,
+    tipo: c.tipo,
+    diasEmAberto: diasDesde(c.ultimoToque),
+    ultimoMotivo,
+  };
+}
+
+// Pendências ficam visíveis pro comprador (dono do pedido) enquanto o pedido
+// não muda de fato — resolução é sempre automática (ver TRANSICOES_PEDIDO em
+// state-machines/compras.ts), nunca por um botão "marcar como resolvido".
+// A justificativa registrada hoje só silencia o banner por hoje; se amanhã o
+// pedido continuar no mesmo estado, a pendência reaparece puxando o motivo
+// mais recente como contexto.
+export async function detectarPendenciasComprador(usuarioId: string): Promise<Pendencia[]> {
+  const admin = createAdminClient();
+
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const { data: snooze } = await admin
+    .from("usuario_pendencia_snooze")
+    .select("snoozed_em")
+    .eq("usuario_id", usuarioId)
+    .maybeSingle();
+  if (snooze?.snoozed_em === hojeIso) return [];
+
+  const candidatas = await coletarCandidatas(usuarioId);
   if (candidatas.length === 0) return [];
 
+  const hoje = inicioDoDia(new Date());
   const { data: justificativas } = await admin
     .from("pedido_pendencia_justificativas")
     .select("pedido_id, tipo_pendencia, motivo, criado_em")
@@ -92,12 +121,15 @@ export async function detectarPendenciasComprador(usuarioId: string): Promise<Pe
 
   return candidatas
     .filter((c) => !jaJustificadaHoje.has(`${c.pedido.id}:${c.tipo}`))
-    .map((c) => ({
-      pedidoId: c.pedido.id,
-      numero: c.pedido.numero,
-      fornecedorNome: (c.pedido.fornecedor as unknown as { nome: string } | null)?.nome ?? null,
-      tipo: c.tipo,
-      diasEmAberto: diasDesde(c.ultimoToque),
-      ultimoMotivo: ultimoMotivoMap.get(`${c.pedido.id}:${c.tipo}`) ?? null,
-    }));
+    .map((c) => mapearParaPendencia(c, ultimoMotivoMap.get(`${c.pedido.id}:${c.tipo}`) ?? null));
+}
+
+// Variante usada SÓ pelo gate de bloqueio (verificar-bloqueio.ts) — sem
+// checar snooze nem "justificada hoje", pra que a gravidade real (dias em
+// aberto) nunca seja resetada por um "Lembrar amanhã" ou justificativa do
+// dia. A cobertura de pendência aqui é resolvida separadamente, por
+// prorrogação/exceção ativa (ver pedido_pendencia_prorrogacoes).
+export async function detectarPendenciasBrutas(usuarioId: string): Promise<Pendencia[]> {
+  const candidatas = await coletarCandidatas(usuarioId);
+  return candidatas.map((c) => mapearParaPendencia(c, null));
 }

@@ -146,7 +146,7 @@ export default async function CarteiraDetailPage({
   const totalDebitos = linhas.filter((m) => m.tipo === "DEBITO").reduce((s, m) => s + m.valor, 0);
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <RealtimeRefresher
         channelName={`carteira-${params.carteiraId}`}
         subs={[

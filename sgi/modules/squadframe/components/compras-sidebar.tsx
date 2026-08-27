@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppSidebar, SidebarSection } from "@/ui/layout/AppSidebar";
-import { Button } from "@/ui/components/Button";
+import { Tooltip } from "@/ui/components/Tooltip";
+import { cn } from "@/ui/lib/cn";
 import {
   DashboardIcon, DocumentIcon, PackageIcon, BuildingIcon,
-  BriefcaseIcon, CreditCardIcon, DollarSignIcon, LayersIcon, TruckIcon,
+  BriefcaseIcon, CreditCardIcon, DollarSignIcon, LayersIcon, TruckIcon, PlusIcon,
 } from "@/ui/icons";
 import { usePode } from "@/modules/squadframe/components/user-provider";
 
@@ -38,25 +39,43 @@ export function ComprasSidebar() {
   ];
 
   const footer = (podeCriarSolicitacao || podeCriarPedido) ? (
-    <div className="space-y-2">
+    <>
       {podeCriarSolicitacao && (
-        <Button as="a" href="/squadframe/compras/solicitacoes/nova" className="w-full justify-center">
-          Nova solicitação
-        </Button>
+        <Tooltip content="Nova solicitação" side="right" delay={150}>
+          <Link
+            href="/squadframe/compras/solicitacoes/nova"
+            aria-label="Nova solicitação"
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full text-white",
+              "bg-gradient-to-br from-accent to-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]",
+              "transition-all duration-[var(--motion-hover)] ease-out hover:scale-110"
+            )}
+          >
+            <PlusIcon size={19} />
+          </Link>
+        </Tooltip>
       )}
       {podeCriarPedido && (
-        <Button as="a" href="/squadframe/compras/pedidos/novo" variant="ghost" className="w-full justify-center">
-          Novo pedido
-        </Button>
+        <Tooltip content="Novo pedido" side="right" delay={150}>
+          <Link
+            href="/squadframe/compras/pedidos/novo"
+            aria-label="Novo pedido"
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full text-text-3",
+              "transition-all duration-[var(--motion-hover)] ease-out hover:scale-110 hover:bg-surface-2 hover:text-text"
+            )}
+          >
+            <PlusIcon size={19} />
+          </Link>
+        </Tooltip>
       )}
-    </div>
+    </>
   ) : undefined;
 
   return (
     <AppSidebar
       sections={sections}
       footer={footer}
-      storageKey="squad-compras-sidebar"
       hideMobileTrigger={ocultarFabMobile}
     />
   );

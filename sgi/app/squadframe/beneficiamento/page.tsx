@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import {
   ROTA_BENEFICIAMENTO_LABEL, STATUS_BENEFICIAMENTO_LABEL, STATUS_BENEFICIAMENTO_COR,
+  STATUS_PED_LABEL, STATUS_PED_COR,
   type RotaBeneficiamento, type StatusBeneficiamento,
 } from "@/modules/squadframe/types/compras";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
@@ -19,6 +20,7 @@ interface BeneficiamentoRow {
   obra: { nome: string } | { nome: string }[] | null;
   pedido_origem: { id: string; numero: string } | { id: string; numero: string }[] | null;
   pedido_pintura: { id: string; numero: string; fornecedor: { nome: string } | { nome: string }[] | null } | { id: string; numero: string; fornecedor: { nome: string } | { nome: string }[] | null }[] | null;
+  pedido_beneficiamento: { id: string; status: string; fornecedor: { nome: string } | { nome: string }[] | null } | { id: string; status: string; fornecedor: { nome: string } | { nome: string }[] | null }[] | null;
 }
 
 const rel = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
@@ -34,7 +36,8 @@ export default async function BeneficiamentoPage({
       id, numero, rota, status, criado_em,
       obra:obras(nome),
       pedido_origem:pedidos_compra!beneficiamentos_pedido_origem_id_fkey(id, numero),
-      pedido_pintura:pedidos_compra!beneficiamentos_pedido_pintura_id_fkey(id, numero, fornecedor:fornecedores(nome))
+      pedido_pintura:pedidos_compra!beneficiamentos_pedido_pintura_id_fkey(id, numero, fornecedor:fornecedores(nome)),
+      pedido_beneficiamento:pedidos_beneficiamento(id, status, fornecedor:fornecedores(nome))
     `)
     .order("criado_em", { ascending: false });
 
@@ -80,7 +83,7 @@ export default async function BeneficiamentoPage({
               <th className="px-5 py-2 font-medium">Rota</th>
               <th className="px-5 py-2 font-medium">Status</th>
               <th className="px-5 py-2 font-medium">Pedido origem</th>
-              <th className="px-5 py-2 font-medium">Pedido de pintura</th>
+              <th className="px-5 py-2 font-medium">Pedido de beneficiamento</th>
               <th className="px-5 py-2 font-medium">Criado em</th>
             </tr>
           </thead>
@@ -95,7 +98,9 @@ export default async function BeneficiamentoPage({
               const obra = rel(b.obra);
               const origem = rel(b.pedido_origem);
               const pintura = rel(b.pedido_pintura);
-              const fornecedor = pintura ? rel(pintura.fornecedor) : null;
+              const pedidoBenef = rel(b.pedido_beneficiamento);
+              const fornecedorLegado = pintura ? rel(pintura.fornecedor) : null;
+              const fornecedorNovo = pedidoBenef ? rel(pedidoBenef.fornecedor) : null;
               const cor = STATUS_BENEFICIAMENTO_COR[b.status];
               return (
                 <tr key={b.id} className="border-b border-border last:border-0 hover:bg-bg/50">
@@ -123,10 +128,23 @@ export default async function BeneficiamentoPage({
                     ) : "—"}
                   </td>
                   <td className="px-5 py-2.5 text-xs">
-                    {pintura ? (
+                    {pedidoBenef ? (
+                      // Não é mais um pedido de compras — sem link, só o
+                      // status inline. Detalhes/ações ficam na tela do
+                      // beneficiamento (BeneficiamentoDetalheCliente).
+                      <span>
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ backgroundColor: STATUS_PED_COR[pedidoBenef.status as keyof typeof STATUS_PED_COR] + "22", color: STATUS_PED_COR[pedidoBenef.status as keyof typeof STATUS_PED_COR] }}
+                        >
+                          {STATUS_PED_LABEL[pedidoBenef.status as keyof typeof STATUS_PED_LABEL] ?? pedidoBenef.status}
+                        </span>
+                        {fornecedorNovo?.nome && <span className="ml-2 text-text-3">{fornecedorNovo.nome}</span>}
+                      </span>
+                    ) : pintura ? (
                       <Link href={`/squadframe/compras/pedidos/${pintura.id}`} className="hover:underline">
                         <span className="font-mono text-text-2">{pintura.numero}</span>
-                        {fornecedor?.nome && <span className="text-text-3"> — {fornecedor.nome}</span>}
+                        {fornecedorLegado?.nome && <span className="text-text-3"> — {fornecedorLegado.nome}</span>}
                       </Link>
                     ) : "—"}
                   </td>

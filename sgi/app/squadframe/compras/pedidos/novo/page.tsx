@@ -72,7 +72,7 @@ export default async function NovoPedidoPage({
   }
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-5xl mx-auto">
       <BackButton href={fromObraId ? `/squadframe/obras/${fromObraId}?aba=pedidos` : "/squadframe/compras/pedidos"} />
       <h1 className="mt-2 text-2xl font-bold tracking-tight">Novo Pedido de Compra</h1>
       <p className="mt-1 text-sm text-text-2">

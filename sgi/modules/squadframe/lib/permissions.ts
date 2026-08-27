@@ -18,6 +18,7 @@ export const PERMISSIONS = {
   // Beneficiamento
   COMPRAS_BENEFICIAMENTO_CRIAR:     "compras.beneficiamento.criar",
   COMPRAS_BENEFICIAMENTO_GERENCIAR: "compras.beneficiamento.gerenciar",
+  COMPRAS_BENEFICIAMENTO_APROVAR:   "compras.beneficiamento.aprovar",
 
   // Romaneio de entrega
   COMPRAS_ROMANEIO_CRIAR: "compras.romaneio.criar",

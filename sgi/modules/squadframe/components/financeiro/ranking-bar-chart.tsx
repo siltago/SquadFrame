@@ -10,7 +10,7 @@ export interface RankingItem {
   count: number;
 }
 
-const COR_BARRA = "rgb(var(--color-primary))";
+const COR_BARRA = "rgb(var(--color-accent))";
 const COR_GRADE = "rgb(var(--color-border))";
 const COR_EIXO = "rgb(var(--color-text-3))";
 
@@ -58,8 +58,8 @@ export function RankingBarChart({ titulo, dados, limite = 8 }: { titulo: string;
 
   return (
     <div className="card overflow-hidden">
-      <div className="border-b border-border px-5 py-3">
-        <h2 className="text-sm font-semibold text-text">{titulo}</h2>
+      <div className="px-5 py-4">
+        <h2 className="text-base font-semibold text-text">{titulo}</h2>
       </div>
       {top.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-text-3">Nenhum dado no período.</p>
@@ -67,11 +67,17 @@ export function RankingBarChart({ titulo, dados, limite = 8 }: { titulo: string;
         <div className="px-2 py-3" style={{ height: altura }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={top} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 0 }} barCategoryGap={10}>
+              <defs>
+                <linearGradient id="squadui-barra-ranking" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={COR_BARRA} stopOpacity={0.55} />
+                  <stop offset="100%" stopColor={COR_BARRA} stopOpacity={1} />
+                </linearGradient>
+              </defs>
               <CartesianGrid horizontal={false} stroke={COR_GRADE} strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={fmtCompacto} tick={{ fill: COR_EIXO, fontSize: 11 }} axisLine={{ stroke: COR_GRADE }} tickLine={false} />
               <YAxis type="category" dataKey="nomeCurto" width={140} tick={{ fill: COR_EIXO, fontSize: 11 }} axisLine={{ stroke: COR_GRADE }} tickLine={false} />
               <Tooltip content={(props: any) => <ChartTooltip {...props} />} cursor={{ fill: "rgb(var(--color-surface-2))" }} isAnimationActive={false} />
-              <Bar dataKey="total" fill={COR_BARRA} radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false} />
+              <Bar dataKey="total" fill="url(#squadui-barra-ranking)" radius={[0, 6, 6, 0]} maxBarSize={20} isAnimationActive animationDuration={700} animationEasing="ease-out" />
             </BarChart>
           </ResponsiveContainer>
         </div>

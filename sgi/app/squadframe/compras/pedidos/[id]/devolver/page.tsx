@@ -24,7 +24,7 @@ export default async function DevolverPedidoPage({ params }: { params: { id: str
   }
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-8 py-8 max-w-3xl mx-auto">
       <BackButton href={`/squadframe/compras/pedidos/${params.id}`} />
       <h1 className="mt-3 text-2xl font-bold tracking-tight">Devolução de Pedido</h1>
       <p className="mt-1 text-sm text-text-2 font-mono">{ped.numero}</p>

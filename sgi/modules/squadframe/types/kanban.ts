@@ -9,6 +9,7 @@ export type NotificacaoTipo =
   | 'pedido_aprovado'
   | 'pedido_aguardando_aprovacao'
   | 'debito_carteira_falhou'
+  | 'solicitacao_aguardando_aprovacao'
   | 'solicitacao_aprovada'
   | 'solicitacao_rejeitada'
   | 'pedido_cobranca_prazo'
@@ -21,6 +22,14 @@ export type NotificacaoTipo =
   | 'devolucao_pedido_rejeitada'
   | 'devolucao_pedido_enviada'
   | 'devolucao_pedido_entregue'
+  | 'pendencia_escalada'
+  | 'pendencia_excecao_solicitada'
+  | 'pendencia_excecao_decidida'
+  | 'pendencia_carencia_concedida'
+  | 'beneficiamento_aguardando_aprovacao'
+  | 'beneficiamento_aprovado'
+  | 'beneficiamento_cancelado'
+  | 'beneficiamento_recebido'
   // SquadBoard
   | 'board_card_atribuido'
   | 'board_card_movido'
@@ -40,6 +49,7 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'pedido_aprovado',
     'pedido_aguardando_aprovacao',
     'debito_carteira_falhou',
+    'solicitacao_aguardando_aprovacao',
     'solicitacao_aprovada',
     'solicitacao_rejeitada',
     'pedido_cobranca_prazo',
@@ -52,6 +62,14 @@ export const TIPOS_NOTIFICACAO_POR_ESCOPO: Record<EscopoNotificacao, Notificacao
     'devolucao_pedido_rejeitada',
     'devolucao_pedido_enviada',
     'devolucao_pedido_entregue',
+    'pendencia_escalada',
+    'pendencia_excecao_solicitada',
+    'pendencia_excecao_decidida',
+    'pendencia_carencia_concedida',
+    'beneficiamento_aguardando_aprovacao',
+    'beneficiamento_aprovado',
+    'beneficiamento_cancelado',
+    'beneficiamento_recebido',
   ],
   squadboard: [
     'board_card_atribuido',

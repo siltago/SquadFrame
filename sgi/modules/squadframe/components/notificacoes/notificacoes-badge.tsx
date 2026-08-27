@@ -17,6 +17,7 @@ const TIPO_LABEL: Record<string, string> = {
   tarefa_comentario:           "Novo comentário em tarefa",
   pedido_aprovado:             "Pedido aprovado — emita agora",
   pedido_aguardando_aprovacao: "Pedido aguardando aprovação",
+  solicitacao_aguardando_aprovacao: "Solicitação aguardando aprovação",
   solicitacao_aprovada:        "Solicitação aprovada",
   solicitacao_rejeitada:       "Solicitação rejeitada",
   debito_carteira_falhou:      "Débito da carteira não realizado",
@@ -30,6 +31,10 @@ const TIPO_LABEL: Record<string, string> = {
   devolucao_pedido_rejeitada:  "Devolução de pedido rejeitada",
   devolucao_pedido_enviada:    "Devolução enviada ao fornecedor",
   devolucao_pedido_entregue:   "Devolução entregue",
+  pendencia_escalada:              "Pendência crítica escalada",
+  pendencia_excecao_solicitada:    "Exceção de pendência aguardando aprovação",
+  pendencia_excecao_decidida:      "Exceção de pendência decidida",
+  pendencia_carencia_concedida:    "Carência concedida em pendências",
   // SquadBoard
   board_card_atribuido:        "Card atribuído a você",
   board_card_movido:           "Card movido de coluna",
@@ -82,6 +87,14 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
       return { titulo: "Devolução enviada ao fornecedor", corpo: `Devolução ${p.numero_devolucao} foi enviada ao fornecedor` };
     case "devolucao_pedido_entregue":
       return { titulo: "Devolução entregue", corpo: `Devolução ${p.numero_devolucao} foi entregue` };
+    case "solicitacao_aguardando_aprovacao": {
+      const obra = p.obra_nome ? ` - ${p.obra_nome}` : "";
+      const enviadoPor = p.criado_por_nome ? ` enviada por ${p.criado_por_nome}` : "";
+      return {
+        titulo: "Solicitação de compra aguardando aprovação",
+        corpo: `Solicitação ${p.numero}${obra}${enviadoPor} para aprovação`,
+      };
+    }
     case "solicitacao_aprovada":
       return { titulo: "Solicitação aprovada", corpo: `Solicitação ${p.numero} foi aprovada` };
     case "solicitacao_rejeitada":
@@ -90,6 +103,31 @@ function formatarNotificacao(n: Notificacao): { titulo: string; corpo: string | 
       return { titulo: "Cobrança: pedido aguardando aprovação", corpo: `Pedido ${p.numero} ainda aguarda aprovação` };
     case "solicitacao_cobranca_prazo":
       return { titulo: "Cobrança: solicitação aguardando aprovação", corpo: `Solicitação ${p.numero} ainda aguarda aprovação` };
+    case "pendencia_escalada":
+      return {
+        titulo: "Pendência crítica escalada",
+        corpo: `Pedido ${p.numero} está há ${p.dias_em_aberto} dias sem resolução`,
+      };
+    case "pendencia_excecao_solicitada":
+      return {
+        titulo: "Exceção de pendência aguardando aprovação",
+        corpo: `${p.solicitante_nome ?? "Um comprador"} pediu exceção pro pedido ${p.numero}`,
+      };
+    case "pendencia_excecao_decidida": {
+      // JSONB devolve boolean de verdade, não string — payload é tipado
+      // frouxo (Record<string, string|...>) só pra simplificar os outros
+      // casos, então aqui o valor real precisa ser lido sem essa suposição.
+      const aprovado = (n.payload as Record<string, unknown>).aprovado === true;
+      return {
+        titulo: aprovado ? "Exceção de pendência aprovada" : "Exceção de pendência rejeitada",
+        corpo: `Sua exceção pro pedido ${p.numero} foi ${aprovado ? "aprovada" : "rejeitada"} pelo gestor`,
+      };
+    }
+    case "pendencia_carencia_concedida":
+      return {
+        titulo: "Carência concedida em pendências",
+        corpo: `Você tem ${p.quantidade} pendência(s) crítica(s) com prazo estendido até ${p.nova_data ?? "novo prazo"} — resolva ou solicite prorrogação antes disso.`,
+      };
     case "tarefa_atribuida":
       return { titulo: p.papel ? "Você foi adicionado a uma tarefa" : "Tarefa atribuída a você", corpo: p.titulo ?? "Nova tarefa" };
     case "tarefa_comentario":
@@ -120,6 +158,14 @@ function resolverLink(n: Notificacao): { href: string; label: string } | null {
     case "devolucao_pedido_entregue":
       if (p.order_id) return { href: `/squadframe/compras/pedidos/${p.order_id}`, label: p.numero ?? "Ver pedido" };
       break;
+    case "pendencia_escalada":
+    case "pendencia_excecao_solicitada":
+    case "pendencia_excecao_decidida":
+      if (p.pedido_id) return { href: `/squadframe/compras/pedidos/${p.pedido_id}`, label: p.numero ?? "Ver pedido" };
+      break;
+    case "pendencia_carencia_concedida":
+      return { href: `/squadframe/compras/pedidos`, label: "Ver pendências" };
+    case "solicitacao_aguardando_aprovacao":
     case "solicitacao_aprovada":
     case "solicitacao_rejeitada":
     case "solicitacao_cobranca_prazo":
@@ -295,7 +341,7 @@ export function NotificacoesBadge({ usuarioId, naoLidasIniciais, escopo }: Props
     <div className="relative">
       <button
         onClick={handleAbrir}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110 hover:bg-white/12 hover:text-white"
         title="Notificações"
       >
         <BellIcon size={18} />

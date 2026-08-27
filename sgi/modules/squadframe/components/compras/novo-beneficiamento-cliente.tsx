@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { criarBeneficiamento } from "@/modules/squadframe/actions/compras/beneficiamentos";
-import { criarProdutoRapidoAction } from "@/modules/squadframe/package-procurement/actions";
 import { Button } from "@/ui/components/Button";
 import { Textarea } from "@/ui/components/Input";
 import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
@@ -13,15 +12,13 @@ type ProdutoOrigem = { id: string; codigo_mestre: string; nome: string; unidade:
 type ItemPedido = { id: string; quantidade_pedida: number; unidade: string; descricao_snapshot: string; produto: ProdutoOrigem | null };
 type PedidoOrigem = { id: string; numero: string; obra_id: string | null; obra: { nome: string } | null; itens: ItemPedido[] };
 type PedidoResumo = { id: string; numero: string; obra: { nome: string } | null };
-type ProdutoBusca = { id: string; codigo_mestre: string; nome: string; unidade: string; tamanho_mm: number | null };
+type CorRal = { id: string; codigo_ral: string; nome: string | null; tipos: string[] | null };
 
 type LinhaForm = {
   itemId: string;
   incluir: boolean;
   quantidade: number;
-  produtoPintadoId: string | null;
-  produtoPintadoLabel: string | null;
-  cadastrando: boolean;
+  corId: string | null;
 };
 
 export function NovoBeneficiamentoCliente({
@@ -29,11 +26,13 @@ export function NovoBeneficiamentoCliente({
   pedidosElegiveis,
   fornecedores,
   formasPagamento,
+  coresRal,
 }: {
   pedidoOrigem: PedidoOrigem | null;
   pedidosElegiveis: PedidoResumo[];
   fornecedores: { id: string; nome: string }[];
   formasPagamento: { id: string; nome: string; is_faturamento_direto: boolean }[];
+  coresRal: CorRal[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -41,11 +40,11 @@ export function NovoBeneficiamentoCliente({
   const { status: overlayStatus, run: runComOverlay } = useLoadingOverlay();
 
   const formaFaturamentoDireto = formasPagamento.find((f) => f.is_faturamento_direto);
+  const coresPerfil = coresRal.filter((c) => (c.tipos ?? []).includes("PERFIL"));
 
   const [linhas, setLinhas] = useState<LinhaForm[]>(
     (pedidoOrigem?.itens ?? []).map((i) => ({
-      itemId: i.id, incluir: true, quantidade: i.quantidade_pedida,
-      produtoPintadoId: null, produtoPintadoLabel: null, cadastrando: false,
+      itemId: i.id, incluir: true, quantidade: i.quantidade_pedida, corId: null,
     }))
   );
 
@@ -95,7 +94,7 @@ export function NovoBeneficiamentoCliente({
     const incluidas = linhas.filter((l) => l.incluir);
     if (incluidas.length === 0) { setErro("Selecione ao menos um item."); return; }
     for (const l of incluidas) {
-      if (!l.produtoPintadoId) { setErro("Todo item incluído precisa de um produto pintado escolhido ou cadastrado."); return; }
+      if (!l.corId) { setErro("Todo item incluído precisa de uma cor de pintura selecionada."); return; }
       if (!(l.quantidade > 0)) { setErro("Quantidade precisa ser maior que zero."); return; }
     }
 
@@ -104,7 +103,7 @@ export function NovoBeneficiamentoCliente({
       return {
         pedido_item_origem_id: l.itemId,
         produto_cru_id: itemOrigem.produto!.id,
-        produto_pintado_id: l.produtoPintadoId,
+        cor_id: l.corId,
         descricao_snapshot: `${itemOrigem.descricao_snapshot} (pintado)`,
         quantidade: l.quantidade,
         unidade: itemOrigem.unidade,
@@ -148,6 +147,7 @@ export function NovoBeneficiamentoCliente({
               key={l.itemId}
               item={item}
               linha={l}
+              coresPerfil={coresPerfil}
               onChange={(fn) => patch(l.itemId, fn)}
             />
           );
@@ -208,10 +208,11 @@ export function NovoBeneficiamentoCliente({
 }
 
 function LinhaItem({
-  item, linha, onChange,
+  item, linha, coresPerfil, onChange,
 }: {
   item: ItemPedido;
   linha: LinhaForm;
+  coresPerfil: CorRal[];
   onChange: (fn: (l: LinhaForm) => LinhaForm) => void;
 }) {
   return (
@@ -238,122 +239,23 @@ function LinhaItem({
         <span className="w-16 shrink-0 text-xs text-text-3">{item.unidade} (de {item.quantidade_pedida})</span>
       </div>
       {linha.incluir && (
-        <div className="pl-7">
-          {linha.produtoPintadoId ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
-              Produto pintado: <span className="font-mono">{linha.produtoPintadoLabel}</span>
-              <button type="button" onClick={() => onChange((l) => ({ ...l, produtoPintadoId: null, produtoPintadoLabel: null }))} className="ml-1 text-emerald-700 hover:text-danger">×</button>
-            </span>
-          ) : linha.cadastrando ? (
-            <CadastroProdutoPintado
-              produtoOrigem={item.produto}
-              onCancelar={() => onChange((l) => ({ ...l, cadastrando: false }))}
-              onCriado={(p) => onChange((l) => ({ ...l, produtoPintadoId: p.id, produtoPintadoLabel: `${p.codigo_mestre} — ${p.nome}`, cadastrando: false }))}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <ProdutoBuscaInline onSelect={(p) => onChange((l) => ({ ...l, produtoPintadoId: p.id, produtoPintadoLabel: `${p.codigo_mestre} — ${p.nome}` }))} />
-              <button
-                type="button"
-                onClick={() => onChange((l) => ({ ...l, cadastrando: true }))}
-                className="shrink-0 rounded-md border border-primary/40 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10"
-              >
-                Cadastrar produto pintado
-              </button>
-            </div>
+        <div className="pl-7 flex items-center gap-2">
+          <label className="text-xs text-text-3 shrink-0">Cor de pintura:</label>
+          <select
+            className="field h-8 text-xs w-56"
+            value={linha.corId ?? ""}
+            onChange={(e) => onChange((l) => ({ ...l, corId: e.target.value || null }))}
+          >
+            <option value="" disabled>Selecione…</option>
+            {coresPerfil.map((c) => (
+              <option key={c.id} value={c.id}>{c.codigo_ral}{c.nome ? ` — ${c.nome}` : ""}</option>
+            ))}
+          </select>
+          {coresPerfil.length === 0 && (
+            <p className="text-xs text-warning">Nenhuma cor de perfil cadastrada. Configure em Catálogo → Cores RAL.</p>
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ProdutoBuscaInline({ onSelect }: { onSelect: (p: ProdutoBusca) => void }) {
-  const [query, setQuery] = useState("");
-  const [resultados, setResultados] = useState<ProdutoBusca[]>([]);
-  const [aberto, setAberto] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setResultados([]); return; }
-    debounceRef.current = setTimeout(() => {
-      fetch(`/api/produtos/search?q=${encodeURIComponent(query.trim())}`)
-        .then((r) => r.json())
-        .then((data: ProdutoBusca[]) => { setResultados(data); setAberto(true); })
-        .catch(() => setResultados([]));
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [query]);
-
-  return (
-    <div className="relative flex-1 min-w-0 max-w-xs">
-      <input
-        className="w-full rounded-md border border-border bg-bg px-2 py-1 text-xs"
-        placeholder="Buscar produto pintado existente…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => resultados.length > 0 && setAberto(true)}
-        onBlur={() => setTimeout(() => setAberto(false), 150)}
-      />
-      {aberto && resultados.length > 0 && (
-        <div className="absolute z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border bg-surface shadow-lg">
-          {resultados.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onSelect(p); setQuery(""); setResultados([]); setAberto(false); }}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-bg"
-            >
-              <span className="shrink-0 font-mono text-text-3">{p.codigo_mestre}</span>
-              <span className="flex-1 truncate">{p.nome}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CadastroProdutoPintado({
-  produtoOrigem, onCancelar, onCriado,
-}: {
-  produtoOrigem: ProdutoOrigem | null;
-  onCancelar: () => void;
-  onCriado: (p: { id: string; codigo_mestre: string; nome: string }) => void;
-}) {
-  const [codigoMestre, setCodigoMestre] = useState(produtoOrigem ? `${produtoOrigem.codigo_mestre}-PINT` : "");
-  const [nomeTecnico, setNomeTecnico] = useState(produtoOrigem ? `${produtoOrigem.nome} (pintado)` : "");
-  const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
-
-  function salvar() {
-    if (!produtoOrigem?.linha_id) { setErro("Produto de origem sem linha — não é possível criar variante."); return; }
-    if (!codigoMestre.trim() || !nomeTecnico.trim()) { setErro("Preencha código mestre e nome."); return; }
-    setErro(null);
-    setSalvando(true);
-    criarProdutoRapidoAction({
-      linha_id: produtoOrigem.linha_id,
-      codigo_mestre: codigoMestre.trim(),
-      nome_tecnico: nomeTecnico.trim(),
-      unidade: produtoOrigem.unidade,
-      tamanho_mm: produtoOrigem.tamanho_mm,
-    })
-      .then((p) => onCriado({ id: p.id, codigo_mestre: p.codigo_mestre, nome: p.nome }))
-      .catch((e) => setErro(e instanceof Error ? e.message : "Não foi possível cadastrar o produto."))
-      .finally(() => setSalvando(false));
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-primary/30 bg-primary-soft/50 p-2">
-      <input className="w-40 rounded-md border border-border bg-bg px-2 py-1 text-xs" placeholder="código mestre" value={codigoMestre} onChange={(e) => setCodigoMestre(e.target.value)} />
-      <input className="w-56 flex-1 min-w-40 rounded-md border border-border bg-bg px-2 py-1 text-xs" placeholder="nome técnico" value={nomeTecnico} onChange={(e) => setNomeTecnico(e.target.value)} />
-      <button type="button" disabled={salvando} onClick={salvar} className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white hover:bg-primary/90 disabled:opacity-50">
-        {salvando ? "Salvando…" : "Salvar"}
-      </button>
-      <button type="button" onClick={onCancelar} className="text-[11px] text-text-3 hover:text-text-2">cancelar</button>
-      {erro && <span className="w-full text-[11px] text-danger">{erro}</span>}
     </div>
   );
 }

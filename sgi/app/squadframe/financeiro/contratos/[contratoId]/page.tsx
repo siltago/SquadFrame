@@ -49,7 +49,7 @@ export default async function ContratoDetalhePage({ params }: { params: { contra
   const tiposDisponiveis = (tiposLinha ?? []).filter((t) => !tiposJaUsados.has(t.slug));
 
   return (
-    <div className="px-8 py-8 max-w-4xl">
+    <div className="px-8 py-8 max-w-4xl mx-auto">
       <RealtimeRefresher
         channelName={`financeiro-contrato-${params.contratoId}`}
         subs={[

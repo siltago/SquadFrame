@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Button } from "@/ui/components/Button";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { STATUS_SOL_LABEL, PRIORIDADE_LABEL } from "@/modules/squadframe/types/compras";
 import { SolicitacoesLista } from "@/modules/squadframe/components/compras/solicitacoes-lista";
 import { Pagination } from "@/ui/components/Pagination";
 import { RealtimeRefresher } from "@/modules/squadframe/components/realtime-refresher";
+import { BotaoAcaoCompras } from "@/modules/squadframe/components/pendencias/botao-acao-compras";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +48,7 @@ export default async function SolicitacoesPage({
           <h1 className="text-2xl font-bold tracking-tight">Solicitações de Compra</h1>
           <p className="mt-1 text-sm text-text-2">{count ?? 0} registro(s)</p>
         </div>
-        <Button as="a" href="/squadframe/compras/solicitacoes/nova">Nova solicitação</Button>
+        <BotaoAcaoCompras acao="criar_solicitacao" href="/squadframe/compras/solicitacoes/nova">Nova solicitação</BotaoAcaoCompras>
       </div>
 
       {/* Filtros */}

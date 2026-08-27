@@ -39,32 +39,35 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
     <div className="relative">
       <button
         onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-white/10"
+        className="flex shrink-0 items-center gap-2 rounded-full px-2 py-1 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-[1.03] hover:bg-white/12"
       >
         {/* Avatar */}
         {usuario.foto_url && !imgError ? (
           <img
             src={usuario.foto_url}
             alt={usuario.nome}
-            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/25"
             onError={() => setImgError(true)}
           />
         ) : (
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
             style={{ backgroundColor: cargoCor }}
           >
             {initials}
           </div>
         )}
 
-        {/* Nome + cargo */}
-        <div className="hidden text-left sm:block">
+        {/* Nome + cargo — some ANTES do texto da busca e do texto das
+            abas da nav (que só somem em 2xl/1536px): breakpoint próprio
+            mais alto, então em telas médias já não tem mais nome de
+            usuário, mas busca e abas continuam por escrito até 1536px. */}
+        <div className="hidden text-left min-[1650px]:block">
           <p className="text-sm font-medium leading-none text-white">
             {usuario.nome.split(" ")[0]}
           </p>
           {usuario.cargo && (
-            <p className="mt-0.5 text-xs leading-none" style={{ color: "rgba(255,255,255,0.65)" }}>
+            <p className="mt-0.5 text-xs leading-none text-white/60">
               {usuario.cargo.nome}
             </p>
           )}
@@ -73,8 +76,7 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
         {/* Chevron */}
         <ChevronDownIcon
           size={14}
-          stroke="rgba(255,255,255,0.7)"
-          className={`hidden shrink-0 transition-transform sm:block ${aberto ? "rotate-180" : ""}`}
+          className={`hidden shrink-0 text-white/60 transition-transform min-[1650px]:block ${aberto ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -187,7 +189,12 @@ export function HeaderUser({ usuario }: { usuario: UsuarioAtual }) {
                       toast("Notificações bloqueadas no navegador. Abra as configurações do site (ícone de cadeado na barra de endereço) e permita notificações.", "info");
                       return;
                     }
-                    await requestPushPermission();
+                    const resultado = await requestPushPermission();
+                    if (resultado.ok) {
+                      toast("Notificações ativadas.", "sucesso");
+                    } else if (resultado.motivo) {
+                      toast(resultado.motivo, "info");
+                    }
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-2 hover:bg-bg hover:text-text"
                 >

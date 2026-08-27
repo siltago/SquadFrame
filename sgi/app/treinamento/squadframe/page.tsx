@@ -4,9 +4,39 @@ export const dynamic = "force-dynamic";
 
 const GUIAS = [
   {
+    slug: "solicitacoes-aprovacoes",
+    titulo: "Solicitações e Aprovações",
+    descricao: "Criar, enviar, aprovar ou rejeitar solicitações e transformá-las em pedidos.",
+  },
+  {
+    slug: "pedidos-etapas",
+    titulo: "Pedidos e Etapas",
+    descricao: "Criação, aprovação, emissão, recebimento, finalização, retorno e devolução de pedidos.",
+  },
+  {
+    slug: "lotes-compras",
+    titulo: "Lotes em Compras",
+    descricao: "Preparar o contexto de Compras, vincular pedidos e acompanhar a cobertura do lote.",
+  },
+  {
+    slug: "romaneios-entrega",
+    titulo: "Romaneios de Entrega",
+    descricao: "Cadastrar PDFs de romaneio, revisar a leitura e vincular os pedidos corretos.",
+  },
+  {
+    slug: "beneficiamento",
+    titulo: "Beneficiamento",
+    descricao: "Enviar perfis naturais para pintura e acompanhar o processo de forma independente.",
+  },
+  {
+    slug: "faturamento-direto-debitos",
+    titulo: "Faturamento Direto e Débitos",
+    descricao: "Selecionar faturamento direto, aprovar ou rejeitar débitos e resolver pendências.",
+  },
+  {
     slug: "usuario-compras-financeiro",
-    titulo: "Usuário, Compras e Financeiro",
-    descricao: "Acesso, perfil, permissões, fornecedores, solicitações, pedidos, status e financeiro — do primeiro login ao pedido finalizado.",
+    titulo: "Primeiros Passos e Visão Geral",
+    descricao: "Acesso, perfil, permissões, fornecedores e uma visão geral do fluxo antigo de Compras.",
   },
   {
     slug: "catalogo",

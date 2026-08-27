@@ -28,7 +28,12 @@ async function notificarUsuario(
   await admin.from("notificacoes").insert({ usuario_id: usuarioId, tipo, tarefa_id: tarefaId, payload });
   const { data } = await admin.from("push_subscriptions").select("endpoint, p256dh, auth").eq("user_id", usuarioId);
   const subs = (data ?? []) as PushSubscription[];
-  if (subs.length) await sendPushToSubscriptions(subs, push).catch(() => {});
+  if (!subs.length) return;
+  const resultados = await sendPushToSubscriptions(subs, push).catch(() => []);
+  const endpointsExpirados = resultados.filter((r) => r.expirado).map((r) => r.endpoint);
+  if (endpointsExpirados.length) {
+    await admin.from("push_subscriptions").delete().in("endpoint", endpointsExpirados);
+  }
 }
 
 export async function criarTarefa(formData: FormData) {

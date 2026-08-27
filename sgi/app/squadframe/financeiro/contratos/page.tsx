@@ -42,10 +42,11 @@ export default async function ContratosPage() {
   const rows = (contratos ?? []) as unknown as ContratoRow[];
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="pl-24 pr-8 py-8 max-w-5xl mx-auto">
       <RealtimeRefresher channelName="financeiro-contratos" subs={[{ table: "contratos" }]} />
-      <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
       <FinanceiroTabNav podeDashboard={podeDashboard} podeCarteiras={podeCarteiras} podeContratos={podeContratos} />
+
+      <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
 
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-text-2 max-w-2xl">

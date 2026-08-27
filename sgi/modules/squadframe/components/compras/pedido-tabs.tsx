@@ -180,7 +180,6 @@ function itemTotal(peso: number | null, precoKgMedio: number | null, quantidade:
 
 function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; coresRal?: any[] }) {
   const usaPrecoKg = (pedido.tipo_linha ?? "").toUpperCase().includes("PERFIL") && pedido.valor_final != null;
-  const podeReceber = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL"].includes(pedido.status);
   const temSpecs = itens.some((it) => it.produto?.tamanho_mm || it.produto?.peso_metro ||
     ["M","ML","M²","M2","CHAPA"].includes((it.unidade ?? "").toUpperCase()));
   const totalMetros = itens.reduce((s, it) => { const m = itemMedida(it); return m?.sufixo === "m"  ? s + m.valor : s; }, 0);
@@ -199,11 +198,6 @@ function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; core
           {temSpecs && totalArea   > 0 && <span>{totalArea.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m²</span>}
           {temSpecs && totalPeso   > 0 && <span>{totalPeso.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg</span>}
         </div>
-        {podeReceber && (
-          <Button as="a" href={`/squadframe/compras/pedidos/${pedido.id}/receber`} size="sm">
-            Registrar recebimento
-          </Button>
-        )}
       </div>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">

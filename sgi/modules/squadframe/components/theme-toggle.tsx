@@ -10,7 +10,7 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={dark ? "Ativar modo claro" : "Ativar modo escuro"}
-      className="flex h-8 w-8 items-center justify-center rounded text-white transition-colors hover:bg-white/10"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110 hover:bg-white/12 hover:text-white"
     >
       {dark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
     </button>

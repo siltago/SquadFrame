@@ -41,7 +41,7 @@ export default async function SolicitacaoPage({ params }: { params: { id: string
   const isAprovada = sol.status === "APROVADA";
 
   return (
-    <div className="px-8 py-8 max-w-4xl">
+    <div className="px-8 py-8 max-w-4xl mx-auto">
       <RealtimeRefresher
         channelName={`solicitacao-${params.id}`}
         subs={[

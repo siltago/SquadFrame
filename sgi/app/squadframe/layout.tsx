@@ -10,6 +10,15 @@ import { AppHeader } from "@/ui/layout/AppHeader";
 import { TIPOS_NOTIFICACAO_POR_ESCOPO } from "@/modules/squadframe/types/kanban";
 import { PendenciasGate } from "@/modules/squadframe/components/pendencias/pendencias-gate";
 import { detectarPendenciasComprador } from "@/modules/squadframe/services/pendencias/detectar-pendencias";
+import { DestaquesBanner } from "@/modules/squadframe/components/destaques/destaques-banner";
+import { detectarDestaquesDashboard } from "@/modules/squadframe/services/destaques/detectar-destaques";
+import { calcularBloqueio } from "@/modules/squadframe/services/pendencias/verificar-bloqueio";
+import { listarColegasDoSetor } from "@/modules/squadframe/services/hierarquia/gestores";
+import { listarExcecoesPendentesParaGestor } from "@/modules/squadframe/actions/compras/prorrogacoes";
+import { BloqueioComprasProvider } from "@/modules/squadframe/components/pendencias/bloqueio-compras-context";
+import {
+  BuildingIcon, CalendarIcon, ShoppingBagIcon, DollarSignIcon, RefreshIcon, TasksIcon, DocumentIcon, UsersIcon,
+} from "@/ui/icons";
 
 const ThemeToggle = dynamic(
   () => import("@/modules/squadframe/components/theme-toggle").then((m) => m.ThemeToggle),
@@ -17,14 +26,14 @@ const ThemeToggle = dynamic(
 );
 
 const NAV_ITEMS = [
-  { href: "/squadframe/obras",           label: "Obras" },
-  { href: "/squadframe/planejamento",    label: "Planejamento" },
-  { href: "/squadframe/compras",         label: "Compras" },
-  { href: "/squadframe/financeiro",      label: "Financeiro" },
-  { href: "/squadframe/beneficiamento",  label: "Beneficiamento" },
-  { href: "/squadframe/tarefas",         label: "Tarefas" },
-  { href: "/squadframe/documentos",      label: "Documentos" },
-  { href: "/squadframe/usuarios",        label: "Usuários" },
+  { href: "/squadframe/obras",           label: "Obras",           icon: <BuildingIcon /> },
+  { href: "/squadframe/planejamento",    label: "Planejamento",    icon: <CalendarIcon /> },
+  { href: "/squadframe/compras",         label: "Compras",         icon: <ShoppingBagIcon /> },
+  { href: "/squadframe/financeiro",      label: "Financeiro",      icon: <DollarSignIcon /> },
+  { href: "/squadframe/beneficiamento",  label: "Beneficiamento",  icon: <RefreshIcon /> },
+  { href: "/squadframe/tarefas",         label: "Tarefas",         icon: <TasksIcon /> },
+  { href: "/squadframe/documentos",      label: "Documentos",      icon: <DocumentIcon /> },
+  { href: "/squadframe/usuarios",        label: "Usuários",        icon: <UsersIcon /> },
 ];
 
 // Shell operacional do módulo SquadFrame (header, nav, notificações).
@@ -42,10 +51,17 @@ export default async function SquadFrameLayout({ children }: { children: React.R
     .in("tipo", TIPOS_NOTIFICACAO_POR_ESCOPO.squadframe);
   const naoLidasCount = count ?? 0;
   const pendencias = await detectarPendenciasComprador(usuario.id);
+  const destaques = await detectarDestaquesDashboard(usuario);
+  const [bloqueio, colegas, excecoesPendentes] = await Promise.all([
+    calcularBloqueio(usuario.id),
+    listarColegasDoSetor(usuario.id),
+    listarExcecoesPendentesParaGestor(usuario.id),
+  ]);
 
   return (
-    <>
-      <PendenciasGate pendenciasIniciais={pendencias} />
+    <BloqueioComprasProvider bloqueio={bloqueio}>
+      <PendenciasGate pendenciasIniciais={pendencias} colegas={colegas} excecoesPendentesIniciais={excecoesPendentes} />
+      <DestaquesBanner destaquesIniciais={destaques} />
       <AppHeader
         logoAlt="SquadFrame"
         appName="SquadFrame"
@@ -57,13 +73,14 @@ export default async function SquadFrameLayout({ children }: { children: React.R
             <BuscaGlobal />
             <NotificacoesBadge usuarioId={usuario.id} naoLidasIniciais={naoLidasCount} escopo="squadframe" />
             <ThemeToggle />
+            <span className="mx-1 h-6 w-px bg-white/15" aria-hidden="true" />
             <HeaderUser usuario={usuario} />
           </>
         }
       />
-      <main style={{ paddingTop: "calc(56px + env(safe-area-inset-top))" }}>
+      <main style={{ paddingTop: "calc(84px + env(safe-area-inset-top))" }}>
         {children}
       </main>
-    </>
+    </BloqueioComprasProvider>
   );
 }

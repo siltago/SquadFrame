@@ -7,6 +7,7 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { emitirEvento } from "@/modules/squadframe/services/events/event-bus";
 import { EVENTS } from "@/modules/squadframe/services/events/event-types";
 import { validarTransicaoSolicitacao } from "@/modules/squadframe/services/state-machines/compras";
+import { verificarBloqueioCompras } from "@/modules/squadframe/services/pendencias/verificar-bloqueio";
 import { getUsuario, getUsuarioId } from "./helpers";
 
 export async function criarSolicitacao(formData: FormData) {
@@ -14,6 +15,7 @@ export async function criarSolicitacao(formData: FormData) {
 
   const admin = createAdminClient();
   const usuario = await getUsuario();
+  await verificarBloqueioCompras(usuario.id, "criar_solicitacao");
 
   const obra_id         = (formData.get("obra_id") as string | null) || null;
   const origem          = formData.get("origem") as string;
@@ -106,12 +108,18 @@ export async function alterarStatusSolicitacao(
 
   const { data: sol } = await admin
     .from("solicitacoes_compra")
-    .select("status, obra_id")
+    .select("status, obra_id, solicitante_id")
     .eq("id", id)
     .single();
   if (!sol) throw new Error("Solicitação não encontrada.");
 
   validarTransicaoSolicitacao(sol.status, status);
+
+  // Gate de conformidade — só bloqueia enviar pra aprovação; aprovar/
+  // rejeitar/cancelar ficam sempre livres.
+  if (status === "AGUARDANDO_APROVACAO" && sol.solicitante_id) {
+    await verificarBloqueioCompras(sol.solicitante_id, "enviar_solicitacao_aprovacao");
+  }
 
   const { error } = await admin.from("solicitacoes_compra").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);

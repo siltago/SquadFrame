@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { editarObra } from "@/modules/squadframe/actions/obras/actions";
 import { Button } from "@/ui/components/Button";
 import { Input, Textarea } from "@/ui/components/Input";
+import { DatePicker } from "@/ui/components/DatePicker";
 
 export function EditarObraCliente({ obra }: { obra: any }) {
   const [erro, setErro] = useState<string | null>(null);
@@ -62,8 +63,7 @@ export function EditarObraCliente({ obra }: { obra: any }) {
 
         <div>
           <label className="label">Data prevista <span className="text-text-2 font-normal">(opcional)</span></label>
-          <Input
-            type="date"
+          <DatePicker
             name="data_prevista"
             defaultValue={obra.data_prevista ? obra.data_prevista.slice(0, 10) : ""}
           />

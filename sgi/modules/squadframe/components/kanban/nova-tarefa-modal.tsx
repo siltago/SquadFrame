@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { criarTarefa } from "@/modules/squadframe/actions/tarefas/actions";
 import { Button } from "@/ui/components/Button";
 import { Input } from "@/ui/components/Input";
+import { DatePicker } from "@/ui/components/DatePicker";
 import { LoadingOverlay } from "@/ui/components/LoadingOverlay";
 import { useLoadingOverlay } from "@/ui/lib/use-loading-overlay";
 
@@ -78,7 +79,7 @@ export function NovaTarefaModal({ colunaId, setorId, usuarioId, onClose }: Props
             </div>
             <div>
               <label className="label">Data Limite</label>
-              <input name="data_limite" type="date" className="field" />
+              <DatePicker name="data_limite" />
             </div>
           </div>
 

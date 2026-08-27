@@ -7,6 +7,7 @@ import { ensureContextoAction } from "@/modules/squadframe/package-procurement/a
 import { vincularPedidoLote } from "@/app/squadframe/compras/actions";
 import { STATUS_PED_LABEL, STATUS_PED_COR } from "@/modules/squadframe/types/compras";
 import { StatusPill } from "@/ui/components/StatusPill";
+import { Button } from "@/ui/components/Button";
 import type {
   WiseNecessidade, CoberturaNecessidade, StatusSuprimentosCalculado,
 } from "@/modules/squadframe/package-procurement/types";
@@ -94,14 +95,9 @@ export function LoteComprasPainel({
     return (
       <div className="card px-5 py-8 text-center space-y-3">
         <p className="text-sm text-text-3">Este lote ainda não tem contexto de Compras.</p>
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={prepararContexto}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-        >
+        <Button type="button" variant="accent" disabled={isPending} onClick={prepararContexto}>
           {isPending ? "Preparando…" : "Preparar contexto de Compras"}
-        </button>
+        </Button>
         {erro && <p className="text-xs text-red-500">{erro}</p>}
       </div>
     );
@@ -123,12 +119,13 @@ export function LoteComprasPainel({
             </p>
           </div>
           {ativas.length > 0 && (
-            <Link
+            <Button
+              as="a"
+              variant="accent"
               href={`/squadframe/compras/pedidos/novo?lote_id=${loteId}&obra_id=${obraId}&origem_contexto=LEVANTAMENTO_NECESSIDADES`}
-              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90"
             >
               Gerar pedido a partir do levantamento
-            </Link>
+            </Button>
           )}
         </div>
 

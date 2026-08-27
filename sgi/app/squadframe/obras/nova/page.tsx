@@ -23,7 +23,7 @@ export default async function NovaObraPage() {
         O código interno é gerado automaticamente ao salvar.
       </p>
 
-      <ServerActionForm action={criarObra} className="card mt-6 max-w-2xl p-6">
+      <ServerActionForm action={criarObra} className="card mt-6 max-w-2xl p-6 mx-auto">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label">Nome da obra</label>

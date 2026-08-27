@@ -28,23 +28,32 @@ CREATE TABLE IF NOT EXISTS lote_escopo_tipologias (
 
 -- Migra dados existentes (só os módulos frame/flow/stock — board/measure
 -- não têm equivalente na nova governança, ficam para trás junto com o Wise).
-INSERT INTO lote_modulos (pacote_id, modulo, habilitado)
-SELECT pacote_id, modulo, habilitado
-FROM wise_pacote_modulos
-WHERE modulo IN ('frame', 'flow', 'stock')
-ON CONFLICT DO NOTHING;
+DO $migration$
+BEGIN
+  IF to_regclass('public.wise_pacote_modulos') IS NOT NULL THEN
+    INSERT INTO lote_modulos (pacote_id, modulo, habilitado)
+    SELECT pacote_id, modulo, habilitado
+    FROM wise_pacote_modulos
+    WHERE modulo IN ('frame', 'flow', 'stock')
+    ON CONFLICT DO NOTHING;
+  END IF;
 
-INSERT INTO lote_escopo_estrutura (pacote_id, estrutura_id)
-SELECT pacote_id, estrutura_id FROM wise_pacote_escopo_estrutura
-ON CONFLICT DO NOTHING;
+  IF to_regclass('public.wise_pacote_escopo_estrutura') IS NOT NULL THEN
+    INSERT INTO lote_escopo_estrutura (pacote_id, estrutura_id)
+    SELECT pacote_id, estrutura_id FROM wise_pacote_escopo_estrutura
+    ON CONFLICT DO NOTHING;
+  END IF;
 
-INSERT INTO lote_escopo_tipologias (pacote_id, tipologia_id, quantidade)
-SELECT pacote_id, tipologia_id, quantidade FROM wise_pacote_escopo_tipologias
-ON CONFLICT DO NOTHING;
+  IF to_regclass('public.wise_pacote_escopo_tipologias') IS NOT NULL THEN
+    INSERT INTO lote_escopo_tipologias (pacote_id, tipologia_id, quantidade)
+    SELECT pacote_id, tipologia_id, quantidade FROM wise_pacote_escopo_tipologias
+    ON CONFLICT DO NOTHING;
+  END IF;
+END
+$migration$;
 
-DROP TABLE IF EXISTS wise_pacote_modulos;
-DROP TABLE IF EXISTS wise_pacote_escopo_estrutura;
-DROP TABLE IF EXISTS wise_pacote_escopo_tipologias;
+-- As tabelas wise_* são preservadas por segurança. A remoção deve acontecer
+-- apenas em uma migration futura, depois de validar a cópia e os consumidores.
 
 ALTER TABLE lote_modulos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lote_escopo_estrutura ENABLE ROW LEVEL SECURITY;

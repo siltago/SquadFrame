@@ -9,10 +9,10 @@
 - revisão básica, histórico e dossiê imprimível;
 - testes de regras, schemas e contrato de segurança da migration.
 
-## Não implementado
+## Evolução posterior
 
-Android, CameraX, Room, WorkManager, offline, sincronização nativa, arquivos, fotos, vídeos, editores, croquis, ARCore, overlays AR, PDF e iOS. As páginas de sincronização/configuração informam essa limitação sem dados simulados.
+O cliente de campo multiplataforma passou a ser implementado em React Native, em `apps/squadmeasure-mobile`. Consulte `mobile.md` para a arquitetura atual. Arquivos, fotos, vídeos, editores, croquis, recursos de realidade aumentada e PDF continuam fora do escopo desta fase.
 
 ## Aplicação
 
-Execute `supabase db push` no ambiente correto após revisar a migration. Depois atribua as permissões necessárias aos cargos não administrativos. Nenhuma variável de ambiente nova foi adicionada.
+Execute `supabase db push` no ambiente correto após revisar a migration. Depois atribua as permissões necessárias aos cargos não administrativos.

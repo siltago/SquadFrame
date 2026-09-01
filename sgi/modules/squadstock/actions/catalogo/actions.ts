@@ -6,6 +6,7 @@ import { CATALOGO_PERMISSIONS } from "@/modules/squadstock/constants";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { recalcularPrecoKgPerfis } from "@/modules/squadstock/lib/preco-kg-perfis";
+import { tituloComSiglas } from "@/modules/squadstock/lib/title-case";
 
 // Cores RAL só valem para o(s) tipo(s) de linha marcados nelas
 // (cores_ral.tipos). Vincular automaticamente TODAS as cores a um produto,
@@ -154,7 +155,7 @@ export async function criarLinha(formData: FormData) {
   await verificarPermissao(CATALOGO_PERMISSIONS.LINHA_GERENCIAR);
   const supabase = createClient();
 
-  const nome = String(formData.get("nome") || "").trim();
+  const nome = tituloComSiglas(String(formData.get("nome") || "").trim());
   const fabricante = String(formData.get("fabricante") || "").trim();
   const descricao = String(formData.get("descricao") || "").trim();
   const tipoRaw = String(formData.get("tipo") || "").trim();
@@ -188,7 +189,7 @@ export async function criarLinha(formData: FormData) {
 export async function editarLinha(linhaId: string, formData: FormData) {
   await verificarPermissao(CATALOGO_PERMISSIONS.LINHA_GERENCIAR);
   const supabase = createClient();
-  const nome = String(formData.get("nome") || "").trim();
+  const nome = tituloComSiglas(String(formData.get("nome") || "").trim());
   const fabricante = String(formData.get("fabricante") || "").trim() || null;
   const descricao = String(formData.get("descricao") || "").trim() || null;
   if (!nome) throw new Error("Nome é obrigatório.");
@@ -532,7 +533,7 @@ export async function criarLinhaRapida(dados: {
   await verificarPermissao(CATALOGO_PERMISSIONS.LINHA_GERENCIAR);
   const supabase = createClient();
 
-  const nome = dados.nome.trim();
+  const nome = tituloComSiglas(dados.nome.trim());
   const tipoRaw = dados.tipo.trim();
   if (!nome) throw new Error("Nome da linha é obrigatório.");
   if (!tipoRaw) throw new Error("Selecione a aba do catálogo.");

@@ -412,6 +412,14 @@
   --color-primary-active: 90  58  0;  /* #5A3A00 */
   --color-primary-soft:   255 233 211;/* #FFE9D3 */
 
+  /* Accent — sem override aqui, o "pop" já É o âmbar da marca (diferente
+     de apps onde --color-primary é um neutro sóbrio e --color-accent
+     existe pra dar vida); sem isso, badges/CTAs "accent" caíam no teal
+     genérico da raiz, destoando do tema quente. */
+  --color-accent:        243 156 18; /* #F39C12 — igual --color-primary */
+  --color-accent-hover:  187 115 26; /* #BB731A */
+  --color-accent-soft:   255 233 211;/* #FFE9D3 */
+
   /* Semânticas — hue própria, nunca reaproveita o âmbar da marca */
   --color-success:       46  125 70; /* #2E7D46 — disponível */
   --color-success-hover: 38  107 60;
@@ -453,6 +461,10 @@
   --color-primary-hover:  255 215 122;/* #FFD77A — ponta clara do gradiente oficial */
   --color-primary-active: 255 233 211;/* #FFE9D3 */
   --color-primary-soft:   62  42  12; /* #3E2A0C */
+
+  --color-accent:        243 156 18; /* #F39C12 — igual --color-primary, ver nota no claro */
+  --color-accent-hover:  255 215 122;/* #FFD77A */
+  --color-accent-soft:   62  42  12; /* #3E2A0C */
 
   --color-success:       74  199 128;/* #4AC780 */
   --color-success-hover: 96  214 148;

@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
-import { Tooltip } from "@/ui/components/Tooltip";
 import { LayersIcon, MenuIcon, CloseIcon } from "@/ui/icons";
 
 interface Tipo {
@@ -53,35 +52,33 @@ function NavLinksFull({ tipos, onClose }: { tipos: Tipo[]; onClose: () => void }
   );
 }
 
-// Rail estreito — cada "tipo" é dinâmico (nome do usuário), sem ícone
-// próprio pra diferenciar, então usa as iniciais do nome num badge
-// redondo (mesmo padrão de avatar já usado no resto do sistema).
-function NavLinksRail({ tipos }: { tipos: Tipo[] }) {
+// Rail largo com botão retangular (mesmo estilo do resto do sistema) pelo
+// nome de cada tipo — sem ícone genérico tentando diferenciar categoria
+// com nome dinâmico, que lia como quebrado.
+function NavLinksWide({ tipos }: { tipos: Tipo[] }) {
   const searchParams = useSearchParams();
   const tipoAtual = searchParams.get("tipo") ?? "";
 
-  const railItem = (href: string, label: string, ativo: boolean, key: string, content: React.ReactNode) => (
-    <Tooltip key={key} content={label} side="right" delay={150}>
-      <Link
-        href={href}
-        aria-label={label}
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold",
-          "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110",
-          ativo ? "bg-primary text-white shadow-md" : "text-text-3 hover:bg-surface-2 hover:text-text"
-        )}
-      >
-        {content}
-      </Link>
-    </Tooltip>
+  const item = (href: string, label: string, ativo: boolean, key: string) => (
+    <Link
+      key={key}
+      href={href}
+      className={cn(
+        "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium",
+        "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)]",
+        ativo
+          ? "bg-gradient-to-br from-accent to-accent-hover text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]"
+          : "text-text-2 hover:bg-surface-2 hover:text-text"
+      )}
+    >
+      <span className="truncate">{label}</span>
+    </Link>
   );
 
   return (
     <>
-      {railItem(buildHref(searchParams, ""), "Todos", !tipoAtual, "todos", <LayersIcon size={18} />)}
-      {tipos.map((t) =>
-        railItem(buildHref(searchParams, t.slug), t.nome, tipoAtual === t.slug, t.id, t.nome.slice(0, 2).toUpperCase())
-      )}
+      {item(buildHref(searchParams, ""), "Todos", !tipoAtual, "todos")}
+      {tipos.map((t) => item(buildHref(searchParams, t.slug), t.nome, tipoAtual === t.slug, t.id))}
     </>
   );
 }
@@ -130,10 +127,10 @@ export function EstoqueSidebar({ tipos }: { tipos: Tipo[] }) {
       </div>
 
       {/* Rail desktop */}
-      <aside className="hidden lg:flex w-[64px] shrink-0 flex-col items-center">
-        <nav className="flex flex-1 flex-col items-center gap-1.5 py-3">
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col overflow-y-auto">
+        <nav className="flex flex-1 flex-col gap-1 px-2 py-3">
           <Suspense fallback={null}>
-            <NavLinksRail tipos={tipos} />
+            <NavLinksWide tipos={tipos} />
           </Suspense>
         </nav>
       </aside>

@@ -23,7 +23,20 @@ interface AppHeaderProps {
   mobileNavSlot?: ReactNode;
   height?: number;
   className?: string;
+  /** A partir de qual largura o rótulo de texto de cada aba aparece (o
+   * ícone já é sempre visível a partir de lg/1024px, quando a nav some
+   * do hambúrguer). Default 2xl — pensado pro squadframe (7 abas +
+   * busca + avatar); apps com nav mais enxuta (menos abas, rightSlot
+   * mais leve) podem passar um valor menor, ex. "lg", sem esperar a
+   * tela chegar em 1536px pra mostrar o nome de cada aba. */
+  navLabelBreakpoint?: "lg" | "xl" | "2xl";
 }
+
+const LABEL_BREAKPOINT_CLASS: Record<NonNullable<AppHeaderProps["navLabelBreakpoint"]>, string> = {
+  lg: "lg:inline",
+  xl: "xl:inline",
+  "2xl": "2xl:inline",
+};
 
 // Barra flutuante estilo vidro — painel translúcido com blur (não mais cor
 // sólida opaca, que contrastava forte demais contra o fundo claro) sobre
@@ -41,6 +54,7 @@ export function AppHeader({
   mobileNavSlot,
   height = 56,
   className,
+  navLabelBreakpoint = "2xl",
 }: AppHeaderProps) {
   const pathname = usePathname();
 
@@ -115,7 +129,7 @@ export function AppHeader({
             ver comentário mais abaixo) — abaixo dele todo item é só ícone,
             bem mais estreito que a pastilha nunca teria espaço pra sobrar. */}
         {navItems.length > 0 && (
-          <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-between gap-1 self-start overflow-hidden pt-1.5 pb-5" aria-label="Navegação principal">
+          <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-between gap-1 self-start overflow-hidden pt-1.5 pb-5 pl-2" aria-label="Navegação principal">
             {navItems.map((item) => {
               const active = isActive(item);
               return (
@@ -162,7 +176,7 @@ export function AppHeader({
                       Nome de usuário e texto da busca escondem antes disso
                       (ver header-user.tsx/busca-global.tsx). */}
                   {item.icon && <span className="relative top-2 shrink-0 [&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>}
-                  <span className="relative top-2 hidden 2xl:inline">{item.label}</span>
+                  <span className={cn("relative top-2 hidden", LABEL_BREAKPOINT_CLASS[navLabelBreakpoint])}>{item.label}</span>
                 </Link>
               );
             })}

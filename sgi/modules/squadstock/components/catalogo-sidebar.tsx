@@ -4,10 +4,9 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/ui/lib/cn";
-import { Tooltip } from "@/ui/components/Tooltip";
 import { BackButton } from "@/modules/squadframe/components/back-button";
 import { NovaAbaInline } from "@/modules/squadstock/components/catalogo/nova-aba-inline";
-import { ArrowLeftIcon } from "@/ui/icons";
+import { ArrowLeftIcon, ChevronDownIcon } from "@/ui/icons";
 
 type Tipo = { id: string; nome: string; slug: string };
 type Linha = { id: string; nome: string; tipo: string };
@@ -132,51 +131,119 @@ function NavLinksFull({
   );
 }
 
-// Rail estreito — só os tipos de topo (mesmo padrão do resto do sistema).
-// Tipo é um nome dinâmico sem ícone próprio, então usa iniciais num badge
-// redondo; sub-nível (linha dentro do tipo) fica só no drawer mobile —
-// clicar no tipo já leva pra visão dele, onde a lista de linhas aparece
-// no conteúdo da página.
-function NavLinksRail({ tipos }: { tipos: Tipo[] }) {
+// Rail largo com botão retangular (mesmo estilo arredondado do resto do
+// sistema) pelo nome de cada tipo — sem ícone genérico tentando
+// diferenciar categoria com nome dinâmico, que lia como quebrado. Clicar
+// expande/recolhe as linhas daquele tipo ali mesmo, em vez de mandar pro
+// drawer mobile pra ver o sub-nível.
+function NavLinksExpand({ tipos, linhas }: { tipos: Tipo[]; linhas: Linha[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tipoParam = (searchParams.get("tipo") ?? searchParams.get("aba") ?? "").toLowerCase();
+  const linhaParam = searchParams.get("linha") ?? "";
   const aplicacaoParam = searchParams.get("aplicacao") ?? "";
   const onCatalogRoot = pathname === "/squadstock/catalogo";
 
-  const railBtn = (href: string, label: string, ativo: boolean, key: string, content: React.ReactNode) => (
-    <Tooltip key={key} content={label} side="right" delay={150}>
-      <Link
-        href={href}
-        aria-label={label}
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold",
-          "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110",
-          ativo ? "bg-primary text-white shadow-md" : "text-text-3 hover:bg-surface-2 hover:text-text"
+  const linhasPorTipo: Record<string, Linha[]> = {};
+  for (const l of linhas) {
+    if (!linhasPorTipo[l.tipo]) linhasPorTipo[l.tipo] = [];
+    linhasPorTipo[l.tipo].push(l);
+  }
+
+  const [aberto, setAberto] = useState<string | null>(
+    onCatalogRoot && tipoParam ? tipoParam : null
+  );
+
+  const grupo = (slug: string, label: string, href: string, ativo: boolean, filhos?: React.ReactNode) => {
+    const temFilhos = !!filhos;
+    const expandido = aberto === slug;
+    return (
+      <div key={slug} className="mb-1">
+        <div className="flex items-center gap-1">
+          <Link
+            href={href}
+            onClick={() => temFilhos && setAberto(slug)}
+            className={cn(
+              "flex-1 flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium",
+              "transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)]",
+              ativo
+                ? "bg-gradient-to-br from-accent to-accent-hover text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]"
+                : "text-text-2 hover:bg-surface-2 hover:text-text"
+            )}
+          >
+            <span className="truncate">{label}</span>
+          </Link>
+          {temFilhos && (
+            <button
+              type="button"
+              onClick={() => setAberto(expandido ? null : slug)}
+              aria-label={expandido ? "Recolher" : "Expandir"}
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3",
+                "transition-transform duration-[var(--motion-hover)] hover:bg-surface-2 hover:text-text",
+                expandido && "rotate-180"
+              )}
+            >
+              <ChevronDownIcon size={14} />
+            </button>
+          )}
+        </div>
+        {temFilhos && expandido && (
+          <div className="mt-1 flex flex-col gap-0.5 pl-3">{filhos}</div>
         )}
-      >
-        {content}
-      </Link>
-    </Tooltip>
+      </div>
+    );
+  };
+
+  const subItem = (href: string, label: string, ativo: boolean, key: string) => (
+    <Link
+      key={key}
+      href={href}
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs",
+        ativo ? "bg-accent/10 font-medium text-accent" : "text-text-2 hover:bg-bg hover:text-text"
+      )}
+    >
+      <span className="h-1 w-1 shrink-0 rounded-full bg-current opacity-40" />
+      <span className="truncate">{label}</span>
+    </Link>
   );
 
   return (
     <>
-      {tipos.map((tipo) =>
-        railBtn(
-          `/squadstock/catalogo?tipo=${tipo.slug}`,
-          tipo.nome,
-          onCatalogRoot && tipoParam === tipo.slug,
+      {tipos.map((tipo) => {
+        const linhasDoTipo = linhasPorTipo[tipo.slug] ?? [];
+        const ativo = onCatalogRoot && tipoParam === tipo.slug && !linhaParam;
+        return grupo(
           tipo.slug,
-          tipo.nome.slice(0, 2).toUpperCase()
-        )
-      )}
-      {railBtn(
-        "/squadstock/catalogo?tipo=cores",
-        "Cores RAL",
-        onCatalogRoot && tipoParam === "cores" && !aplicacaoParam,
+          tipo.nome,
+          `/squadstock/catalogo?tipo=${tipo.slug}`,
+          ativo,
+          linhasDoTipo.length > 0
+            ? linhasDoTipo.map((linha) =>
+                subItem(
+                  `/squadstock/catalogo?tipo=${tipo.slug}&linha=${linha.id}`,
+                  linha.nome,
+                  onCatalogRoot && tipoParam === tipo.slug && linhaParam === linha.id,
+                  linha.id
+                )
+              )
+            : undefined
+        );
+      })}
+      {grupo(
         "cores",
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        "Cores RAL",
+        "/squadstock/catalogo?tipo=cores",
+        onCatalogRoot && tipoParam === "cores" && !aplicacaoParam,
+        tipos.map((tipo) =>
+          subItem(
+            `/squadstock/catalogo?tipo=cores&aplicacao=${tipo.slug}`,
+            tipo.nome,
+            aplicacaoParam === tipo.slug,
+            tipo.slug
+          )
+        )
       )}
     </>
   );
@@ -236,25 +303,23 @@ export function CatalogoSidebar({ tipos, linhas }: { tipos: Tipo[]; linhas: Linh
       </div>
 
       {/* Rail desktop */}
-      <aside className="hidden lg:flex w-[64px] shrink-0 flex-col items-center">
-        <div className="flex shrink-0 flex-col items-center py-3">
-          <Tooltip content="Voltar" side="right" delay={150}>
-            <Link
-              href="/"
-              aria-label="Voltar"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-text-3 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110 hover:bg-surface-2 hover:text-text"
-            >
-              <ArrowLeftIcon size={16} />
-            </Link>
-          </Tooltip>
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col overflow-y-auto">
+        <div className="flex shrink-0 items-center px-2 py-3">
+          <Link
+            href="/"
+            aria-label="Voltar"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-text-3 transition-all duration-[var(--motion-hover)] ease-[var(--ease-spring)] hover:scale-110 hover:bg-surface-2 hover:text-text"
+          >
+            <ArrowLeftIcon size={16} />
+          </Link>
         </div>
-        <nav className="flex flex-1 flex-col items-center gap-1.5 py-3">
+        <nav className="flex-1 px-2 py-1">
           <Suspense fallback={null}>
-            <NavLinksRail tipos={tipos} />
+            <NavLinksExpand tipos={tipos} linhas={linhas} />
           </Suspense>
         </nav>
-        <div className="flex shrink-0 flex-col items-center gap-1.5 py-3">
-          <NovaAbaInline collapsed />
+        <div className="shrink-0 px-2 py-3">
+          <NovaAbaInline />
         </div>
       </aside>
     </>

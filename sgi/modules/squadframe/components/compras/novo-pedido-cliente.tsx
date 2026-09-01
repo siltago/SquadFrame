@@ -30,6 +30,10 @@ type Item = {
   largura_m?: number | null; altura_m?: number | null; qtd_pecas?: number | null;
   cor_id?: string | null;
   obra_id?: string; solicitacao_item_id?: string;
+  // Barra especial: comprimento fora do padrão cadastrado no produto. `tamanhoPadraoMm`
+  // guarda o valor original do produto pra poder voltar quando o checkbox é desmarcado —
+  // `tamanho_mm` (acima) é o que efetivamente entra no cálculo de peso/preço/metragem.
+  barraEspecial?: boolean; tamanhoPadraoMm?: number | null;
 };
 
 function itemMedida(it: Item) {
@@ -210,6 +214,7 @@ export function NovoPedidoCliente({
       codigo_fornecedor: codigoFornecedor, descricao_snapshot: p.nome,
       peso_metro: p.peso_metro ?? null,
       tamanho_mm: p.tamanho_mm ?? null,
+      tamanhoPadraoMm: p.tamanho_mm ?? null,
       preco_metro: p.preco_metro ?? null,
       largura_m: null,
       altura_m: null,
@@ -349,6 +354,7 @@ export function NovoPedidoCliente({
         altura_m: i.altura_m || null,
         qtd_pecas: i.qtd_pecas || null,
         ...(corPorItem && i.cor_id ? { cor_id: i.cor_id } : {}),
+        ...(i.barraEspecial && i.tamanho_mm ? { tamanho_mm_especial: i.tamanho_mm } : {}),
       };
     })));
     pendingFn.current = async () => {
@@ -678,6 +684,45 @@ export function NovoPedidoCliente({
                         )}
                         {it.tamanho_mm && (
                           <p className="text-xs text-text-3">{Number(it.tamanho_mm).toLocaleString("pt-BR")} mm {itIsChapa ? "(esp.)" : "(barra)"}</p>
+                        )}
+                        {!itIsChapa && it.unidade?.toUpperCase() === "BARRA" && it.tamanhoPadraoMm != null && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <label className="flex items-center gap-1 text-[11px] text-text-3">
+                              <input
+                                type="checkbox"
+                                checked={!!it.barraEspecial}
+                                onChange={(e) => {
+                                  const marcado = e.target.checked;
+                                  setItens((prev) => prev.map((x, i) => {
+                                    if (i !== idx) return x;
+                                    const novoTamanho = (marcado ? x.tamanho_mm : x.tamanhoPadraoMm) ?? null;
+                                    return {
+                                      ...x,
+                                      barraEspecial: marcado,
+                                      tamanho_mm: novoTamanho,
+                                      preco_unitario: calcPrecoUnit(x.unidade, novoTamanho, x.preco_metro),
+                                    };
+                                  }));
+                                }}
+                                className="rounded"
+                              />
+                              Barra especial
+                            </label>
+                            {it.barraEspecial && (
+                              <input
+                                type="number" min="1" step="1" placeholder="mm"
+                                value={it.tamanho_mm ?? ""}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value) || null;
+                                  setItens((prev) => prev.map((x, i) => {
+                                    if (i !== idx) return x;
+                                    return { ...x, tamanho_mm: v, preco_unitario: calcPrecoUnit(x.unidade, v, x.preco_metro) };
+                                  }));
+                                }}
+                                className="field h-6 w-20 text-xs"
+                              />
+                            )}
+                          </div>
                         )}
                       </td>
                       {/* Qtd / Dimensões */}

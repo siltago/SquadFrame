@@ -159,8 +159,11 @@ export default async function VisualizarPedidoPage({ params }: { params: { id: s
 
   function calcTotalItemKg(item: any): number {
     const isChapa = ["CHAPA","M²","M2"].includes((item.unidade ?? "").toUpperCase());
-    const tamanhoM = (item.produto?.tamanho_mm ?? 6000) / 1000;
-    const temTamanho = !!(item.produto?.tamanho_mm);
+    // Barra especial (comprimento fora do padrão do produto, por item —
+    // ver migration 20260901000001) prevalece sobre o tamanho do produto.
+    const tamanhoEfetivo = item.tamanho_mm_especial ?? item.produto?.tamanho_mm ?? 6000;
+    const tamanhoM = tamanhoEfetivo / 1000;
+    const temTamanho = !!(item.tamanho_mm_especial ?? item.produto?.tamanho_mm);
     if (isChapa && item.largura_m && item.altura_m && item.produto?.tamanho_mm && item.qtd_pecas) {
       // L(mm) × A(mm) × espessura(mm) × 0.0000025 × qtd_pecas
       return item.largura_m * 1000 * item.altura_m * 1000 * item.produto.tamanho_mm * FATOR_MASSA_CHAPA * item.qtd_pecas;

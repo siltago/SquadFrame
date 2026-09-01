@@ -34,6 +34,9 @@ type Item = {
   altura_m: number | null;
   qtd_pecas: number | null;
   cor_id: string | null;
+  // Barra especial — ver mesmo campo em novo-pedido-cliente.tsx.
+  barraEspecial?: boolean;
+  tamanhoPadraoMm?: number | null;
 };
 
 export function RetornoPedidoForm({
@@ -57,11 +60,13 @@ export function RetornoPedidoForm({
       codigo_fornecedor:   i.codigo_fornecedor || "",
       obra_id:             i.obra_id ?? null,
       solicitacao_item_id: i.solicitacao_item_id ?? null,
-      tamanho_mm:          i.produto?.tamanho_mm ?? null,
+      tamanho_mm:          i.tamanho_mm_especial ?? i.produto?.tamanho_mm ?? null,
       largura_m:           i.largura_m ?? null,
       altura_m:            i.altura_m ?? null,
       qtd_pecas:           i.qtd_pecas ?? null,
       cor_id:              i.cor_id ?? null,
+      barraEspecial:       i.tamanho_mm_especial != null,
+      tamanhoPadraoMm:     i.produto?.tamanho_mm ?? null,
     }))
   );
   const [motivo, setMotivo] = useState("");
@@ -85,6 +90,7 @@ export function RetornoPedidoForm({
       preco_metro: p.preco_metro ?? null, codigo_fornecedor: "", obra_id: null,
       solicitacao_item_id: null, tamanho_mm: p.tamanho_mm ?? null,
       largura_m: null, altura_m: null, qtd_pecas: chapa ? 1 : null, cor_id: null,
+      tamanhoPadraoMm: p.tamanho_mm ?? null,
     }]);
   }
 
@@ -118,6 +124,7 @@ export function RetornoPedidoForm({
         altura_m:            i.altura_m || null,
         qtd_pecas:           i.qtd_pecas || null,
         ...(corPorItem && i.cor_id ? { cor_id: i.cor_id } : {}),
+        ...(i.barraEspecial && i.tamanho_mm ? { tamanho_mm_especial: i.tamanho_mm } : {}),
       };
     });
 
@@ -277,6 +284,45 @@ export function RetornoPedidoForm({
                           <p className="font-medium text-text">{it.descricao_snapshot}</p>
                           {it.tamanho_mm && (
                             <p className="text-xs text-text-3">{it.tamanho_mm} mm</p>
+                          )}
+                          {!itChapa && it.unidade?.toUpperCase() === "BARRA" && it.tamanhoPadraoMm != null && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <label className="flex items-center gap-1 text-[11px] text-text-3">
+                                <input
+                                  type="checkbox"
+                                  checked={!!it.barraEspecial}
+                                  onChange={(e) => {
+                                    const marcado = e.target.checked;
+                                    setItens((prev) => prev.map((x, i) => {
+                                      if (i !== idx) return x;
+                                      const novoTamanho = (marcado ? x.tamanho_mm : x.tamanhoPadraoMm) ?? null;
+                                      return {
+                                        ...x,
+                                        barraEspecial: marcado,
+                                        tamanho_mm: novoTamanho,
+                                        preco_unitario: calcPrecoUnit(x.unidade, novoTamanho, x.preco_metro),
+                                      };
+                                    }));
+                                  }}
+                                  className="rounded"
+                                />
+                                Barra especial
+                              </label>
+                              {it.barraEspecial && (
+                                <input
+                                  type="number" min="1" step="1" placeholder="mm"
+                                  value={it.tamanho_mm ?? ""}
+                                  onChange={(e) => {
+                                    const v = parseFloat(e.target.value) || null;
+                                    setItens((prev) => prev.map((x, i) => {
+                                      if (i !== idx) return x;
+                                      return { ...x, tamanho_mm: v, preco_unitario: calcPrecoUnit(x.unidade, v, x.preco_metro) };
+                                    }));
+                                  }}
+                                  className="field h-6 w-20 text-xs"
+                                />
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-2">

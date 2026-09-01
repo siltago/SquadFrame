@@ -151,10 +151,16 @@ function itAreaChapa(it: any): number | null {
   if (l > 0 && h > 0 && q > 0) return l * h * q;
   return null;
 }
+// Barra especial (comprimento fora do padrão do produto, definido por
+// item — ver migration 20260901000001) sempre prevalece sobre o
+// tamanho_mm cadastrado no produto, quando presente.
+function tamanhoEfetivo(it: any): number | null | undefined {
+  return it.tamanho_mm_especial ?? it.produto?.tamanho_mm;
+}
 function itemMedida(it: any) {
   const area = itAreaChapa(it);
   if (area != null) return { valor: area, sufixo: "m²" };
-  return calcMedida(Number(it.quantidade_pedida), it.unidade ?? "", it.produto?.tamanho_mm);
+  return calcMedida(Number(it.quantidade_pedida), it.unidade ?? "", tamanhoEfetivo(it));
 }
 const FATOR_MASSA_CHAPA = 0.0000025;
 function itemPeso(it: any) {
@@ -163,7 +169,7 @@ function itemPeso(it: any) {
   }
   const area = itAreaChapa(it);
   if (area != null && it.produto?.peso_metro) return area * Number(it.produto.peso_metro);
-  return calcPesoTotal(Number(it.quantidade_pedida), it.unidade ?? "", it.produto?.tamanho_mm, it.produto?.peso_metro);
+  return calcPesoTotal(Number(it.quantidade_pedida), it.unidade ?? "", tamanhoEfetivo(it), it.produto?.peso_metro);
 }
 
 // ── Itens ─────────────────────────────────────────────────────────
@@ -226,8 +232,14 @@ function TabItens({ pedido, itens, coresRal }: { pedido: any; itens: any[]; core
                   <td className="px-5 py-3">
                     <p className="font-medium text-text">{it.produto?.nome ?? it.descricao_snapshot}</p>
                     <p className="font-mono text-xs text-text-3">{it.produto?.codigo_mestre}</p>
-                    {it.produto?.tamanho_mm && (
-                      <p className="text-xs text-text-3">{Number(it.produto.tamanho_mm).toLocaleString("pt-BR")} mm {itChapa ? "(esp.)" : "(barra)"}</p>
+                    {!itChapa && tamanhoEfetivo(it) && (
+                      <p className="text-xs text-text-3">
+                        {Number(tamanhoEfetivo(it)).toLocaleString("pt-BR")} mm (barra)
+                        {it.tamanho_mm_especial != null && <span className="ml-1 font-medium text-warning">especial</span>}
+                      </p>
+                    )}
+                    {itChapa && it.produto?.tamanho_mm && (
+                      <p className="text-xs text-text-3">{Number(it.produto.tamanho_mm).toLocaleString("pt-BR")} mm (esp.)</p>
                     )}
                   </td>
                   <td className="px-5 py-3 font-mono text-xs text-text-3">{it.codigo_fornecedor || "—"}</td>

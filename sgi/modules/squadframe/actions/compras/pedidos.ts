@@ -53,6 +53,8 @@ export async function criarPedido(formData: FormData) {
     produto_fornecedor_id?: string; obra_id?: string; solicitacao_item_id?: string;
     largura_m?: number | null; altura_m?: number | null; qtd_pecas?: number | null;
     cor_id?: string | null;
+    /** Comprimento em mm quando difere do padrão do produto (barra especial). */
+    tamanho_mm_especial?: number | null;
   }[] = JSON.parse(itensJson);
   if (!itens.length) throw new Error("Adicione ao menos um item.");
 
@@ -602,7 +604,7 @@ async function distribuirValorFinalPorPeso(
 ) {
   const { data: itens } = await admin
     .from("pedido_itens")
-    .select("id, unidade, quantidade_pedida, largura_m, altura_m, qtd_pecas, produto:produtos(tamanho_mm, peso_metro)")
+    .select("id, unidade, quantidade_pedida, largura_m, altura_m, qtd_pecas, tamanho_mm_especial, produto:produtos(tamanho_mm, peso_metro)")
     .eq("pedido_id", pedidoId);
 
   if (!itens || itens.length === 0) return;
@@ -617,7 +619,10 @@ async function distribuirValorFinalPorPeso(
         larguraM: it.largura_m != null ? Number(it.largura_m) : null,
         alturaM: it.altura_m != null ? Number(it.altura_m) : null,
         qtdPecas: it.qtd_pecas != null ? Number(it.qtd_pecas) : null,
-        tamanhoMm: it.produto?.tamanho_mm != null ? Number(it.produto.tamanho_mm) : null,
+        // Barra especial (tamanho_mm_especial, por item) prevalece sobre o
+        // comprimento cadastrado no produto.
+        tamanhoMm: it.tamanho_mm_especial != null ? Number(it.tamanho_mm_especial)
+          : it.produto?.tamanho_mm != null ? Number(it.produto.tamanho_mm) : null,
         pesoMetro: it.produto?.peso_metro != null ? Number(it.produto.peso_metro) : null,
       }),
     }))

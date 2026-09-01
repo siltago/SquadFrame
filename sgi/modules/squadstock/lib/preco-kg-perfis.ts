@@ -46,7 +46,7 @@ export async function recalcularPrecoKgPerfis(
   for (const p of pedidosPerfil) {
     const { data: itens } = await admin
       .from("pedido_itens")
-      .select("unidade, quantidade_pedida, largura_m, altura_m, qtd_pecas, produto:produtos(tamanho_mm, peso_metro)")
+      .select("unidade, quantidade_pedida, largura_m, altura_m, qtd_pecas, tamanho_mm_especial, produto:produtos(tamanho_mm, peso_metro)")
       .eq("pedido_id", p.id);
 
     const pesoTotal = (itens ?? []).reduce((soma: number, it: any) => {
@@ -56,7 +56,9 @@ export async function recalcularPrecoKgPerfis(
         larguraM: it.largura_m != null ? Number(it.largura_m) : null,
         alturaM: it.altura_m != null ? Number(it.altura_m) : null,
         qtdPecas: it.qtd_pecas != null ? Number(it.qtd_pecas) : null,
-        tamanhoMm: it.produto?.tamanho_mm != null ? Number(it.produto.tamanho_mm) : null,
+        // Barra especial (por item) prevalece sobre o comprimento do produto.
+        tamanhoMm: it.tamanho_mm_especial != null ? Number(it.tamanho_mm_especial)
+          : it.produto?.tamanho_mm != null ? Number(it.produto.tamanho_mm) : null,
         pesoMetro: it.produto?.peso_metro != null ? Number(it.produto.peso_metro) : null,
       });
     }, 0);

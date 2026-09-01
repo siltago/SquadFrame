@@ -6,12 +6,49 @@ import { verificarPermissao } from "@/shared/auth/check-permission";
 import { getUsuarioId } from "@/modules/squadframe/actions/compras/helpers";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
 
-async function buscarSaldoAtual(admin: ReturnType<typeof createAdminClient>, produtoId: string, localId: string, obraId: string | null, corId: string | null) {
+export async function buscarSaldoAtual(admin: ReturnType<typeof createAdminClient>, produtoId: string, localId: string, obraId: string | null, corId: string | null) {
   let q = admin.from("stock_saldos").select("quantidade").eq("produto_id", produtoId).eq("local_id", localId);
   q = obraId ? q.eq("obra_id", obraId) : q.is("obra_id", null);
   q = corId ? q.eq("cor_id", corId) : q.is("cor_id", null);
   const { data } = await q.maybeSingle();
   return data?.quantidade ?? 0;
+}
+
+// Miolo do insert de AJUSTE, reaproveitado pelo formulário manual
+// (registrarAjuste) e pela reconciliação de contagem (concluirContagem em
+// contagens.ts) — mesmo número gerado via RPC, mesma tabela, diferindo só em
+// origem_tipo/origem_id (rastreabilidade até a sessão de contagem).
+export async function inserirAjuste(
+  admin: ReturnType<typeof createAdminClient>,
+  params: {
+    produtoId: string;
+    localId: string;
+    obraId: string | null;
+    corId: string | null;
+    quantidadeComSinal: number;
+    observacoes: string | null;
+    usuarioId: string;
+    origemTipo?: string;
+    origemId?: string | null;
+  }
+) {
+  const { data: numero, error: erroNumero } = await admin.rpc("gerar_numero_movimento_estoque");
+  if (erroNumero) throw new Error(erroNumero.message);
+
+  const { error } = await admin.from("stock_movimentacoes").insert({
+    numero,
+    produto_id: params.produtoId,
+    local_id: params.localId,
+    obra_id: params.obraId,
+    cor_id: params.corId,
+    tipo: "AJUSTE",
+    quantidade: params.quantidadeComSinal,
+    origem_tipo: params.origemTipo ?? "manual",
+    origem_id: params.origemId ?? null,
+    observacoes: params.observacoes,
+    usuario_id: params.usuarioId,
+  });
+  if (error) throw new Error(error.message);
 }
 
 // Registra uma SAÍDA (consumo) de material — sempre validando que não sai
@@ -89,22 +126,15 @@ export async function registrarAjuste(formData: FormData) {
     }
   }
 
-  const { data: numero, error: erroNumero } = await admin.rpc("gerar_numero_movimento_estoque");
-  if (erroNumero) throw new Error(erroNumero.message);
-
-  const { error } = await admin.from("stock_movimentacoes").insert({
-    numero,
-    produto_id: produtoId,
-    local_id: localId,
-    obra_id: obraId,
-    cor_id: corId,
-    tipo: "AJUSTE",
-    quantidade: quantidadeComSinal,
-    origem_tipo: "manual",
+  await inserirAjuste(admin, {
+    produtoId,
+    localId,
+    obraId,
+    corId,
+    quantidadeComSinal,
     observacoes,
-    usuario_id: usuarioId,
+    usuarioId,
   });
-  if (error) throw new Error(error.message);
 
   revalidatePath("/squadstock");
   revalidatePath("/squadstock/movimentacoes");

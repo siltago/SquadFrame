@@ -9,6 +9,7 @@ import { StatCard } from "@/ui/components/Card";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
 import { buildSearchPattern } from "@/ui/lib/search";
 import { EstoqueSidebar } from "@/modules/squadstock/components/estoque-sidebar";
+import { buscarLocaisComCaminho } from "@/modules/squadstock/lib/locais-com-caminho";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,8 @@ export default async function EstoquePage({
   const filtroQ = searchParams.q?.trim() ?? "";
   const pagina = Math.max(1, parseInt(searchParams.pagina ?? "1") || 1);
 
-  const [{ data: locaisAtivos }, { data: tiposList }] = await Promise.all([
-    admin.from("stock_locais").select("id, nome").eq("ativo", true).order("nome"),
+  const [locaisAtivos, { data: tiposList }] = await Promise.all([
+    buscarLocaisComCaminho(admin),
     admin.from("tipos_linha").select("id, nome, slug").order("ordem"),
   ]);
 
@@ -99,17 +100,20 @@ export default async function EstoquePage({
 
   // Só busca saldo pros ≤50 produtos da página atual — .in() com uma lista
   // curta é seguro (o bug do tipo era resolver milhares de IDs de uma vez).
-  let saldosPagina: { produto_id: string; local_id: string; cor_id: string | null; quantidade: number; atualizado_em: string; local: { nome: string } | { nome: string }[] | null; cor: { codigo_ral: string } | { codigo_ral: string }[] | null }[] = [];
+  let saldosPagina: { produto_id: string; local_id: string; cor_id: string | null; quantidade: number; atualizado_em: string; cor: { codigo_ral: string } | { codigo_ral: string }[] | null }[] = [];
   if (produtoIdsPagina.length > 0) {
     let saldosQuery = admin
       .from("stock_saldos")
-      .select("produto_id, local_id, cor_id, quantidade, atualizado_em, local:stock_locais(nome), cor:cores_ral(codigo_ral)")
+      .select("produto_id, local_id, cor_id, quantidade, atualizado_em, cor:cores_ral(codigo_ral)")
       .in("produto_id", produtoIdsPagina)
       .gt("quantidade", 0);
     if (localId) saldosQuery = saldosQuery.eq("local_id", localId);
     const { data } = await saldosQuery;
     saldosPagina = data ?? [];
   }
+  // Caminho completo (não só o nome bruto — ambíguo desde que a árvore
+  // permite nós com o mesmo nome em ramos diferentes) do local filtrado.
+  const caminhoLocalFiltrado = localId ? locaisAtivos.find((l) => l.id === localId)?.caminho ?? null : null;
 
   const linhasPagina: LinhaAgregada[] = produtos.map((p) => {
     const l = rel(p.linha);
@@ -117,7 +121,6 @@ export default async function EstoquePage({
     const quantidade = saldosDoProduto.reduce((sum, s) => sum + s.quantidade, 0);
     const locaisDistintos = new Set(saldosDoProduto.map((s) => s.local_id));
     const atualizadoEm = saldosDoProduto.reduce<string | null>((max, s) => (!max || s.atualizado_em > max ? s.atualizado_em : max), null);
-    const localUnico = localId && saldosDoProduto.length > 0 ? rel(saldosDoProduto[0].local) : null;
 
     // Quebra por cor — só mostrada quando o produto tem saldo em mais de uma
     // (a maioria do catálogo nunca tem cor, cor_id fica sempre NULL e essa
@@ -139,7 +142,7 @@ export default async function EstoquePage({
       linha: l?.nome ?? "—",
       unidade: p.unidade ?? "un",
       quantidade,
-      localNome: localId ? (localUnico?.nome ?? null) : null,
+      localNome: localId ? caminhoLocalFiltrado : null,
       qtdLocais: locaisDistintos.size,
       atualizadoEm,
       coresComSaldo,
@@ -199,6 +202,9 @@ export default async function EstoquePage({
             <Link href="/squadstock/locais">
               <Button variant="secondary" size="sm">Locais</Button>
             </Link>
+            <Link href="/squadstock/contagens">
+              <Button variant="secondary" size="sm">Contagens</Button>
+            </Link>
             {podeGerenciar && (
               <Link href="/squadstock/movimentacoes/nova">
                 <Button>Nova movimentação</Button>
@@ -219,8 +225,8 @@ export default async function EstoquePage({
           <label className="label">Local</label>
           <select name="local_id" defaultValue={localId} className="field h-9 text-sm w-full">
             <option value="">Todos os locais (total)</option>
-            {(locaisAtivos ?? []).map((l) => (
-              <option key={l.id} value={l.id}>{l.nome}</option>
+            {locaisAtivos.map((l) => (
+              <option key={l.id} value={l.id}>{l.caminho}</option>
             ))}
           </select>
         </div>

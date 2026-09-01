@@ -5,6 +5,7 @@ import { createAdminClient } from "@/shared/database/supabase-admin";
 import { Button } from "@/ui/components/Button";
 import { FilterBar } from "@/ui/components/FilterBar";
 import { RefreshIcon } from "@/ui/icons";
+import { buscarLocaisComCaminho } from "@/modules/squadstock/lib/locais-com-caminho";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,8 @@ interface MovimentacaoRow {
   origem_tipo: string | null;
   observacoes: string | null;
   criado_em: string;
+  local_id: string;
   produto: { codigo_mestre: string; nome: string; unidade: string | null } | { codigo_mestre: string; nome: string; unidade: string | null }[] | null;
-  local: { nome: string } | { nome: string }[] | null;
   obra: { nome: string } | { nome: string }[] | null;
   cor: { codigo_ral: string } | { codigo_ral: string }[] | null;
   usuario: { nome: string } | { nome: string }[] | null;
@@ -53,17 +54,17 @@ export default async function MovimentacoesPage({
   if (!usuario) redirect("/login");
 
   const admin = createAdminClient();
-  const [{ data: obras }, { data: locais }] = await Promise.all([
+  const [{ data: obras }, locais] = await Promise.all([
     admin.from("obras").select("id, nome").order("nome").limit(200),
-    admin.from("stock_locais").select("id, nome").order("nome"),
+    buscarLocaisComCaminho(admin, { apenasAtivos: false }),
   ]);
+  const caminhoPorLocal = new Map(locais.map((l) => [l.id, l.caminho]));
 
   let q = admin
     .from("stock_movimentacoes")
     .select(`
-      id, numero, tipo, quantidade, origem_tipo, observacoes, criado_em,
+      id, numero, tipo, quantidade, origem_tipo, observacoes, criado_em, local_id,
       produto:produtos(codigo_mestre, nome, unidade),
-      local:stock_locais(nome),
       obra:obras(nome),
       cor:cores_ral(codigo_ral),
       usuario:usuarios(nome)
@@ -101,9 +102,9 @@ export default async function MovimentacoesPage({
           <label className="label">Local</label>
           <select name="local_id" defaultValue={searchParams.local_id ?? ""} className="field h-9 text-sm">
             <option value="">Todos</option>
-            {(locais ?? []).map((l) => (
+            {locais.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.nome}
+                {l.caminho}
               </option>
             ))}
           </select>
@@ -163,7 +164,7 @@ export default async function MovimentacoesPage({
                     {p?.nome ?? "—"}
                     {cor && <span className="ml-1.5 text-xs text-text-3">({cor.codigo_ral})</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-text-2">{nomeRelacao(m.local)}</td>
+                  <td className="px-4 py-2.5 text-text-2">{caminhoPorLocal.get(m.local_id) ?? "—"}</td>
                   <td className="px-4 py-2.5 text-text-2">{m.obra ? nomeRelacao(m.obra) : <span className="text-text-3">—</span>}</td>
                   <td className="px-4 py-2.5">
                     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${TIPO_BADGE[m.tipo] ?? "bg-surface-2 text-text-2"}`}>

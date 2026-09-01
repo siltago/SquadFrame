@@ -18,7 +18,7 @@ interface Obra {
 
 interface Local {
   id: string;
-  nome: string;
+  caminho: string;
 }
 
 interface CorRal {
@@ -85,7 +85,7 @@ export function NovaMovimentacaoForm({
           </option>
           {locais.map((l) => (
             <option key={l.id} value={l.id}>
-              {l.nome}
+              {l.caminho}
             </option>
           ))}
         </select>

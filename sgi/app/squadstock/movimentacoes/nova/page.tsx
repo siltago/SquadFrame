@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/shared/auth/auth";
 import { createAdminClient } from "@/shared/database/supabase-admin";
 import { STOCK_PERMISSIONS } from "@/modules/squadstock/constants";
+import { buscarLocaisComCaminho } from "@/modules/squadstock/lib/locais-com-caminho";
 import { NovaMovimentacaoForm } from "@/modules/squadstock/components/nova-movimentacao-form";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,10 @@ export default async function NovaMovimentacaoPage({
   if (!podeGerenciar) redirect("/squadstock");
 
   const admin = createAdminClient();
-  const [{ data: obras }, { data: produtos }, { data: locais }, { data: coresRal }] = await Promise.all([
+  const [{ data: obras }, { data: produtos }, locais, { data: coresRal }] = await Promise.all([
     admin.from("obras").select("id, nome").order("nome").limit(200),
     admin.from("produtos").select("id, codigo_mestre, nome").eq("status", true).order("nome").limit(500),
-    admin.from("stock_locais").select("id, nome").eq("ativo", true).order("nome"),
+    buscarLocaisComCaminho(admin),
     admin.from("cores_ral").select("id, codigo_ral, nome").order("codigo_ral"),
   ]);
 

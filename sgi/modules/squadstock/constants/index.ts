@@ -2,6 +2,10 @@ export const STOCK_PERMISSIONS = {
   MOVIMENTACAO_GERENCIAR: "stock.movimentacao.gerenciar",
   LOCAL_GERENCIAR: "stock.local.gerenciar",
   RECEBIMENTO_INICIAR: "stock.recebimento.iniciar",
+  // Árvore de locais (mapa de estoque) — chave própria, responsabilidade
+  // maior que o CRUD flat de stock.local.gerenciar que já existia.
+  MAPA_GERENCIAR: "stock.mapa.gerenciar",
+  CONTAGEM_GERENCIAR: "stock.contagem.gerenciar",
 } as const;
 
 // Migrado de modules/squadframe/lib/permissions.ts junto com o código do

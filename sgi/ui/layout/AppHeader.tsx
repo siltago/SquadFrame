@@ -68,12 +68,6 @@ export function AppHeader({
       className="fixed inset-x-0 top-0 z-50 flex items-center gap-1.5 px-3 sm:px-5"
       style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
     >
-      {/* Mobile nav slot (hamburger button) — volta a ser o fallback pra
-          telas médias também agora (lg:hidden, não só sm:hidden): abaixo de
-          1024px é mais seguro cair pro menu hamburguer simples do que tentar
-          espremer nav+busca+usuário numa faixa estreita demais. */}
-      {mobileNavSlot && <div className="lg:hidden shrink-0">{mobileNavSlot}</div>}
-
       {/* Logo sem bolha/fundo — só o ícone, sem glass nenhum (o vazamento
           de cor entre a bolha e a pastilha, mesmo depois de várias
           tentativas de correção de blur/composição, não parou de forma
@@ -184,6 +178,11 @@ export function AppHeader({
           </div>
         )}
       </header>
+
+      {/* Mobile nav slot (hamburger button) — fica na ponta direita da tela
+          (não mais colado no logo à esquerda), evitando ter dois "menus"
+          disputando o canto esquerdo com o menu lateral de cada módulo. */}
+      {mobileNavSlot && <div className="lg:hidden shrink-0">{mobileNavSlot}</div>}
     </div>
   );
 }

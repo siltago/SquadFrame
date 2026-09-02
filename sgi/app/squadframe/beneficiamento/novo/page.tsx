@@ -73,7 +73,7 @@ export default async function NovoBeneficiamentoPage({
       .from("pedidos_compra")
       .select("id, numero, obra:obras(nome), itens:pedido_itens(cor:cores_ral(codigo_ral))")
       .eq("tipo_linha", "PERFIL")
-      .in("status", ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO"])
+      .in("status", ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"])
       .order("criado_em", { ascending: false })
       .limit(200);
 

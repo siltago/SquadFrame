@@ -52,7 +52,7 @@ export async function criarBeneficiamento(formData: FormData) {
 
   // Só depois do pedido de origem emitido — confirma no servidor, não
   // confia só no filtro da tela.
-  const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO"];
+  const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
   const { data: pedidoOrigem } = await admin
     .from("pedidos_compra")
     .select("status, tipo_linha")
@@ -156,7 +156,7 @@ export async function marcarEnviado(beneficiamentoId: string) {
       .select("status")
       .eq("id", benef.pedido_origem_id)
       .single();
-    if (!pedidoOrigem || !["RECEBIDO", "RECEBIDO_PARCIAL"].includes(pedidoOrigem.status)) {
+    if (!pedidoOrigem || !["RECEBIDO", "RECEBIDO_PARCIAL", "FINALIZADO"].includes(pedidoOrigem.status)) {
       throw new Error("O pedido de origem precisa estar recebido (material na fábrica) antes de enviar pro beneficiamento.");
     }
 

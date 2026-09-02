@@ -90,7 +90,7 @@ export function PedidoCliente({
   // emitido (não faz sentido mandar beneficiar algo que ainda pode ser
   // rejeitado/alterado na aprovação). A tela de criação filtra sozinha se
   // o pedido não tem nenhum item de perfil cor natural.
-  const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO"];
+  const STATUS_BENEFICIAVEL = ["EMITIDO", "AGUARDANDO_RECEBIMENTO", "RECEBIDO_PARCIAL", "RECEBIDO", "FINALIZADO"];
   const podeGerarBeneficiamento = podeBeneficiar && STATUS_BENEFICIAVEL.includes(pedido.status);
 
   // Débito de faturamento direto: três estados possíveis enquanto usa_carteira.

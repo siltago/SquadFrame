@@ -27,13 +27,14 @@ function labelUnidadePreco(unidade?: string | null): string {
   }
 }
 
-// Nome sugerido pro arquivo salvo: "<número>-<obra> [AAAA-MM-DD HHmm].pdf" —
-// sem caracteres inválidos em nome de arquivo (Windows/macOS/Android/iOS).
+// Nome sugerido pro arquivo salvo: "N<número> - <obra> [dd-mm-aaaa].pdf" — o
+// ":" pedido no formato da data não é válido em nome de arquivo
+// (Windows/macOS/Android/iOS), então usa "-" como separador.
 function nomeArquivoPdf(numero: string, obraNome: string): string {
   const agora = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const timestamp = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())} ${pad(agora.getHours())}${pad(agora.getMinutes())}`;
-  const base = `${numero}-${obraNome} [${timestamp}]`.replace(/[\\/:*?"<>|]/g, "-").trim();
+  const data = `${pad(agora.getDate())}-${pad(agora.getMonth() + 1)}-${agora.getFullYear()}`;
+  const base = `N${numero} - ${obraNome} [${data}]`.replace(/[\\/:*?"<>|]/g, "-").trim();
   return `${base}.pdf`;
 }
 
